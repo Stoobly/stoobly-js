@@ -44,8 +44,8 @@ jobs:
         run: npm test
 
       - name: Run playwright tests
-        run: npm test:playwright
+        run: npm run test:playwright
 
       - name: Run cypress tests
-        run: npm test:cypress
+        run: npm run test:cypress
 
