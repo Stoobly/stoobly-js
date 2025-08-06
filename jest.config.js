@@ -9,4 +9,5 @@ module.exports = {
   preset: 'ts-jest',
   setupFiles: ['./setup.jest.js'],
   testEnvironment: 'jsdom',
+  testMatch: ['**/test/**/*.[jt]s?(x)'],
 };
