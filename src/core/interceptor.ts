@@ -1,8 +1,9 @@
 import { SCENARIO_KEY, SESSION_ID } from "../constants/custom_headers";
+import { Page } from "../types/playwright";
 
 export class Interceptor {
-  static originalXMLHttpRequestOpen = XMLHttpRequest ? XMLHttpRequest.prototype.open : null;
-  static originalFetch = window ? window.fetch.bind(window) : null;
+  static originalXMLHttpRequestOpen = typeof XMLHttpRequest !== 'undefined' ? XMLHttpRequest.prototype.open : null;
+  static originalFetch = typeof window !== 'undefined' ? window.fetch.bind(window) : null;
 
   private _applied: boolean = false;
   private urls: (RegExp | string)[] = [];
@@ -14,19 +15,31 @@ export class Interceptor {
   }
 
   apply(sessionId?: string) {
-    this.sessionId = sessionId || (new Date()).getTime().toString();
+    let cb;
 
     if (typeof window !== "undefined" && "cy" in window) {
-      this.decorateCypress(); // Cypress loads the application within an iframe
+      cb = () => this.decorateCypress(); // Cypress loads the application within an iframe
     } else {
-      this.decorateFetch();
-      this.decorateXMLHttpRequestOpen();
+      cb = () => {
+        this.decorateFetch();
+        this.decorateXMLHttpRequestOpen();
+      }
     }
 
-    this._applied = true;
+    return this.withSession(cb, sessionId);
+  }
 
-    return this.sessionId;
-  } 
+  applyCypress(sessionId?: string) {
+    const cb = () => this.decorateCypress();
+
+    return this.withSession(cb, sessionId);
+  }
+
+  applyPlaywright(page: Page, sessionId?: string) {
+    const cb = () => this.decoratePlaywright(page);
+
+    return this.withSession(cb, sessionId);
+  }
 
   clear() {
     if (Interceptor.originalFetch) {
@@ -46,6 +59,24 @@ export class Interceptor {
 
   withScenario(key: string): void {
     this.scenarioKey = key;
+  }
+
+  private allowedUrl(url: string) {
+    for (let i = 0; i < this.urls.length; ++i) {
+      const urlAllowed = this.urls[i];
+
+      if (urlAllowed instanceof RegExp) {
+        if (urlAllowed.test(url)) {
+          return true;
+        }
+      }
+
+      if (urlAllowed === url) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private decorateCypress() {
@@ -99,22 +130,24 @@ export class Interceptor {
     return true;
   }
 
-  private allowedUrl(url: string) {
-    for (let i = 0; i < this.urls.length; ++i) {
-      const urlAllowed = this.urls[i];
-
-      if (urlAllowed instanceof RegExp) {
-        if (urlAllowed.test(url)) {
-          return true;
+  private decoratePlaywright(page: Page) {
+    this.urls.forEach(async (url) => {
+      await page.route(url as string, async (route, req) => {
+        const headers = {
+          ...req.headers(),
+        } 
+        
+        if (this.scenarioKey) {
+          headers[SCENARIO_KEY] = this.scenarioKey;
         }
-      }
 
-      if (urlAllowed === url) {
-        return true;
-      }
-    }
+        if (this.sessionId) {
+          headers[SESSION_ID] = this.sessionId;
+        }
 
-    return false;
+        await route.continue({ headers });
+      });
+    });
   }
 
   private decorateXMLHttpRequestOpen() {
@@ -153,5 +186,12 @@ export class Interceptor {
     };
 
     return true;
+  }
+
+  private withSession(cb: () => void, sessionId?: string) {
+    this.sessionId = sessionId || (new Date()).getTime().toString();
+    cb();
+    this._applied = true;
+    return this.sessionId;
   }
 }
