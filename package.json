@@ -1,18 +1,18 @@
 {
   "name": "stoobly",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Javacript library for stoobly-agent",
   "files": [
     "dist/**"
   ],
   "main": "dist/cjs/stoobly.js",
   "scripts": {
-    "build": "rm -rf dist && mkdir dist && yarn build-esm && yarn build-cjs",
+    "build": "rm -rf dist && mkdir dist && npm run build-esm && npm run build-cjs",
     "build-esm": "mkdir -p dist/esm && tsc -p tsconfig.esm.json && echo '{\"type\":\"module\"}' > dist/esm/package.json",
     "build-cjs": "mkdir -p dist/cjs && tsc -p tsconfig.cjs.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
     "clean": "rm -rf ./node_modules/.cache ./dist",
     "lint": "eslint --fix --ext .js,.jsx,.ts ./src ./test",
-    "prepack": "npm install && yarn build && npm ci --omit dev",
+    "prepack": "npm install && npm run build && npm ci --omit dev",
     "test": "jest",
     "test:cypress": "start-server-and-test test-server http://localhost:3000 test:cypress:run",
     "test:cypress:open": "cypress open --config-file e2e/cypress.config.mjs",
