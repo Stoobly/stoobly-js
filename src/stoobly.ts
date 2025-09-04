@@ -5,6 +5,7 @@ import {Interceptor} from './core/interceptor';
 import {Playwright} from './core/playwright';
 import {Config} from './models/config';
 import {ApplyScenarioOptions} from './types/options';
+import {getTestName} from './utils/test-detection';
 
 export default class Stoobly {
   cypress: Cypress;
@@ -18,6 +19,15 @@ export default class Stoobly {
 
     this.cypress = new Cypress(this.interceptor);
     this.playwright = new Playwright(this.interceptor);
+
+    // Auto-detect and set test name if available
+    const testName = getTestName();
+
+    console.debug('Stoobly constructor - detected test name:', testName);
+
+    if (testName) {
+      this.interceptor.withTestName(testName);
+    }
   }
 
   get config() {
