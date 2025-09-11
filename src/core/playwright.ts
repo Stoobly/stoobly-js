@@ -19,5 +19,9 @@ export class Playwright {
       this.interceptor.withUrls(options?.urls || []);
       return this.interceptor.applyPlaywright(page, options?.sessionId);
     }
-  } 
+  }
+
+  setTestName(testName: string) {
+    this.interceptor.withTestName(testName);
+  }
 }
