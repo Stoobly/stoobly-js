@@ -1,4 +1,4 @@
-import { SCENARIO_KEY, SESSION_ID } from "../constants/custom_headers";
+import { SCENARIO_KEY, SESSION_ID, TEST_NAME } from "../constants/custom_headers";
 import { Page } from "../types/playwright";
 
 export class Interceptor {
@@ -9,6 +9,7 @@ export class Interceptor {
   private urls: (RegExp | string)[] = [];
   private scenarioKey: string | null = null;
   private sessionId: string | null = null;
+  private testName: string | null = null;
 
   get applied() {
     return this._applied;
@@ -61,6 +62,10 @@ export class Interceptor {
     this.scenarioKey = key;
   }
 
+  withTestName(name: string): void {
+    this.testName = name;
+  }
+
   private allowedUrl(url: string) {
     for (let i = 0; i < this.urls.length; ++i) {
       const urlAllowed = this.urls[i];
@@ -80,8 +85,16 @@ export class Interceptor {
   }
 
   private decorateCypress() {
+    console.debug('decorateCypress called with urls:', this.urls, 'testName:', this.testName);
     this.urls.forEach((url) => {
       (window as any).cy?.intercept(url, (req: { continue: () => void, headers: any }) => {
+
+        console.debug('Intercepting request to:', req, 'adding headers:', {
+          scenarioKey: this.scenarioKey,
+          sessionId: this.sessionId,
+          testName: this.testName
+        });
+
         if (this.scenarioKey) {
           req.headers[SCENARIO_KEY] = this.scenarioKey;
         }
@@ -89,6 +102,12 @@ export class Interceptor {
         if (this.sessionId) {
           req.headers[SESSION_ID] = this.sessionId;
         }
+
+        if (this.testName) {
+          req.headers[TEST_NAME] = this.testName;
+        }
+
+        console.debug('Request headers after intercept:', req, 'adding headers:', req.headers);
 
         req.continue();
       });
@@ -117,6 +136,10 @@ export class Interceptor {
           customHeaders[SESSION_ID] = self.sessionId;
         }
 
+        if (self.testName) {
+          customHeaders[TEST_NAME] = self.testName;
+        }
+
         if (!init) init = {};
         init.headers = {
           ...(init.headers as Record<string, string>),
@@ -143,6 +166,10 @@ export class Interceptor {
 
         if (this.sessionId) {
           headers[SESSION_ID] = this.sessionId;
+        }
+
+        if (this.testName) {
+          headers[TEST_NAME] = this.testName;
         }
 
         await route.continue({ headers });
@@ -180,6 +207,10 @@ export class Interceptor {
 
         if (self.sessionId) {
           this.setRequestHeader(SESSION_ID, self.sessionId);
+        }
+
+        if (self.testName) {
+          this.setRequestHeader(TEST_NAME, self.testName);
         }
       });
       return original.apply(this, arguments as any);
