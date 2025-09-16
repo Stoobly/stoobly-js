@@ -81,11 +81,12 @@ describe('Scenario', () => {
 
 ```js
 
-describe('Scenario', () => { 
-    beforeEach(() => {
+describe('Scenario', () => {
+    beforeEach(async ({ }, testInfo) => {
         const stoobly = new Stoobly();
         const urls = ['<URLS>'];
-    
+
+        stoobly.playwright.setTestName(testInfo.title);
         stoobly.playwright.applyScenario('<SCENARIO-KEY>', { urls });
     });
 });

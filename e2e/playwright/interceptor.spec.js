@@ -11,7 +11,7 @@ test.describe('applyScenario', () => {
 
   test.beforeEach(async ({ page }, testInfo) => {
     const stoobly = new Stoobly();
-    stoobly.interceptor.withTestName(testInfo.title);
+    stoobly.playwright.setTestName(testInfo.title);
     stoobly.playwright.applyScenario(page, scenarioKey, { sessionId, urls: [targetUrl] });
   });
 
