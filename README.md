@@ -90,3 +90,25 @@ describe('Scenario', () => {
     });
 });
 ```
+
+## Testing
+
+Run unit tests:
+
+```sh
+npm test
+```
+
+### Test Cypress Integration
+Run Cypress end-to-end tests:
+
+```sh
+npm run test:cypress
+```
+
+### Test Playwright Integration
+Run Playwright end-to-end tests:
+
+```sh
+npm run test:playwright
+```
