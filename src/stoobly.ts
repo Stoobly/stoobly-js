@@ -22,9 +22,6 @@ export default class Stoobly {
 
     // Auto-detect and set test name if available
     const testName = getTestName();
-
-    console.debug('Stoobly constructor - detected test name:', testName);
-
     if (testName) {
       this.interceptor.withTestName(testName);
     }

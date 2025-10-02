@@ -85,16 +85,8 @@ export class Interceptor {
   }
 
   private decorateCypress() {
-    console.debug('decorateCypress called with urls:', this.urls, 'testName:', this.testName);
     this.urls.forEach((url) => {
       (window as any).cy?.intercept(url, (req: { continue: () => void, headers: any }) => {
-
-        console.debug('Intercepting request to:', req, 'adding headers:', {
-          scenarioKey: this.scenarioKey,
-          sessionId: this.sessionId,
-          testName: this.testName
-        });
-
         if (this.scenarioKey) {
           req.headers[SCENARIO_KEY] = this.scenarioKey;
         }
@@ -106,8 +98,6 @@ export class Interceptor {
         if (this.testName) {
           req.headers[TEST_NAME] = this.testName;
         }
-
-        console.debug('Request headers after intercept:', req, 'adding headers:', req.headers);
 
         req.continue();
       });
