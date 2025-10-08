@@ -1,5 +1,13 @@
 # Stoobly Node.js library
 
+![Node.js Version](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
+![npm version](https://img.shields.io/npm/v/stoobly)
+![CI](https://github.com/Stoobly/stoobly-js/workflows/Integration%20tests/badge.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)
+![Cypress](https://img.shields.io/badge/Cypress-17202C?logo=cypress&logoColor=white)
+![Playwright](https://img.shields.io/badge/Playwright-45ba4b?logo=playwright&logoColor=white)
+![License](https://img.shields.io/github/license/Stoobly/stoobly-js)
+
 The Stoobly Javascript library provides convenient access to [stoobly-agent](https://github.com/Stoobly/stoobly-agent) API.
 
 ## Requirements
@@ -91,6 +99,8 @@ describe('Scenario', () => {
     });
 });
 ```
+
+Note: Playwright requires manually setting the test name, hence the `setTestName()` call
 
 ## Testing
 
