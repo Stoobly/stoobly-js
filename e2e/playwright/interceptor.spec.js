@@ -32,6 +32,7 @@ test.describe('applyScenario', () => {
 
   test('should set Stoobly headers when test name is not set', async ({ page }) => {
     // Create a new Stoobly instance without setting test name
+    // Not using the instance from beforeEach which does have setTestName called
     const stoobly = new Stoobly();
     // Don't call withTestName - simulate forgetting to set it
     stoobly.playwright.applyScenario(page, scenarioKey, { sessionId, urls: [targetUrl] });
