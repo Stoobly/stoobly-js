@@ -27,7 +27,22 @@ test.describe('applyScenario', () => {
 
     expect(body[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
     expect(body[SESSION_ID.toLowerCase()]).toEqual(sessionId);
+    expect(body[TEST_NAME.toLowerCase()]).toBeDefined();
     expect(body[TEST_NAME.toLowerCase()]).toEqual(testInfo.title);
+    expect(body[TEST_NAME.toLowerCase()]).toEqual('should send request with Stoobly headers');
+  });
+
+  test('another test should have a different test name in the headers', async ({ page }) => {
+    page.goto(targetUrl);
+
+    // Wait for the specific response by URL or predicate
+    const response = await page.waitForResponse(response => {
+      return response.url().startsWith(targetUrl) && response.status() === 200;
+    });
+
+    const body = await response.json();
+
+    expect(body[TEST_NAME.toLowerCase()]).toEqual('another test should have a different test name in the headers');
   });
 
   test('should set Stoobly headers when test name is not set', async ({ page }) => {
