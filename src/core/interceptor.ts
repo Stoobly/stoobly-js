@@ -37,10 +37,10 @@ export class Interceptor {
     return this.withSession(cb, sessionId);
   }
 
-  applyPlaywright(page: Page, sessionId?: string) {
+  async applyPlaywright(page: Page, sessionId?: string) {
     const cb = () => this.decoratePlaywright(page);
 
-    return this.withSession(cb, sessionId);
+    return await this.withSession(cb, sessionId);
   }
 
   clear() {
@@ -148,13 +148,13 @@ export class Interceptor {
     return true;
   }
 
-  private decoratePlaywright(page: Page) {
-    this.urls.forEach(async (url) => {
+  private async decoratePlaywright(page: Page) {
+    for (const url of this.urls) {
       await page.route(url as string, async (route, req) => {
         const headers = {
           ...req.headers(),
-        } 
-        
+        }
+
         if (this.scenarioKey) {
           headers[SCENARIO_KEY] = this.scenarioKey;
         }
@@ -169,7 +169,7 @@ export class Interceptor {
 
         await route.continue({ headers });
       });
-    });
+    }
   }
 
   private decorateXMLHttpRequestOpen() {
@@ -216,9 +216,9 @@ export class Interceptor {
     return true;
   }
 
-  private withSession(cb: () => void, sessionId?: string) {
+  private async withSession(cb: () => void | Promise<void>, sessionId?: string) {
     this.sessionId = sessionId || (new Date()).getTime().toString();
-    cb();
+    await cb();
     this._applied = true;
     return this.sessionId;
   }
