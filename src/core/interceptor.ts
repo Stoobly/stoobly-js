@@ -1,5 +1,6 @@
 import { SCENARIO_KEY, SESSION_ID, TEST_NAME } from "../constants/custom_headers";
 import { Page } from "../types/playwright";
+import { getTestName } from "../utils/test-detection";
 
 export class Interceptor {
   static originalXMLHttpRequestOpen = typeof XMLHttpRequest !== 'undefined' ? XMLHttpRequest.prototype.open : null;
@@ -95,8 +96,10 @@ export class Interceptor {
           req.headers[SESSION_ID] = this.sessionId;
         }
 
-        if (this.testName) {
-          req.headers[TEST_NAME] = this.testName;
+        // Dynamically detect test name at interception time
+        const testName = this.testName || getTestName();
+        if (testName) {
+          req.headers[TEST_NAME] = testName;
         }
 
         req.continue();
@@ -126,8 +129,10 @@ export class Interceptor {
           customHeaders[SESSION_ID] = self.sessionId;
         }
 
-        if (self.testName) {
-          customHeaders[TEST_NAME] = self.testName;
+        // Dynamically detect test name at interception time
+        const testName = self.testName || getTestName();
+        if (testName) {
+          customHeaders[TEST_NAME] = testName;
         }
 
         if (!init) init = {};
@@ -183,10 +188,10 @@ export class Interceptor {
       password?: string | null
     ): void {
       this.addEventListener("readystatechange", function () {
-        if (this.readyState !== 1) { 
+        if (this.readyState !== 1) {
           return; // Not opened
         }
-        
+
         if (!self.allowedUrl(url)) {
           return;
         }
@@ -199,8 +204,10 @@ export class Interceptor {
           this.setRequestHeader(SESSION_ID, self.sessionId);
         }
 
-        if (self.testName) {
-          this.setRequestHeader(TEST_NAME, self.testName);
+        // Dynamically detect test name at interception time
+        const testName = self.testName || getTestName();
+        if (testName) {
+          this.setRequestHeader(TEST_NAME, testName);
         }
       });
       return original.apply(this, arguments as any);

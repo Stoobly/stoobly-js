@@ -71,11 +71,13 @@ stoobly.applyScenario('<SCENARIO-KEY>', {
 
 ```js
 
-describe('Scenario', () => { 
+describe('Scenario', () => {
+    const stoobly = new Stoobly();
+
     beforeEach(() => {
-        const stoobly = new Stoobly();
+        
         const urls = ['<URLS>'];
-    
+
         // WARNING: if a synchronous request is used, this will cause Cypress to hang. See: https://github.com/cypress-io/cypress/issues/29566
         // Example of a synchronous request: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest_API/Synchronous_and_Asynchronous_Requests#synchronous_request
         stoobly.cypress.applyScenario('<SCENARIO-KEY>', { urls });
@@ -83,15 +85,19 @@ describe('Scenario', () => {
 });
 ```
 
-`stoobly.cypress.applyScenario` cannot be applied in `beforeAll` because it uses `cy.intercept`. `cy.intercept` gets reset before every test. See: https://docs.cypress.io/api/commands/intercept#:~:text=All%20intercepts%20are%20automatically%20cleared%20before%20every%20test.
+**Key Points:**
+- The Stoobly instance is created once inside the `describe` block
+- Test names are automatically detected at request interception time for each test
+- `stoobly.cypress.applyScenario` cannot be applied in `beforeAll` because it uses `cy.intercept`. `cy.intercept` gets reset before every test. See: https://docs.cypress.io/api/commands/intercept#:~:text=All%20intercepts%20are%20automatically%20cleared%20before%20every%20test.
+
 
 ### Integrating with Playwright
 
 ```js
-
 describe('Scenario', () => {
+    const stoobly = new Stoobly();
+
     beforeEach(async ({ }, testInfo) => {
-        const stoobly = new Stoobly();
         const urls = ['<URLS>'];
 
         stoobly.playwright.setTestName(testInfo.title);
@@ -100,7 +106,10 @@ describe('Scenario', () => {
 });
 ```
 
-Note: Playwright requires manually setting the test name, hence the `setTestName()` call
+**Key Points:**
+- The Stoobly instance is created once inside the `describe` block
+- `setTestName()` must be called in `beforeEach()` to update the test name for each test because Playwright doesn't provide a global API to auto-detect test names
+- Test names are applied at request interception time
 
 ## Testing
 

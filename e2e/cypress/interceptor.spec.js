@@ -3,12 +3,12 @@ import { SCENARIO_KEY, SESSION_ID, TEST_NAME } from "../../src/constants/custom_
 import Stoobly from '../../src/stoobly';
 
 describe('applyScenario', () => {
+  const stoobly = new Stoobly();
   const scenarioKey = 'test';
   const sessionId = 'id';
   const targetUrl = `${SERVER_URL}/headers`;
 
   beforeEach(() => {
-    const stoobly = new Stoobly();
     stoobly.cypress.applyScenario(scenarioKey, { sessionId, urls: [targetUrl] });
   });
 
