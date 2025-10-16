@@ -87,7 +87,7 @@ describe('Scenario', () => {
 
 **Key Points:**
 - The Stoobly instance is created once inside the `describe` block
-- Test names are automatically detected at request interception time for each test
+- Test titles  are automatically detected at request interception time for each test
 - `stoobly.cypress.applyScenario` cannot be applied in `beforeAll` because it uses `cy.intercept`. `cy.intercept` gets reset before every test. See: https://docs.cypress.io/api/commands/intercept#:~:text=All%20intercepts%20are%20automatically%20cleared%20before%20every%20test.
 
 
@@ -108,8 +108,8 @@ describe('Scenario', () => {
 
 **Key Points:**
 - The Stoobly instance is created once inside the `describe` block
-- `setTestTitle()` must be called in `beforeEach()` to update the test name for each test because Playwright doesn't provide a global API to auto-detect test names
-- Test names are applied at request interception time
+- `setTestTitle()` must be called in `beforeEach()` to update the test titles for each test because Playwright does not provide a global API to auto-detect test titles
+- Test titles are applied at request interception time
 
 ## Testing
 
