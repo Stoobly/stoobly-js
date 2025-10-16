@@ -100,7 +100,7 @@ describe('Scenario', () => {
     beforeEach(async ({ }, testInfo) => {
         const urls = ['<URLS>'];
 
-        stoobly.playwright.setTestName(testInfo.title);
+        stoobly.playwright.setTestTitle(testInfo.title);
         stoobly.playwright.applyScenario('<SCENARIO-KEY>', { urls });
     });
 });
@@ -108,7 +108,7 @@ describe('Scenario', () => {
 
 **Key Points:**
 - The Stoobly instance is created once inside the `describe` block
-- `setTestName()` must be called in `beforeEach()` to update the test name for each test because Playwright doesn't provide a global API to auto-detect test names
+- `setTestTitle()` must be called in `beforeEach()` to update the test name for each test because Playwright doesn't provide a global API to auto-detect test names
 - Test names are applied at request interception time
 
 ## Testing

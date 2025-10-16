@@ -22,7 +22,7 @@ export class Playwright {
   }
 
   // For end-to-end frameworks like Playwright, users need to manually set the test name
-  setTestName(testName: string) {
+  setTestTitle(testName: string) {
     this.interceptor.withTestName(testName);
   }
 }
