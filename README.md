@@ -97,7 +97,7 @@ describe('Scenario', () => {
 describe('Scenario', () => {
     const stoobly = new Stoobly();
 
-    beforeEach(async ({ }, testInfo) => {
+    beforeEach(async ({}, testInfo) => {
         const urls = ['<URLS>'];
 
         stoobly.playwright.setTestTitle(testInfo.title);
