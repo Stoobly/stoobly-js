@@ -20,8 +20,8 @@ describe('stoobly', () => {
     expect(stoobly.config).toBeInstanceOf(Config);
   });
 
-  it('auto-detects and sets test name on construction when Cypress test is detected', () => {
-    // Mock Cypress environment with a test name
+  it('auto-detects and sets test title on construction when Cypress test is detected', () => {
+    // Mock Cypress environment with a test title
     (global as any).window = {
       Cypress: {
         currentTest: {title: 'auto-detected-test'},
@@ -30,7 +30,7 @@ describe('stoobly', () => {
 
     const stoobly = new Stoobly();
 
-    // Since interceptor.testName is private, we test indirectly by checking that
+    // Since interceptor.testTitle is private, we test indirectly by checking that
     // the interceptor instance exists and was properly initialized
     expect(stoobly.interceptor).toBeDefined();
     expect(stoobly.interceptor.applied).toBe(false); // Should not be applied yet
@@ -42,7 +42,7 @@ describe('stoobly', () => {
 
     const stoobly = new Stoobly();
 
-    // Should still create interceptor successfully even without test name
+    // Should still create interceptor successfully even without test title
     expect(stoobly.interceptor).toBeDefined();
   });
 });

@@ -1,13 +1,13 @@
 import {jest} from '@jest/globals';
 import {SpiedFunction} from 'jest-mock';
 
-import {SCENARIO_KEY, SESSION_ID, TEST_NAME} from '@constants/custom_headers';
+import {SCENARIO_KEY, SESSION_ID, TEST_TITLE} from '@constants/custom_headers';
 import {Interceptor} from '@core/interceptor';
 
 describe('Interceptor', () => {
   const scenarioKey = 'test-key';
   const sessionId = 'test-session';
-  const testName = 'sample-test';
+  const testTitle = 'sample-test';
   const allowedOrigin = 'https://docs.stoobly.com';
   const notAllowedOrigin = 'https://example.com';
 
@@ -26,7 +26,7 @@ describe('Interceptor', () => {
 
       interceptor = new Interceptor();
       interceptor.withScenario(scenarioKey);
-      interceptor.withTestName(testName);
+      interceptor.withTestTitle(testTitle);
     });
 
     afterAll(() => {
@@ -57,10 +57,10 @@ describe('Interceptor', () => {
         });
       });
 
-      test(`adds '${TEST_NAME}' header to fetch requests`, async () => {
+      test(`adds '${TEST_TITLE}' header to fetch requests`, async () => {
         expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
           headers: expect.objectContaining({
-            [TEST_NAME]: testName,
+            [TEST_TITLE]: testTitle,
           }),
         });
       });
@@ -90,10 +90,10 @@ describe('Interceptor', () => {
         });
       });
 
-      test(`adds '${TEST_NAME}' header to fetch requests`, async () => {
+      test(`adds '${TEST_TITLE}' header to fetch requests`, async () => {
         expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
           headers: expect.objectContaining({
-            [TEST_NAME]: testName,
+            [TEST_TITLE]: testTitle,
           }),
         });
       });
@@ -145,7 +145,7 @@ describe('Interceptor', () => {
 
     beforeAll(() => {
       interceptor.withScenario(scenarioKey);
-      interceptor.withTestName(testName);
+      interceptor.withTestTitle(testTitle);
     });
 
     afterAll(() => {
@@ -177,8 +177,8 @@ describe('Interceptor', () => {
         );
       });
 
-      test(`adds '${TEST_NAME}' header to XMLHttpRequest`, async () => {
-        expect(setRequestHeaderMock).toHaveBeenCalledWith(TEST_NAME, testName);
+      test(`adds '${TEST_TITLE}' header to XMLHttpRequest`, async () => {
+        expect(setRequestHeaderMock).toHaveBeenCalledWith(TEST_TITLE, testTitle);
       });
     });
 
@@ -207,8 +207,8 @@ describe('Interceptor', () => {
         );
       });
 
-      test(`adds '${TEST_NAME}' header to XMLHttpRequest`, async () => {
-        expect(setRequestHeaderMock).toHaveBeenCalledWith(TEST_NAME, testName);
+      test(`adds '${TEST_TITLE}' header to XMLHttpRequest`, async () => {
+        expect(setRequestHeaderMock).toHaveBeenCalledWith(TEST_TITLE, testTitle);
       });
     });
 

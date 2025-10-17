@@ -22,9 +22,9 @@ describe('test-detection', () => {
     delete (globalThis as any).process;
   });
 
-  describe('getCypressTestName', () => {
+  describe('getCypressTestTitle', () => {
     it('returns null when Cypress is not available', () => {
-      expect(testDetection.getCypressTestName()).toBeNull();
+      expect(testDetection.getCypressTestTitle()).toBeNull();
     });
 
     it('returns currentTest.title when available', () => {
@@ -35,7 +35,7 @@ describe('test-detection', () => {
         },
       };
 
-      expect(testDetection.getCypressTestName()).toBe('test-title');
+      expect(testDetection.getCypressTestTitle()).toBe('test-title');
     });
 
     it('falls back to spec.name when currentTest unavailable', () => {
@@ -45,7 +45,7 @@ describe('test-detection', () => {
         },
       };
 
-      expect(testDetection.getCypressTestName()).toBe('spec-name.cy.js');
+      expect(testDetection.getCypressTestTitle()).toBe('spec-name.cy.js');
     });
 
     it('falls back to mocha runner when other methods fail', () => {
@@ -63,7 +63,7 @@ describe('test-detection', () => {
         },
       };
 
-      expect(testDetection.getCypressTestName()).toBe('mocha-test');
+      expect(testDetection.getCypressTestTitle()).toBe('mocha-test');
     });
 
     it('handles errors gracefully and returns null', () => {
@@ -77,13 +77,13 @@ describe('test-detection', () => {
         },
       };
 
-      expect(testDetection.getCypressTestName()).toBeNull();
+      expect(testDetection.getCypressTestTitle()).toBeNull();
     });
   });
 
-  describe('getPlaywrightTestName', () => {
+  describe('getPlaywrightTestTitle', () => {
     it('returns null (not implemented)', () => {
-      expect(testDetection.getPlaywrightTestName()).toBeNull();
+      expect(testDetection.getPlaywrightTestTitle()).toBeNull();
     });
   });
 
@@ -183,15 +183,15 @@ describe('test-detection', () => {
     });
   });
 
-  describe('getTestName', () => {
-    it('returns cypress test name when cypress detected', () => {
+  describe('getTestTitle', () => {
+    it('returns cypress test title when cypress detected', () => {
       (global as any).window = {
         Cypress: {
           currentTest: {title: 'cypress-test'},
         },
       };
 
-      expect(testDetection.getTestName()).toBe('cypress-test');
+      expect(testDetection.getTestTitle()).toBe('cypress-test');
     });
 
     it('returns null for playwright (not implemented)', () => {
@@ -200,7 +200,7 @@ describe('test-detection', () => {
         env: {PWTEST_UNDER_TEST: 'true'},
       };
 
-      expect(testDetection.getTestName()).toBeNull();
+      expect(testDetection.getTestTitle()).toBeNull();
     });
 
     it('returns null when no framework detected', () => {
@@ -208,7 +208,7 @@ describe('test-detection', () => {
       delete (globalThis as any).Cypress;
       delete (globalThis as any).process;
 
-      expect(testDetection.getTestName()).toBeNull();
+      expect(testDetection.getTestTitle()).toBeNull();
     });
   });
 });

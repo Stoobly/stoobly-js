@@ -1,5 +1,5 @@
 import { SERVER_URL } from '../server-config';
-import { SCENARIO_KEY, SESSION_ID, TEST_NAME } from "../../src/constants/custom_headers";
+import { SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "../../src/constants/custom_headers";
 import Stoobly from '../../src/stoobly';
 
 describe('applyScenario', () => {
@@ -9,6 +9,7 @@ describe('applyScenario', () => {
   const targetUrl = `${SERVER_URL}/headers`;
 
   beforeEach(() => {
+    // Test title is automatically detected in the Cypress integration
     stoobly.cypress.applyScenario(scenarioKey, { sessionId, urls: [targetUrl] });
   });
 
@@ -23,12 +24,12 @@ describe('applyScenario', () => {
 
       expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.equal(scenarioKey);
       expect(responseBody[SESSION_ID.toLowerCase()]).to.equal(sessionId);
-      expect(responseBody[TEST_NAME.toLowerCase()]).to.exist;
-      expect(responseBody[TEST_NAME.toLowerCase()]).to.equal('should send request with Stoobly headers')
+      expect(responseBody[TEST_TITLE.toLowerCase()]).to.equal(Cypress.currentTest.title)
+      expect(responseBody[TEST_TITLE.toLowerCase()]).to.equal('should send request with Stoobly headers')
     });
   });
 
-  it('another test should have a different test name in the headers', () => {
+  it('another test should have a different test title in the headers', () => {
     // Intercept the request to inspect headers or body
     cy.intercept('GET', `${targetUrl}`).as('getHeaders');
 
@@ -37,7 +38,7 @@ describe('applyScenario', () => {
     cy.wait('@getHeaders').then((interception) => {
       const responseBody = interception.response?.body || {};
 
-      expect(responseBody[TEST_NAME.toLowerCase()]).to.equal('another test should have a different test name in the headers')
+      expect(responseBody[TEST_TITLE.toLowerCase()]).to.equal('another test should have a different test title in the headers')
     });
   });
 });

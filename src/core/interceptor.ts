@@ -1,6 +1,6 @@
-import { SCENARIO_KEY, SESSION_ID, TEST_NAME } from "../constants/custom_headers";
+import { SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "../constants/custom_headers";
 import { Page } from "../types/playwright";
-import { getTestName } from "../utils/test-detection";
+import { getTestTitle } from "../utils/test-detection";
 
 export class Interceptor {
   static originalXMLHttpRequestOpen = typeof XMLHttpRequest !== 'undefined' ? XMLHttpRequest.prototype.open : null;
@@ -10,7 +10,7 @@ export class Interceptor {
   private urls: (RegExp | string)[] = [];
   private scenarioKey: string | null = null;
   private sessionId: string | null = null;
-  private testName: string | null = null;
+  private testTitle: string | null = null;
 
   get applied() {
     return this._applied;
@@ -63,8 +63,8 @@ export class Interceptor {
     this.scenarioKey = key;
   }
 
-  withTestName(name: string): void {
-    this.testName = name;
+  withTestTitle(title: string): void {
+    this.testTitle = title;
   }
 
   private allowedUrl(url: string) {
@@ -96,10 +96,10 @@ export class Interceptor {
           req.headers[SESSION_ID] = this.sessionId;
         }
 
-        // Dynamically detect test name at interception time
-        const testName = this.testName || getTestName();
-        if (testName) {
-          req.headers[TEST_NAME] = testName;
+        // Dynamically detect test title at interception time
+        const testTitle = this.testTitle || getTestTitle();
+        if (testTitle) {
+          req.headers[TEST_TITLE] = testTitle;
         }
 
         req.continue();
@@ -129,10 +129,10 @@ export class Interceptor {
           customHeaders[SESSION_ID] = self.sessionId;
         }
 
-        // Dynamically detect test name at interception time
-        const testName = self.testName || getTestName();
-        if (testName) {
-          customHeaders[TEST_NAME] = testName;
+        // Dynamically detect test title at interception time
+        const testTitle = self.testTitle || getTestTitle();
+        if (testTitle) {
+          customHeaders[TEST_TITLE] = testTitle;
         }
 
         if (!init) init = {};
@@ -163,8 +163,8 @@ export class Interceptor {
           headers[SESSION_ID] = this.sessionId;
         }
 
-        if (this.testName) {
-          headers[TEST_NAME] = this.testName;
+        if (this.testTitle) {
+          headers[TEST_TITLE] = this.testTitle;
         }
 
         await route.continue({ headers });
@@ -204,10 +204,10 @@ export class Interceptor {
           this.setRequestHeader(SESSION_ID, self.sessionId);
         }
 
-        // Dynamically detect test name at interception time
-        const testName = self.testName || getTestName();
-        if (testName) {
-          this.setRequestHeader(TEST_NAME, testName);
+        // Dynamically detect test title at interception time
+        const testTitle = self.testTitle || getTestTitle();
+        if (testTitle) {
+          this.setRequestHeader(TEST_TITLE, testTitle);
         }
       });
       return original.apply(this, arguments as any);
