@@ -1,5 +1,6 @@
-import { SCENARIO_KEY, SESSION_ID } from "../constants/custom_headers";
+import { SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "../constants/custom_headers";
 import { Page } from "../types/playwright";
+import { getTestTitle } from "../utils/test-detection";
 
 export class Interceptor {
   static originalXMLHttpRequestOpen = typeof XMLHttpRequest !== 'undefined' ? XMLHttpRequest.prototype.open : null;
@@ -9,6 +10,7 @@ export class Interceptor {
   private urls: (RegExp | string)[] = [];
   private scenarioKey: string | null = null;
   private sessionId: string | null = null;
+  private testTitle: string | null = null;
 
   get applied() {
     return this._applied;
@@ -35,10 +37,10 @@ export class Interceptor {
     return this.withSession(cb, sessionId);
   }
 
-  applyPlaywright(page: Page, sessionId?: string) {
+  async applyPlaywright(page: Page, sessionId?: string) {
     const cb = () => this.decoratePlaywright(page);
 
-    return this.withSession(cb, sessionId);
+    return await this.withSession(cb, sessionId);
   }
 
   clear() {
@@ -59,6 +61,10 @@ export class Interceptor {
 
   withScenario(key: string): void {
     this.scenarioKey = key;
+  }
+
+  withTestTitle(title: string): void {
+    this.testTitle = title;
   }
 
   private allowedUrl(url: string) {
@@ -90,6 +96,12 @@ export class Interceptor {
           req.headers[SESSION_ID] = this.sessionId;
         }
 
+        // Dynamically detect test title at interception time
+        const testTitle = this.testTitle || getTestTitle();
+        if (testTitle) {
+          req.headers[TEST_TITLE] = testTitle;
+        }
+
         req.continue();
       });
     });
@@ -117,6 +129,12 @@ export class Interceptor {
           customHeaders[SESSION_ID] = self.sessionId;
         }
 
+        // Dynamically detect test title at interception time
+        const testTitle = self.testTitle || getTestTitle();
+        if (testTitle) {
+          customHeaders[TEST_TITLE] = testTitle;
+        }
+
         if (!init) init = {};
         init.headers = {
           ...(init.headers as Record<string, string>),
@@ -130,13 +148,13 @@ export class Interceptor {
     return true;
   }
 
-  private decoratePlaywright(page: Page) {
-    this.urls.forEach(async (url) => {
+  private async decoratePlaywright(page: Page) {
+    for (const url of this.urls) {
       await page.route(url as string, async (route, req) => {
         const headers = {
           ...req.headers(),
-        } 
-        
+        }
+
         if (this.scenarioKey) {
           headers[SCENARIO_KEY] = this.scenarioKey;
         }
@@ -145,9 +163,13 @@ export class Interceptor {
           headers[SESSION_ID] = this.sessionId;
         }
 
+        if (this.testTitle) {
+          headers[TEST_TITLE] = this.testTitle;
+        }
+
         await route.continue({ headers });
       });
-    });
+    }
   }
 
   private decorateXMLHttpRequestOpen() {
@@ -166,10 +188,10 @@ export class Interceptor {
       password?: string | null
     ): void {
       this.addEventListener("readystatechange", function () {
-        if (this.readyState !== 1) { 
+        if (this.readyState !== 1) {
           return; // Not opened
         }
-        
+
         if (!self.allowedUrl(url)) {
           return;
         }
@@ -181,6 +203,12 @@ export class Interceptor {
         if (self.sessionId) {
           this.setRequestHeader(SESSION_ID, self.sessionId);
         }
+
+        // Dynamically detect test title at interception time
+        const testTitle = self.testTitle || getTestTitle();
+        if (testTitle) {
+          this.setRequestHeader(TEST_TITLE, testTitle);
+        }
       });
       return original.apply(this, arguments as any);
     };
@@ -188,9 +216,9 @@ export class Interceptor {
     return true;
   }
 
-  private withSession(cb: () => void, sessionId?: string) {
+  private async withSession(cb: () => void | Promise<void>, sessionId?: string) {
     this.sessionId = sessionId || (new Date()).getTime().toString();
-    cb();
+    await cb();
     this._applied = true;
     return this.sessionId;
   }

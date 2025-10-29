@@ -1,5 +1,13 @@
 # Stoobly Node.js library
 
+![Node.js Version](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
+![npm version](https://img.shields.io/npm/v/stoobly)
+![CI](https://github.com/Stoobly/stoobly-js/workflows/Integration%20tests/badge.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)
+![Cypress](https://img.shields.io/badge/Cypress-17202C?logo=cypress&logoColor=white)
+![Playwright](https://img.shields.io/badge/Playwright-45ba4b?logo=playwright&logoColor=white)
+![License](https://img.shields.io/github/license/Stoobly/stoobly-js)
+
 The Stoobly Javascript library provides convenient access to [stoobly-agent](https://github.com/Stoobly/stoobly-agent) API.
 
 ## Requirements
@@ -63,11 +71,13 @@ stoobly.applyScenario('<SCENARIO-KEY>', {
 
 ```js
 
-describe('Scenario', () => { 
+describe('Scenario', () => {
+    const stoobly = new Stoobly();
+
     beforeEach(() => {
-        const stoobly = new Stoobly();
+        
         const urls = ['<URLS>'];
-    
+
         // WARNING: if a synchronous request is used, this will cause Cypress to hang. See: https://github.com/cypress-io/cypress/issues/29566
         // Example of a synchronous request: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest_API/Synchronous_and_Asynchronous_Requests#synchronous_request
         stoobly.cypress.applyScenario('<SCENARIO-KEY>', { urls });
@@ -75,18 +85,50 @@ describe('Scenario', () => {
 });
 ```
 
-`stoobly.cypress.applyScenario` cannot be applied in `beforeAll` because it uses `cy.intercept`. `cy.intercept` gets reset before every test. See: https://docs.cypress.io/api/commands/intercept#:~:text=All%20intercepts%20are%20automatically%20cleared%20before%20every%20test.
+**Key Points:**
+- The Stoobly instance is created once inside the `describe` block
+- Test titles are automatically detected at request interception time for each test
+- `stoobly.cypress.applyScenario` cannot be applied in `beforeAll` because it uses `cy.intercept`. `cy.intercept` gets reset before every test. See: https://docs.cypress.io/api/commands/intercept#:~:text=All%20intercepts%20are%20automatically%20cleared%20before%20every%20test.
+
 
 ### Integrating with Playwright
 
 ```js
+describe('Scenario', () => {
+    const stoobly = new Stoobly();
 
-describe('Scenario', () => { 
-    beforeEach(() => {
-        const stoobly = new Stoobly();
+    beforeEach(async ({}, testInfo) => {
         const urls = ['<URLS>'];
-    
+
+        stoobly.playwright.setTestTitle(testInfo.title);
         stoobly.playwright.applyScenario('<SCENARIO-KEY>', { urls });
     });
 });
+```
+
+**Key Points:**
+- The Stoobly instance is created once inside the `describe` block
+- `setTestTitle()` must be called in `beforeEach()` to update the test titles for each test because Playwright does not provide a global API to auto-detect test titles
+- Test titles are applied at request interception time
+
+## Testing
+
+Run unit tests:
+
+```sh
+npm test
+```
+
+### Test Cypress Integration
+Run Cypress end-to-end tests:
+
+```sh
+npm run test:cypress
+```
+
+### Test Playwright Integration
+Run Playwright end-to-end tests:
+
+```sh
+npm run test:playwright
 ```
