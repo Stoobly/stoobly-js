@@ -1,14 +1,15 @@
-import {
-  FirewallAction,
-  HTTP_METHOD,
-  MockPolicy,
-  ProxyMode,
-  RecordPolicy,
-  ReplayPolicy,
+import { 
+  FirewallAction, 
+  MockPolicy, 
+  ProxyMode, 
+  RecordPolicy, 
+  ReplayPolicy, 
   RequestParameter,
-  TestPolicy,
-  TestStrategy,
-} from '.';
+  TestPolicy, 
+  TestStrategy 
+} from '@constants/proxy';
+
+import { HTTP_METHOD } from '.';
 
 export interface AgentConfigResponse {
   cli: AgentCliSettings;
