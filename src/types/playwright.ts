@@ -5,5 +5,14 @@ export interface Page {
       route: { continue: (options: { headers?: any }) => void }, 
       request: { headers: () => any }
     ) => void
-  ) => void
+  ) => void,
+  unroute: (url: string, handler: (route: any, req: any) => Promise<void>) => void
+}
+
+export interface Route {
+  continue: (options: { headers?: any }) => void;
+}
+
+export interface Request {
+  headers: () => any;
 }
