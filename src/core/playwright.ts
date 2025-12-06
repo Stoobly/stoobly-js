@@ -21,6 +21,8 @@ export class Playwright extends Interceptor {
   }
 
   async apply(options?: InterceptOptions) {
+    await this.clear();
+
     if (options?.urls) {
       this.urls = options.urls;
     }
@@ -37,8 +39,16 @@ export class Playwright extends Interceptor {
     return this.apply(options);
   }
 
-  clear() {
-    if (!this.appliedPlaywright) {
+  get urls() {
+    return this._urls;
+  }
+
+  set urls(urls: (RegExp | string)[]) {
+    this._urls = urls;
+  }
+
+  async clear() {
+    if (!this.appliedPlaywright || !this.page) {
       return;
     }
 
@@ -48,10 +58,10 @@ export class Playwright extends Interceptor {
         continue;
       }
 
-      this.page.unroute(url as string, handler);
+      await this.page.unroute(url as string, handler);
       this.handlers.delete(url as string);
     }
-
+    
     this.appliedPlaywright = false;
   }
 
@@ -61,7 +71,13 @@ export class Playwright extends Interceptor {
   }
 
   withPage(page: Page) {
+    // Clear handlers if page changed (Playwright will clean up routes when page closes)
+    if (this._page && this._page !== page) {
+      this.handlers.clear();
+    }
+
     this.page = page;
+
     return this;
   }
 
@@ -70,6 +86,7 @@ export class Playwright extends Interceptor {
       return;
     }
 
+    // Register routes on the current page
     for (const url of this.urls) {
       const handler = async (route: PlaywrightRoute, req: PlaywrightRequest) => {
         const headers = this.decorateHeaders(req.headers());

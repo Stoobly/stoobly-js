@@ -5,7 +5,9 @@ import {setTestFramework, CYPRESS_FRAMEWORK} from "../utils/test-detection";
 export class Cypress extends Interceptor {
   private appliedCypress: boolean = false;
 
-  async apply(options?: InterceptOptions) {
+  apply(options?: InterceptOptions) {
+    this.clear();
+
     if (options?.urls) {
       this.urls = options.urls;
     }
@@ -22,7 +24,7 @@ export class Cypress extends Interceptor {
     return this.apply(options);
   }
   
-  clear() {
+  async clear() {
     if (this.appliedCypress) {
       this.urls.forEach((url) => {
         (window as any).cy?.intercept(url, (req: { continue: () => void }) => {

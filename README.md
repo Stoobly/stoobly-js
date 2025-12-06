@@ -70,7 +70,6 @@ stoobly.applyScenario('<SCENARIO-KEY>', {
 ### Integrating with Cypress
 
 ```js
-
 describe('Scenario', () => {
     const stoobly = new Stoobly();
 
@@ -96,15 +95,17 @@ describe('Scenario', () => {
 ### Integrating with Playwright
 
 ```js
-describe('Scenario', () => {
+import { test } from '@playwright/test';
+
+test.describe('Scenario', () => {
     const stoobly = new Stoobly();
 
-    beforeAll(() => {
+    test.beforeAll(() => {
         const urls = ['<URLS>'];
-        stoobly.cypress.urls = urls;
+        stoobly.playwright.urls = urls;
     });
 
-    beforeEach(async ({ page }, , testInfo) => {
+    test.beforeEach(async ({ page }, testInfo) => {
         stoobly.playwright.withPage(testInfo.page);
         stoobly.playwright.setTestTitle(testInfo.title);
         stoobly.playwright.applyScenario('<SCENARIO-KEY>');

@@ -20,12 +20,12 @@ export class Interceptor {
   }
 
   set urls(urls: (RegExp | string)[]) {
-    // Handlers are tied to the urls, so we need to clear them when the urls change
-    this.clear();
     this._urls = urls;
   }
 
   async apply(options?: InterceptOptions) {
+    await this.clear();
+
     if (options?.urls) {
       this.urls = options.urls;
     }
@@ -43,7 +43,7 @@ export class Interceptor {
     return this.apply(options);
   }
 
-  clear() {
+  async clear() {
     this.clearFetch();
     this.clearXMLHttpRequestOpen();
   }
