@@ -7,6 +7,7 @@ export enum RecordPolicy {
   All = 'all',
   Found = 'found',
   NotFound = 'not_found',
+  Overwrite = 'overwrite',
 }
 
 export enum TestPolicy {

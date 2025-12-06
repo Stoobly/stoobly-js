@@ -1,7 +1,7 @@
 import {describe, expect, it, beforeEach, afterEach, jest} from '@jest/globals';
 
 // Import the functions we want to test
-import * as testDetection from '../../src/utils/test-detection';
+import * as testDetection from '../test-detection';
 
 describe('test-detection', () => {
   // Store original implementations

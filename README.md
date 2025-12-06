@@ -70,17 +70,18 @@ stoobly.applyScenario('<SCENARIO-KEY>', {
 ### Integrating with Cypress
 
 ```js
-
 describe('Scenario', () => {
     const stoobly = new Stoobly();
 
-    beforeEach(() => {
-        
+    beforeAll(() => {
         const urls = ['<URLS>'];
+        stoobly.cypress.urls = urls;
+    });
 
+    beforeEach(() => { 
         // WARNING: if a synchronous request is used, this will cause Cypress to hang. See: https://github.com/cypress-io/cypress/issues/29566
         // Example of a synchronous request: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest_API/Synchronous_and_Asynchronous_Requests#synchronous_request
-        stoobly.cypress.applyScenario('<SCENARIO-KEY>', { urls });
+        stoobly.cypress.applyScenario('<SCENARIO-KEY>');
     });
 });
 ```
@@ -94,21 +95,26 @@ describe('Scenario', () => {
 ### Integrating with Playwright
 
 ```js
-describe('Scenario', () => {
+import { test } from '@playwright/test';
+
+test.describe('Scenario', () => {
     const stoobly = new Stoobly();
 
-    beforeEach(async ({}, testInfo) => {
+    test.beforeAll(() => {
         const urls = ['<URLS>'];
+        stoobly.playwright.urls = urls;
+    });
 
-        stoobly.playwright.setTestTitle(testInfo.title);
-        stoobly.playwright.applyScenario('<SCENARIO-KEY>', { urls });
+    test.beforeEach(async ({ page }, testInfo) => {
+        stoobly.playwright.withPage(testInfo.page).withTestTitle(testInfo.title);
+        await stoobly.playwright.applyScenario('<SCENARIO-KEY>');
     });
 });
 ```
 
 **Key Points:**
 - The Stoobly instance is created once inside the `describe` block
-- `setTestTitle()` must be called in `beforeEach()` to update the test titles for each test because Playwright does not provide a global API to auto-detect test titles
+- `withTestTitle()` must be called in `beforeEach()` to update the test titles for each test because Playwright does not provide a global API to auto-detect test titles
 - Test titles are applied at request interception time
 
 ## Testing
