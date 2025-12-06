@@ -49,9 +49,9 @@ export class Playwright extends Interceptor {
       }
 
       this.page.unroute(url as string, handler);
+      this.handlers.delete(url as string);
     }
 
-    this.handlers.clear();
     this.appliedPlaywright = false;
   }
 

@@ -20,6 +20,7 @@ export class Interceptor {
   }
 
   set urls(urls: (RegExp | string)[]) {
+    // Handlers are tied to the urls, so we need to clear them when the urls change
     this.clear();
     this._urls = urls;
   }
@@ -148,6 +149,11 @@ export class Interceptor {
         if (!init) {
           init = {};
         }
+
+        if (!init.headers) {
+          init.headers = {};
+        }
+
         init.headers = self.decorateHeaders(init.headers as Record<string, string>);
       }
 

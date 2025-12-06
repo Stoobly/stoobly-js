@@ -74,13 +74,15 @@ stoobly.applyScenario('<SCENARIO-KEY>', {
 describe('Scenario', () => {
     const stoobly = new Stoobly();
 
-    beforeEach(() => {
-        
+    beforeAll(() => {
         const urls = ['<URLS>'];
+        stoobly.cypress.urls = urls;
+    });
 
+    beforeEach(() => { 
         // WARNING: if a synchronous request is used, this will cause Cypress to hang. See: https://github.com/cypress-io/cypress/issues/29566
         // Example of a synchronous request: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest_API/Synchronous_and_Asynchronous_Requests#synchronous_request
-        stoobly.cypress.applyScenario('<SCENARIO-KEY>', { urls });
+        stoobly.cypress.applyScenario('<SCENARIO-KEY>');
     });
 });
 ```
@@ -97,11 +99,15 @@ describe('Scenario', () => {
 describe('Scenario', () => {
     const stoobly = new Stoobly();
 
-    beforeEach(async ({}, testInfo) => {
+    beforeAll(() => {
         const urls = ['<URLS>'];
+        stoobly.cypress.urls = urls;
+    });
 
+    beforeEach(async ({ page }, , testInfo) => {
+        stoobly.playwright.withPage(testInfo.page);
         stoobly.playwright.setTestTitle(testInfo.title);
-        stoobly.playwright.applyScenario('<SCENARIO-KEY>', { urls });
+        stoobly.playwright.applyScenario('<SCENARIO-KEY>');
     });
 });
 ```
