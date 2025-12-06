@@ -1,25 +1,52 @@
-import {ApplyScenarioOptions} from "../types/options";
+import {InterceptOptions} from "../types/options";
 import {Interceptor} from "./interceptor";
 import {setTestFramework, CYPRESS_FRAMEWORK} from "../utils/test-detection";
 
-export class Cypress {
-  interceptor: Interceptor;
+export class Cypress extends Interceptor {
+  private appliedCypress: boolean = false;
 
-  constructor(interceptor: Interceptor) {
-    this.interceptor = interceptor;
+  async apply(options?: InterceptOptions) {
+    if (options?.urls) {
+      this.urls = options.urls;
+    }
+
+    const cb = () => this.decorateCypress();
+
+    return this.withSession(cb, options?.sessionId);
   }
 
-  applyScenario(scenarioKey?: string, options?: ApplyScenarioOptions) {
+  applyScenario(scenarioKey?: string, options?: InterceptOptions) {
     setTestFramework(CYPRESS_FRAMEWORK);
 
-    if (this.interceptor.applied) {
-      this.interceptor.clear();
+    this.withScenario(scenarioKey);
+    return this.apply(options);
+  }
+  
+  clear() {
+    if (this.appliedCypress) {
+      this.urls.forEach((url) => {
+        (window as any).cy?.intercept(url, (req: { continue: () => void }) => {
+          req.continue();
+        });
+      });
     }
 
-    if (scenarioKey) {
-      this.interceptor.withScenario(scenarioKey);
-      this.interceptor.withUrls(options?.urls || []);
-      return this.interceptor.applyCypress(options?.sessionId);
+    this.appliedCypress = false;
+  }
+
+  private decorateCypress() {
+    if (this.appliedCypress) {
+      return;
     }
-  } 
+
+    this.urls.forEach((url) => {
+      (window as any).cy?.intercept(url, (req: { continue: () => void, headers: any }) => {
+        req.headers = this.decorateHeaders(req.headers); 
+
+        req.continue();
+      });
+    });
+
+    this.appliedCypress = true;
+  }
 }
