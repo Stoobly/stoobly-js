@@ -23,8 +23,8 @@ export class Interceptor {
     this._urls = urls;
   }
 
-  async apply(options?: InterceptOptions) {
-    await this.clear();
+  apply(options?: InterceptOptions) {
+    this.clear();
 
     if (options?.urls) {
       this.urls = options.urls;
@@ -35,7 +35,7 @@ export class Interceptor {
       this.decorateXMLHttpRequestOpen();
     }
 
-    return await this.withSession(cb, options?.sessionId);
+    return this.withSession(cb, options?.sessionId);
   }
 
   applyScenario(scenarioKey?: string, options?: InterceptOptions) {
@@ -43,7 +43,7 @@ export class Interceptor {
     return this.apply(options);
   }
 
-  async clear() {
+  clear() {
     this.clearFetch();
     this.clearXMLHttpRequestOpen();
   }
@@ -58,6 +58,7 @@ export class Interceptor {
   stopRecord() {
     this.withIntercept(false);
     this.withProxyMode();
+    this.withRecordPolicy();
   }
 
   withIntercept(value?: boolean) {
@@ -190,11 +191,11 @@ export class Interceptor {
     const original = Interceptor.originalXMLHttpRequestOpen;
 
     XMLHttpRequest.prototype.open = function (
-      method: string,
+      _method: string,
       url: string,
-      async: boolean = true,
-      user?: string | null,
-      password?: string | null
+      _async: boolean = true,
+      _user?: string | null,
+      _password?: string | null
     ): void {
       this.addEventListener("readystatechange", function () {
         if (this.readyState !== 1) {

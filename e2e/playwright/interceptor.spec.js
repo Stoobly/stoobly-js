@@ -17,8 +17,8 @@ test.describe('applyScenario', () => {
 
   test.beforeEach(async ({ page }, testInfo) => {
     stoobly.playwright.withPage(page);
-    stoobly.playwright.setTestTitle(testInfo.title);
-    stoobly.playwright.applyScenario(scenarioKey, { sessionId });
+    stoobly.playwright.withTestTitle(testInfo.title);
+    await stoobly.playwright.applyScenario(scenarioKey, { sessionId });
   });
 
   test('should send request with Stoobly headers', async ({ page }, testInfo) => {
@@ -52,12 +52,11 @@ test.describe('applyScenario', () => {
 
   test('should set Stoobly headers when test title is not set', async ({ page }) => {
     // Create a new Stoobly instance without setting test title
-    // Not using the instance from beforeEach which does have setTestTitle called
+    // Not using the instance from beforeEach which does have withTestTitle called
     const stoobly = new Stoobly();
     stoobly.playwright.urls = [targetUrl];
-    // Don't call setTestTitle - simulate forgetting to set it
-    stoobly.playwright.withPage(page);
-    stoobly.playwright.applyScenario(scenarioKey, { sessionId });
+    // Don't call withTestTitle - simulate forgetting to set it
+    await stoobly.playwright.withPage(page).applyScenario(scenarioKey, { sessionId });
 
     page.goto(targetUrl);
 
@@ -86,7 +85,7 @@ test.describe('startRecord', () => {
 
   test.beforeEach(async ({ page }, testInfo) => {
     stoobly.playwright.withPage(page);
-    stoobly.playwright.setTestTitle(testInfo.title);
+    stoobly.playwright.withTestTitle(testInfo.title);
   });
 
   test('should send request with intercept and record headers', async ({ page }) => {
@@ -158,7 +157,7 @@ test.describe('startRecord', () => {
 
     test.beforeEach(async ({ page }, testInfo) => {
       stoobly.playwright.withPage(page);
-      stoobly.playwright.setTestTitle(testInfo.title);
+      stoobly.playwright.withTestTitle(testInfo.title);
     });
 
     test('should send record policy header when policy is "all"', async ({ page }, testInfo) => {
@@ -241,8 +240,7 @@ test.describe('clear', () => {
     const sessionId = 'clear-session';
 
     stoobly.playwright.urls = [targetUrl];
-    stoobly.playwright.withPage(page);
-    await stoobly.playwright.applyScenario(scenarioKey, { sessionId });
+    await stoobly.playwright.withPage(page).applyScenario(scenarioKey, { sessionId });
 
     // First request should have headers
     let responsePromise = page.waitForResponse(response => {
@@ -276,13 +274,13 @@ test.describe('clear', () => {
     await stoobly.playwright.applyScenario('test-multi-clear');
 
     // First clear
-    stoobly.playwright.clear();
+    await stoobly.playwright.clear();
 
     // Second clear should be safe (no-op)
-    stoobly.playwright.clear();
+    await stoobly.playwright.clear();
 
     // Third clear
-    stoobly.playwright.clear();
+    await stoobly.playwright.clear();
 
     // All clears completed without throwing errors
     expect(true).toBe(true);

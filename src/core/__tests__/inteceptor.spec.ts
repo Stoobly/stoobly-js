@@ -142,10 +142,12 @@ describe('Interceptor', () => {
     let setRequestHeaderMock: SpiedFunction<
       (name: string, value: string) => void
     >;
+    let xhrInterceptor: Interceptor;
 
     beforeAll(() => {
-      interceptor.withScenario(scenarioKey);
-      interceptor.withTestTitle(testTitle);
+      xhrInterceptor = new Interceptor();
+      xhrInterceptor.withScenario(scenarioKey);
+      xhrInterceptor.withTestTitle(testTitle);
     });
 
     afterAll(() => {
@@ -153,13 +155,15 @@ describe('Interceptor', () => {
     });
 
     describe('when strict matching', () => {
-      beforeAll(() => {
-        interceptor.urls = [allowedUrl];
-        interceptor.apply({ sessionId });
+      beforeAll(async () => {
+        xhrInterceptor.urls = [allowedUrl];
+        xhrInterceptor.apply({ sessionId });
 
         const xhr = new XMLHttpRequest();
-        xhr.open('GET', allowedUrl);
         setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
+        xhr.open('GET', allowedUrl);
+        // Manually trigger readyState change to OPENED (1)
+        Object.defineProperty(xhr, 'readyState', { value: 1, writable: true });
         xhr.dispatchEvent(new Event('readystatechange'));
       });
 
@@ -183,13 +187,15 @@ describe('Interceptor', () => {
     });
 
     describe('when RegExp matching', () => {
-      beforeAll(() => {
-        interceptor.urls = [new RegExp(`${allowedOrigin}/.*`)];
-        interceptor.apply({ sessionId });
+      beforeAll(async () => {
+        xhrInterceptor.urls = [new RegExp(`${allowedOrigin}/.*`)];
+        xhrInterceptor.apply({ sessionId });
 
         const xhr = new XMLHttpRequest();
-        xhr.open('GET', allowedUrl);
         setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
+        xhr.open('GET', allowedUrl);
+        // Manually trigger readyState change to OPENED (1)
+        Object.defineProperty(xhr, 'readyState', { value: 1, writable: true });
         xhr.dispatchEvent(new Event('readystatechange'));
       });
 
@@ -216,15 +222,12 @@ describe('Interceptor', () => {
       const notAllowedUrl = `${notAllowedOrigin}/test`;
 
       beforeAll(async () => {
-        interceptor.apply({ sessionId });
+        xhrInterceptor.apply({ sessionId });
 
         const xhr = new XMLHttpRequest();
-        xhr.open('GET', allowedUrl);
         setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
+        xhr.open('GET', notAllowedUrl);
         xhr.dispatchEvent(new Event('readystatechange'));
-
-        setRequestHeaderMock.mockClear();
-        await fetch(notAllowedUrl);
       });
 
       test(`headers not added`, async () => {
@@ -234,11 +237,11 @@ describe('Interceptor', () => {
 
     describe('deactivate', () => {
       beforeAll(() => {
-        interceptor.clear();
+        xhrInterceptor.clear();
 
         const xhr = new XMLHttpRequest();
-        xhr.open('GET', allowedUrl);
         setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
+        xhr.open('GET', allowedUrl);
         xhr.dispatchEvent(new Event('readystatechange'));
       });
 

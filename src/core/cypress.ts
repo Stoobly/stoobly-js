@@ -24,14 +24,16 @@ export class Cypress extends Interceptor {
     return this.apply(options);
   }
   
-  async clear() {
-    if (this.appliedCypress) {
-      this.urls.forEach((url) => {
-        (window as any).cy?.intercept(url, (req: { continue: () => void }) => {
-          req.continue();
-        });
-      });
+  clear() {
+    if (!this.appliedCypress) {
+      return;
     }
+
+    this.urls.forEach((url) => {
+      (window as any).cy?.intercept(url, (req: { continue: () => void }) => {
+        req.continue();
+      });
+    });
 
     this.appliedCypress = false;
   }

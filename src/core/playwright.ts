@@ -65,11 +65,6 @@ export class Playwright extends Interceptor {
     this.appliedPlaywright = false;
   }
 
-  // For end-to-end frameworks like Playwright, users need to manually set the test title
-  setTestTitle(testTitle: string) {
-    this.withTestTitle(testTitle);
-  }
-
   withPage(page: Page) {
     // Clear handlers if page changed (Playwright will clean up routes when page closes)
     if (this._page && this._page !== page) {

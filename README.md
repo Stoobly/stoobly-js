@@ -106,16 +106,15 @@ test.describe('Scenario', () => {
     });
 
     test.beforeEach(async ({ page }, testInfo) => {
-        stoobly.playwright.withPage(testInfo.page);
-        stoobly.playwright.setTestTitle(testInfo.title);
-        stoobly.playwright.applyScenario('<SCENARIO-KEY>');
+        stoobly.playwright.withPage(testInfo.page).withTestTitle(testInfo.title);
+        await stoobly.playwright.applyScenario('<SCENARIO-KEY>');
     });
 });
 ```
 
 **Key Points:**
 - The Stoobly instance is created once inside the `describe` block
-- `setTestTitle()` must be called in `beforeEach()` to update the test titles for each test because Playwright does not provide a global API to auto-detect test titles
+- `withTestTitle()` must be called in `beforeEach()` to update the test titles for each test because Playwright does not provide a global API to auto-detect test titles
 - Test titles are applied at request interception time
 
 ## Testing
