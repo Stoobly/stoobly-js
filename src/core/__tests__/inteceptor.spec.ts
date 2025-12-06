@@ -35,8 +35,8 @@ describe('Interceptor', () => {
 
     describe('when strict matching', () => {
       beforeAll(async () => {
-        interceptor.withUrls([allowedUrl]);
-        interceptor.apply(sessionId);
+        interceptor.urls = [allowedUrl];
+        interceptor.apply({ sessionId });
 
         await fetch(allowedUrl);
       });
@@ -68,8 +68,8 @@ describe('Interceptor', () => {
 
     describe('when RegExp matching', () => {
       beforeAll(async () => {
-        interceptor.withUrls([new RegExp(`${allowedOrigin}/.*`)]);
-        interceptor.apply(sessionId);
+        interceptor.urls = [new RegExp(`${allowedOrigin}/.*`)];
+        interceptor.apply({ sessionId });
 
         await fetch(allowedUrl);
       });
@@ -103,7 +103,7 @@ describe('Interceptor', () => {
       const notAllowedUrl = `${notAllowedOrigin}/test`;
 
       beforeAll(async () => {
-        interceptor.apply(sessionId);
+        interceptor.apply({ sessionId });
 
         await fetch(notAllowedUrl);
       });
@@ -154,8 +154,8 @@ describe('Interceptor', () => {
 
     describe('when strict matching', () => {
       beforeAll(() => {
-        interceptor.withUrls([allowedUrl]);
-        interceptor.apply(sessionId);
+        interceptor.urls = [allowedUrl];
+        interceptor.apply({ sessionId });
 
         const xhr = new XMLHttpRequest();
         xhr.open('GET', allowedUrl);
@@ -184,8 +184,8 @@ describe('Interceptor', () => {
 
     describe('when RegExp matching', () => {
       beforeAll(() => {
-        interceptor.withUrls([new RegExp(`${allowedOrigin}/.*`)]);
-        interceptor.apply(sessionId);
+        interceptor.urls = [new RegExp(`${allowedOrigin}/.*`)];
+        interceptor.apply({ sessionId });
 
         const xhr = new XMLHttpRequest();
         xhr.open('GET', allowedUrl);
@@ -216,7 +216,7 @@ describe('Interceptor', () => {
       const notAllowedUrl = `${notAllowedOrigin}/test`;
 
       beforeAll(async () => {
-        interceptor.apply(sessionId);
+        interceptor.apply({ sessionId });
 
         const xhr = new XMLHttpRequest();
         xhr.open('GET', allowedUrl);
