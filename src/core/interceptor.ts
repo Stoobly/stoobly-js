@@ -1,9 +1,8 @@
-import { ProxyMode } from "@constants/intercept";
+import { ProxyMode, RecordOrder, RecordPolicy } from "@constants/proxy";
 
-import { INTERCEPT_ACTIVE, PROXY_MODE, RECORD_POLICY, SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "../constants/custom_headers";
+import { INTERCEPT_ACTIVE, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "../constants/custom_headers";
 import { InterceptOptions, RecordOptions } from "../types/options";
 import { getTestTitle } from "../utils/test-detection";
-import { RecordPolicy } from "@constants/policy";
 
 export class Interceptor {
   static originalXMLHttpRequestOpen = typeof XMLHttpRequest !== 'undefined' ? XMLHttpRequest.prototype.open : null;
@@ -52,6 +51,7 @@ export class Interceptor {
     this.withIntercept(true);
     this.withProxyMode(ProxyMode.record);
     this.withRecordPolicy(options?.policy);
+    this.withRecordOrder(options?.order);
     return this.apply(options);
   }
 
@@ -59,6 +59,7 @@ export class Interceptor {
     this.withIntercept(false);
     this.withProxyMode();
     this.withRecordPolicy();
+    this.withRecordOrder();
   }
 
   withIntercept(value?: boolean) {
@@ -67,38 +68,58 @@ export class Interceptor {
     } else {
       this.headers[INTERCEPT_ACTIVE] = value ? '1' : '0';
     }
+
+    return this;
   }
 
-  withProxyMode(mode?: ProxyMode): void {
+  withProxyMode(mode?: ProxyMode) {
     if (!mode) {
       delete this.headers[PROXY_MODE];
     } else {
       this.headers[PROXY_MODE] = mode;
     }
+
+    return this;
   }
 
-  withRecordPolicy(policy?: RecordPolicy): void {
+  withRecordOrder(order?: RecordOrder) {
+    if (!order) {
+      delete this.headers[RECORD_ORDER];
+    } else {
+      this.headers[RECORD_ORDER] = order;
+    }
+
+    return this;
+  }
+
+  withRecordPolicy(policy?: RecordPolicy) {
     if (!policy) {
       delete this.headers[RECORD_POLICY];
     } else {
       this.headers[RECORD_POLICY] = policy;
     }
+
+    return this;
   }
 
-  withScenario(key?: string): void {
+  withScenario(key?: string) {
     if (!key) {
       delete this.headers[SCENARIO_KEY];
     } else {
       this.headers[SCENARIO_KEY] = key;
     }
+
+    return this;
   }
 
-  withTestTitle(title?: string): void {
+  withTestTitle(title?: string) {
     if (!title) {
       delete this.headers[TEST_TITLE];
     } else {
       this.headers[TEST_TITLE] = title;
     }
+
+    return this;
   }
 
   private allowedUrl(url: string) {

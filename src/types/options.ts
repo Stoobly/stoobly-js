@@ -1,4 +1,4 @@
-import { RecordPolicy } from "@constants/policy";
+import { RecordOrder, RecordPolicy } from "@constants/proxy";
 
 export interface InterceptOptions {
   urls?: (RegExp | string)[];
@@ -6,5 +6,6 @@ export interface InterceptOptions {
 }
 
 export interface RecordOptions extends InterceptOptions {
+  order?: RecordOrder;
   policy?: RecordPolicy;
 }

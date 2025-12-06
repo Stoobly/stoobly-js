@@ -1,3 +1,4 @@
+export * from './config'
 export * from './custom_headers';
-export * from './intercept';
-export * from './policy';
+export * from './feature';
+export * from './proxy';

@@ -1,7 +1,7 @@
-import { SERVER_URL } from '../server-config';
 import { INTERCEPT_ACTIVE, PROXY_MODE, RECORD_POLICY, SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "../../src/constants/custom_headers";
-import { RecordPolicy } from "../../src/constants/policy";
+import { RecordPolicy } from "../../src/constants/proxy";
 import Stoobly from '../../src/stoobly';
+import { SERVER_URL } from '../server-config';
 
 describe('applyScenario', () => {
   const stoobly = new Stoobly();
