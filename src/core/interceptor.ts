@@ -1,6 +1,6 @@
 import { ProxyMode, RecordOrder, RecordPolicy } from "@constants/proxy";
 
-import { INTERCEPT_ACTIVE, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "../constants/custom_headers";
+import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "../constants/custom_headers";
 import { InterceptOptions, RecordOptions } from "../types/options";
 import { getTestTitle } from "../utils/test-detection";
 
@@ -22,6 +22,9 @@ export class Interceptor {
     this._urls = urls;
   }
 
+  // Applies HTTP request interception to fetch and XMLHttpRequest. Clears existing
+  // interceptors, sets URL filters if provided, and decorates fetch/XMLHttpRequest to
+  // inject custom headers. Returns a promise resolving to the session ID.
   apply(options?: InterceptOptions) {
     this.clear();
 
@@ -37,7 +40,10 @@ export class Interceptor {
     return this.withSession(cb, options?.sessionId);
   }
 
+  // Applies scenario headers to fetch and XMLHttpRequest. Sets the scenario key if provided,
+  // and returns a promise resolving to the session ID.
   applyScenario(scenarioKey?: string, options?: InterceptOptions) {
+    // If a scenario key is not provided, this is the equivalent of unsetting the scenario key
     this.withScenario(scenarioKey);
     return this.apply(options);
   }
@@ -47,69 +53,24 @@ export class Interceptor {
     this.clearXMLHttpRequestOpen();
   }
   
+  // Starts recording HTTP requests. Sets proxy mode to record, applies record policy and order
+  // if provided, and returns a promise resolving to the session ID.
   startRecord(options?: RecordOptions) {
-    this.withIntercept(true);
     this.withProxyMode(ProxyMode.record);
     this.withRecordPolicy(options?.policy);
     this.withRecordOrder(options?.order);
+
     return this.apply(options);
   }
 
+  // Resets proxy mode, record policy, and order headers to their default values.
+  // This effectively stops recording requests without modifying other headers.
   stopRecord() {
-    this.withIntercept(false);
     this.withProxyMode();
     this.withRecordPolicy();
     this.withRecordOrder();
-  }
 
-  withIntercept(value?: boolean) {
-    if (!value) {
-      delete this.headers[INTERCEPT_ACTIVE];
-    } else {
-      this.headers[INTERCEPT_ACTIVE] = value ? '1' : '0';
-    }
-
-    return this;
-  }
-
-  withProxyMode(mode?: ProxyMode) {
-    if (!mode) {
-      delete this.headers[PROXY_MODE];
-    } else {
-      this.headers[PROXY_MODE] = mode;
-    }
-
-    return this;
-  }
-
-  withRecordOrder(order?: RecordOrder) {
-    if (!order) {
-      delete this.headers[RECORD_ORDER];
-    } else {
-      this.headers[RECORD_ORDER] = order;
-    }
-
-    return this;
-  }
-
-  withRecordPolicy(policy?: RecordPolicy) {
-    if (!policy) {
-      delete this.headers[RECORD_POLICY];
-    } else {
-      this.headers[RECORD_POLICY] = policy;
-    }
-
-    return this;
-  }
-
-  withScenario(key?: string) {
-    if (!key) {
-      delete this.headers[SCENARIO_KEY];
-    } else {
-      this.headers[SCENARIO_KEY] = key;
-    }
-
-    return this;
+    // Do not call apply, the changes will reflect dynamically
   }
 
   withTestTitle(title?: string) {
@@ -120,6 +81,52 @@ export class Interceptor {
     }
 
     return this;
+  }
+
+  protected withProxyMode(mode?: ProxyMode) {
+    if (!mode) {
+      delete this.headers[PROXY_MODE];
+    } else {
+      this.headers[PROXY_MODE] = mode;
+    }
+
+    return this;
+  }
+
+  protected withRecordOrder(order?: RecordOrder) {
+    if (!order) {
+      delete this.headers[RECORD_ORDER];
+    } else {
+      this.headers[RECORD_ORDER] = order;
+    }
+
+    return this;
+  }
+
+  protected withRecordPolicy(policy?: RecordPolicy) {
+    if (!policy) {
+      delete this.headers[RECORD_POLICY];
+    } else {
+      this.headers[RECORD_POLICY] = policy;
+    }
+
+    return this;
+  }
+
+  protected withScenario(key?: string) {
+    if (!key) {
+      delete this.headers[SCENARIO_KEY];
+    } else {
+      this.headers[SCENARIO_KEY] = key;
+    }
+
+    return this;
+  }
+
+  protected async withSession(cb: () => void | Promise<void>, sessionId?: string) {
+    this.headers[SESSION_ID] = sessionId || (new Date()).getTime().toString();
+    await cb();
+    return this.headers[SESSION_ID];
   }
 
   private allowedUrl(url: string) {
@@ -237,11 +244,5 @@ export class Interceptor {
     };
 
     this.appliedXMLHttpRequestOpen = true;
-  }
-
-  protected async withSession(cb: () => void | Promise<void>, sessionId?: string) {
-    this.headers[SESSION_ID] = sessionId || (new Date()).getTime().toString();
-    await cb();
-    return this.headers[SESSION_ID];
   }
 }

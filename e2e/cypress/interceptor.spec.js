@@ -1,5 +1,5 @@
-import { INTERCEPT_ACTIVE, PROXY_MODE, RECORD_POLICY, SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "../../src/constants/custom_headers";
-import { RecordPolicy } from "../../src/constants/proxy";
+import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "../../src/constants/custom_headers";
+import { RecordOrder, RecordPolicy } from "../../src/constants/proxy";
 import Stoobly from '../../src/stoobly';
 import { SERVER_URL } from '../server-config';
 
@@ -59,7 +59,6 @@ describe('startRecord', () => {
     cy.wait('@getHeaders').then((interception) => {
       const responseBody = interception.response?.body || {};
 
-      expect(responseBody[INTERCEPT_ACTIVE.toLowerCase()]).to.equal('1');
       expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
       expect(responseBody[SESSION_ID.toLowerCase()]).to.equal(sessionId);
       expect(responseBody[TEST_TITLE.toLowerCase()]).to.equal(Cypress.currentTest.title);
@@ -78,7 +77,6 @@ describe('startRecord', () => {
     cy.wait('@getHeaders').then((interception) => {
       const responseBody = interception.response?.body || {};
 
-      expect(responseBody[INTERCEPT_ACTIVE.toLowerCase()]).to.equal('1');
       expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
       expect(responseBody[SESSION_ID.toLowerCase()]).to.exist;
       expect(responseBody[SESSION_ID.toLowerCase()]).to.not.equal(sessionId);
@@ -95,7 +93,6 @@ describe('startRecord', () => {
 
     cy.wait('@getHeaders').then((interception) => {
       const responseBody = interception.response?.body || {};
-      expect(responseBody[INTERCEPT_ACTIVE.toLowerCase()]).to.equal('1');
       expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
 
       // Stop recording
@@ -106,7 +103,6 @@ describe('startRecord', () => {
 
     cy.wait('@getHeaders').then((interception) => {
       const responseBody = interception.response?.body || {};
-      expect(responseBody[INTERCEPT_ACTIVE.toLowerCase()]).to.be.undefined;
       expect(responseBody[PROXY_MODE.toLowerCase()]).to.be.undefined;
     });
   });
@@ -125,7 +121,6 @@ describe('startRecord', () => {
       cy.wait('@getHeaders').then((interception) => {
         const responseBody = interception.response?.body || {};
         expect(responseBody[RECORD_POLICY.toLowerCase()]).to.equal(RecordPolicy.All);
-        expect(responseBody[INTERCEPT_ACTIVE.toLowerCase()]).to.equal('1');
         expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
       });
     });
@@ -158,9 +153,9 @@ describe('startRecord', () => {
       });
     });
 
-    it('should send record policy header when policy is "overwrite"', () => {
+    it('should send record order header when order is "overwrite"', () => {
       const stoobly = new Stoobly();
-      stoobly.cypress.startRecord({ urls: [targetUrl], policy: RecordPolicy.Overwrite });
+      stoobly.cypress.startRecord({ urls: [targetUrl], order: RecordOrder.Overwrite });
 
       cy.intercept('GET', `${targetUrl}`).as('getHeaders');
 
@@ -168,7 +163,7 @@ describe('startRecord', () => {
 
       cy.wait('@getHeaders').then((interception) => {
         const responseBody = interception.response?.body || {};
-        expect(responseBody[RECORD_POLICY.toLowerCase()]).to.equal(RecordPolicy.Overwrite);
+        expect(responseBody[RECORD_ORDER.toLowerCase()]).to.equal(RecordOrder.Overwrite);
       });
     });
 
@@ -183,7 +178,6 @@ describe('startRecord', () => {
       cy.wait('@getHeaders').then((interception) => {
         const responseBody = interception.response?.body || {};
         expect(responseBody[RECORD_POLICY.toLowerCase()]).to.be.undefined;
-        expect(responseBody[INTERCEPT_ACTIVE.toLowerCase()]).to.equal('1');
         expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
       });
     });

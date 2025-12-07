@@ -25,7 +25,7 @@ describe('Interceptor', () => {
       Interceptor.originalFetch = fetchMock;
 
       interceptor = new Interceptor();
-      interceptor.withScenario(scenarioKey);
+      (interceptor as any).withScenario(scenarioKey);
       interceptor.withTestTitle(testTitle);
     });
 
@@ -146,7 +146,7 @@ describe('Interceptor', () => {
 
     beforeAll(() => {
       xhrInterceptor = new Interceptor();
-      xhrInterceptor.withScenario(scenarioKey);
+      (xhrInterceptor as any).withScenario(scenarioKey);
       xhrInterceptor.withTestTitle(testTitle);
     });
 

@@ -1,4 +1,3 @@
-export const INTERCEPT_ACTIVE = 'X-Stoobly-Intercept-Active';
 export const PROXY_MODE = 'X-Stoobly-Proxy-Mode';
 export const RECORD_POLICY = 'X-Stoobly-Record-Policy';
 export const RECORD_ORDER = 'X-Stoobly-Record-Order';

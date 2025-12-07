@@ -20,6 +20,9 @@ export class Playwright extends Interceptor {
     this._page = page;
   }
 
+  // Applies HTTP request interception to the current page. Clears existing handlers,
+  // sets URL filters if provided, and decorates Playwright to inject custom headers.
+  // Returns a promise resolving to the session ID.
   async apply(options?: InterceptOptions) {
     await this.clear();
 
@@ -47,6 +50,8 @@ export class Playwright extends Interceptor {
     this._urls = urls;
   }
 
+  // Clears all HTTP request interceptors. Unroutes all registered routes and resets the
+  // appliedPlaywright flag. Returns a promise resolving to the session ID.
   async clear() {
     if (!this.appliedPlaywright || !this.page) {
       return;
@@ -65,6 +70,8 @@ export class Playwright extends Interceptor {
     this.appliedPlaywright = false;
   }
 
+  // Sets the current page for request interception. Clears any existing handlers if the page
+  // changes to avoid duplicate route registrations. Returns the Interceptor instance for chaining.
   withPage(page: Page) {
     // Clear handlers if page changed (Playwright will clean up routes when page closes)
     if (this._page && this._page !== page) {
