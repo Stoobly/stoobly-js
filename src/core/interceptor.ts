@@ -38,6 +38,7 @@ export class Interceptor {
   }
 
   applyScenario(scenarioKey?: string, options?: InterceptOptions) {
+    // If a scenario key is not provided, this is the equivalent of unsetting the scenario key
     this.withScenario(scenarioKey);
     return this.apply(options);
   }
