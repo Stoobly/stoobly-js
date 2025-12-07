@@ -1,6 +1,6 @@
 import { ProxyMode, RecordOrder, RecordPolicy } from "@constants/proxy";
 
-import { INTERCEPT_ACTIVE, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "../constants/custom_headers";
+import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "../constants/custom_headers";
 import { InterceptOptions, RecordOptions } from "../types/options";
 import { getTestTitle } from "../utils/test-detection";
 
