@@ -49,68 +49,23 @@ export class Interceptor {
   }
   
   startRecord(options?: RecordOptions) {
-    this.withIntercept(true);
     this.withProxyMode(ProxyMode.record);
-    this.withRecordPolicy(options?.policy);
-    this.withRecordOrder(options?.order);
+
+    if (options?.policy) {
+      this.withRecordPolicy(options.policy);
+    }
+
+    if (options?.order) {
+      this.withRecordOrder(options.order);
+    }
+
     return this.apply(options);
   }
 
   stopRecord() {
-    this.withIntercept(false);
     this.withProxyMode();
     this.withRecordPolicy();
     this.withRecordOrder();
-  }
-
-  withIntercept(value?: boolean) {
-    if (!value) {
-      delete this.headers[INTERCEPT_ACTIVE];
-    } else {
-      this.headers[INTERCEPT_ACTIVE] = value ? '1' : '0';
-    }
-
-    return this;
-  }
-
-  withProxyMode(mode?: ProxyMode) {
-    if (!mode) {
-      delete this.headers[PROXY_MODE];
-    } else {
-      this.headers[PROXY_MODE] = mode;
-    }
-
-    return this;
-  }
-
-  withRecordOrder(order?: RecordOrder) {
-    if (!order) {
-      delete this.headers[RECORD_ORDER];
-    } else {
-      this.headers[RECORD_ORDER] = order;
-    }
-
-    return this;
-  }
-
-  withRecordPolicy(policy?: RecordPolicy) {
-    if (!policy) {
-      delete this.headers[RECORD_POLICY];
-    } else {
-      this.headers[RECORD_POLICY] = policy;
-    }
-
-    return this;
-  }
-
-  withScenario(key?: string) {
-    if (!key) {
-      delete this.headers[SCENARIO_KEY];
-    } else {
-      this.headers[SCENARIO_KEY] = key;
-    }
-
-    return this;
   }
 
   withTestTitle(title?: string) {
@@ -121,6 +76,52 @@ export class Interceptor {
     }
 
     return this;
+  }
+
+  protected withProxyMode(mode?: ProxyMode) {
+    if (!mode) {
+      delete this.headers[PROXY_MODE];
+    } else {
+      this.headers[PROXY_MODE] = mode;
+    }
+
+    return this;
+  }
+
+  protected withRecordOrder(order?: RecordOrder) {
+    if (!order) {
+      delete this.headers[RECORD_ORDER];
+    } else {
+      this.headers[RECORD_ORDER] = order;
+    }
+
+    return this;
+  }
+
+  protected withRecordPolicy(policy?: RecordPolicy) {
+    if (!policy) {
+      delete this.headers[RECORD_POLICY];
+    } else {
+      this.headers[RECORD_POLICY] = policy;
+    }
+
+    return this;
+  }
+
+  protected withScenario(key?: string) {
+    if (!key) {
+      delete this.headers[SCENARIO_KEY];
+    } else {
+      this.headers[SCENARIO_KEY] = key;
+    }
+
+    return this;
+  }
+
+  protected async withSession(cb: () => void | Promise<void>, sessionId?: string) {
+    this.headers[SESSION_ID] = sessionId || (new Date()).getTime().toString();
+    await cb();
+    return this.headers[SESSION_ID];
   }
 
   private allowedUrl(url: string) {
@@ -238,11 +239,5 @@ export class Interceptor {
     };
 
     this.appliedXMLHttpRequestOpen = true;
-  }
-
-  protected async withSession(cb: () => void | Promise<void>, sessionId?: string) {
-    this.headers[SESSION_ID] = sessionId || (new Date()).getTime().toString();
-    await cb();
-    return this.headers[SESSION_ID];
   }
 }
