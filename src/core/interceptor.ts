@@ -22,6 +22,9 @@ export class Interceptor {
     this._urls = urls;
   }
 
+  // Applies HTTP request interception to fetch and XMLHttpRequest. Clears existing
+  // interceptors, sets URL filters if provided, and decorates fetch/XMLHttpRequest to
+  // inject custom headers. Returns a promise resolving to the session ID.
   apply(options?: InterceptOptions) {
     this.clear();
 
@@ -37,6 +40,8 @@ export class Interceptor {
     return this.withSession(cb, options?.sessionId);
   }
 
+  // Applies scenario headers to fetch and XMLHttpRequest. Sets the scenario key if provided,
+  // and returns a promise resolving to the session ID.
   applyScenario(scenarioKey?: string, options?: InterceptOptions) {
     // If a scenario key is not provided, this is the equivalent of unsetting the scenario key
     this.withScenario(scenarioKey);
@@ -48,6 +53,8 @@ export class Interceptor {
     this.clearXMLHttpRequestOpen();
   }
   
+  // Starts recording HTTP requests. Sets proxy mode to record, applies record policy and order
+  // if provided, and returns a promise resolving to the session ID.
   startRecord(options?: RecordOptions) {
     this.withProxyMode(ProxyMode.record);
     this.withRecordPolicy(options?.policy);
@@ -56,6 +63,8 @@ export class Interceptor {
     return this.apply(options);
   }
 
+  // Resets proxy mode, record policy, and order headers to their default values.
+  // This effectively stops recording requests without modifying other headers.
   stopRecord() {
     this.withProxyMode();
     this.withRecordPolicy();
