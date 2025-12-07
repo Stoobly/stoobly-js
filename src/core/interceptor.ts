@@ -69,6 +69,8 @@ export class Interceptor {
     this.withProxyMode();
     this.withRecordPolicy();
     this.withRecordOrder();
+
+    // Do not call apply, the changes will reflect dynamically
   }
 
   withTestTitle(title?: string) {
