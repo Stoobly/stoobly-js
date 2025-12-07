@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-import { PROXY_MODE, RECORD_POLICY, SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "../../src/constants/custom_headers";
-import { RecordPolicy } from "../../src/constants/proxy";
+import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "../../src/constants/custom_headers";
+import { RecordOrder, RecordPolicy } from "../../src/constants/proxy";
 import Stoobly from '../../src/stoobly';
 import { SERVER_URL } from '../server-config';
 
@@ -196,8 +196,8 @@ test.describe('startRecord', () => {
       expect(body[RECORD_POLICY.toLowerCase()]).toEqual(RecordPolicy.NotFound);
     });
 
-    test('should send record policy header when policy is "overwrite"', async ({ page }, testInfo) => {
-      await stoobly.playwright.startRecord({ policy: RecordPolicy.Overwrite });
+    test('should send record order header when order is "overwrite"', async ({ page }, testInfo) => {
+      await stoobly.playwright.startRecord({ order: RecordOrder.Overwrite });
 
       page.goto(targetUrl);
 
@@ -206,7 +206,7 @@ test.describe('startRecord', () => {
       });
 
       const body = await response.json();
-      expect(body[RECORD_POLICY.toLowerCase()]).toEqual(RecordPolicy.Overwrite);
+      expect(body[RECORD_ORDER.toLowerCase()]).toEqual(RecordOrder.Overwrite);
     });
 
     test('should not send record policy header when policy is not provided', async ({ page }, testInfo) => {

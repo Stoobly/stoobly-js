@@ -50,14 +50,8 @@ export class Interceptor {
   
   startRecord(options?: RecordOptions) {
     this.withProxyMode(ProxyMode.record);
-
-    if (options?.policy) {
-      this.withRecordPolicy(options.policy);
-    }
-
-    if (options?.order) {
-      this.withRecordOrder(options.order);
-    }
+    this.withRecordPolicy(options?.policy);
+    this.withRecordOrder(options?.order);
 
     return this.apply(options);
   }

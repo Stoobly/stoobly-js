@@ -1,5 +1,5 @@
-import { PROXY_MODE, RECORD_POLICY, SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "../../src/constants/custom_headers";
-import { RecordPolicy } from "../../src/constants/proxy";
+import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "../../src/constants/custom_headers";
+import { RecordOrder, RecordPolicy } from "../../src/constants/proxy";
 import Stoobly from '../../src/stoobly';
 import { SERVER_URL } from '../server-config';
 
@@ -153,9 +153,9 @@ describe('startRecord', () => {
       });
     });
 
-    it('should send record policy header when policy is "overwrite"', () => {
+    it('should send record order header when order is "overwrite"', () => {
       const stoobly = new Stoobly();
-      stoobly.cypress.startRecord({ urls: [targetUrl], policy: RecordPolicy.Overwrite });
+      stoobly.cypress.startRecord({ urls: [targetUrl], order: RecordOrder.Overwrite });
 
       cy.intercept('GET', `${targetUrl}`).as('getHeaders');
 
@@ -163,7 +163,7 @@ describe('startRecord', () => {
 
       cy.wait('@getHeaders').then((interception) => {
         const responseBody = interception.response?.body || {};
-        expect(responseBody[RECORD_POLICY.toLowerCase()]).to.equal(RecordPolicy.Overwrite);
+        expect(responseBody[RECORD_ORDER.toLowerCase()]).to.equal(RecordOrder.Overwrite);
       });
     });
 
