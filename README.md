@@ -72,6 +72,8 @@ stoobly.applyScenario('<SCENARIO-KEY>', {
 Starts recording HTTP(s) requests.
 
 ```js
+import Stoobly from 'stoobly';
+
 const stoobly = new Stoobly();
 
 // If no URLs are specified, defaults to all
@@ -81,6 +83,7 @@ const sessionId = stoobly.startRecord({ urls: [new RegExp('https://docs.stoobly.
 Record requests with specific policy, order, and strategy options:
 
 ```js
+import Stoobly from 'stoobly';
 import { RecordPolicy, RecordOrder, RecordStrategy } from 'stoobly/constants';
 
 const stoobly = new Stoobly();
@@ -102,6 +105,8 @@ stoobly.stopRecord();
 ### Integrating with Cypress
 
 ```js
+import Stoobly from 'stoobly';
+
 describe('Scenario', () => {
     const stoobly = new Stoobly();
 
