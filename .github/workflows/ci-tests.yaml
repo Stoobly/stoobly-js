@@ -45,9 +45,12 @@ jobs:
 
       - name: Run playwright tests
         run: |
+          npm run build
           npx playwright install
           npm run test:playwright
 
       - name: Run cypress tests
-        run: npm run test:cypress
+        run: |
+          npm run build
+          npm run test:cypress
 
