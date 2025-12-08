@@ -17,13 +17,18 @@ export enum MockPolicy {
 
 export enum RecordOrder {
   Append = 'append',
-  Overwrite = 'overwrite'
+  Overwrite = 'overwrite',
 }
 
 export enum RecordPolicy {
   All = 'all',
   Found = 'found',
   NotFound = 'not_found',
+}
+
+export enum RecordStrategy {
+  Full = 'full',
+  Minimal = 'minimal',
 }
 
 export enum ReplayPolicy {
