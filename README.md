@@ -25,7 +25,7 @@ npm install stoobly --save-dev
 ## Usage
 
 ```js
-const { default: Stoobly } = require('stoobly');
+const Stoobly = require('stoobly');
 ```
 
 Or using ES modules:
@@ -67,6 +67,38 @@ stoobly.applyScenario('<SCENARIO-KEY>', {
 });
 ```
 
+### Recording requests
+
+Starts recording HTTP(s) requests.
+
+```js
+const stoobly = new Stoobly();
+
+// If no URLs are specified, defaults to all
+const sessionId = stoobly.startRecord({ urls: [new RegExp('https://docs.stoobly.com/.*')] });
+```
+
+Record requests with specific policy, order, and strategy options:
+
+```js
+import { RecordPolicy, RecordOrder, RecordStrategy } from 'stoobly/constants';
+
+const stoobly = new Stoobly();
+
+stoobly.startRecord({ 
+    urls: ['https://docs.stoobly.com/use-cases'],
+    policy: RecordPolicy.All,
+    order: RecordOrder.Overwrite, // Defaults to RecordOrder.Append
+    strategy: RecordStrategy.Full
+});
+```
+
+Stop recording requests:
+
+```js
+stoobly.stopRecord();
+```
+
 ### Integrating with Cypress
 
 ```js
@@ -96,6 +128,7 @@ describe('Scenario', () => {
 
 ```js
 import { test } from '@playwright/test';
+import Stoobly from 'stoobly';
 
 test.describe('Scenario', () => {
     const stoobly = new Stoobly();

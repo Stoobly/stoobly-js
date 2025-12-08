@@ -1,6 +1,6 @@
-import { ProxyMode, RecordOrder, RecordPolicy } from "@constants/proxy";
+import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
+import { ProxyMode, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/proxy";
 
-import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "../constants/custom_headers";
 import { InterceptOptions, RecordOptions } from "../types/options";
 import { getTestTitle } from "../utils/test-detection";
 
@@ -57,8 +57,9 @@ export class Interceptor {
   // if provided, and returns a promise resolving to the session ID.
   startRecord(options?: RecordOptions) {
     this.withProxyMode(ProxyMode.record);
-    this.withRecordPolicy(options?.policy);
     this.withRecordOrder(options?.order);
+    this.withRecordPolicy(options?.policy);
+    this.withRecordStrategy(options?.strategy);
 
     return this.apply(options);
   }
@@ -67,8 +68,9 @@ export class Interceptor {
   // This effectively stops recording requests without modifying other headers.
   stopRecord() {
     this.withProxyMode();
-    this.withRecordPolicy();
     this.withRecordOrder();
+    this.withRecordPolicy();
+    this.withRecordStrategy();
 
     // Do not call apply, the changes will reflect dynamically
   }
@@ -108,6 +110,16 @@ export class Interceptor {
       delete this.headers[RECORD_POLICY];
     } else {
       this.headers[RECORD_POLICY] = policy;
+    }
+
+    return this;
+  }
+
+  protected withRecordStrategy(strategy?: RecordStrategy) {
+    if (!strategy) {
+      delete this.headers[RECORD_STRATEGY];
+    } else {
+      this.headers[RECORD_STRATEGY] = strategy;
     }
 
     return this;

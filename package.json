@@ -6,14 +6,32 @@
     "dist/**"
   ],
   "main": "dist/cjs/stoobly.js",
+  "module": "dist/esm/stoobly.js",
+  "types": "dist/types/stoobly.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/stoobly.js",
+      "require": "./dist/cjs/stoobly.js",
+      "types": "./dist/types/stoobly.d.ts"
+    },
+    "./constants": {
+      "import": "./dist/esm/constants.js",
+      "require": "./dist/cjs/constants.js",
+      "types": "./dist/types/constants.d.ts"
+    },
+    "./types": {
+      "import": "./dist/esm/types.js",
+      "require": "./dist/cjs/types.js",
+      "types": "./dist/types/types.d.ts"
+    }
+  },
   "scripts": {
-    "build": "rm -rf dist && mkdir dist && npm run build-esm && npm run build-cjs",
-    "build-esm": "mkdir -p dist/esm && tsc -p tsconfig.esm.json && echo '{\"type\":\"module\"}' > dist/esm/package.json",
-    "build-cjs": "mkdir -p dist/cjs && tsc -p tsconfig.cjs.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
+    "build": "rm -rf dist && rollup -c",
     "clean": "rm -rf ./node_modules/.cache ./dist",
     "lint": "eslint --fix --ext .js,.jsx,.ts ./src ./test",
-    "prepack": "npm install && npm run build && npm ci --omit dev",
+    "prepack": "npm run build && npm ci --omit dev",
     "test": "jest",
+    "test:e2e": "npm run build && npm run test:cypress && npm run test:playwright",
     "test:cypress": "start-server-and-test test-server http://localhost:3000 test:cypress:run",
     "test:cypress:open": "cypress open --config-file e2e/cypress.config.mjs",
     "test:cypress:run": "cypress run --config-file e2e/cypress.config.mjs",
@@ -46,6 +64,10 @@
     "@babel/preset-typescript": "^7.21.5",
     "@cypress/webpack-preprocessor": "^7.0.2",
     "@playwright/test": "^1.56.1",
+    "@rollup/plugin-alias": "^6.0.0",
+    "@rollup/plugin-commonjs": "^29.0.0",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-typescript": "^12.3.0",
     "@types/jest": "^29.5.1",
     "@types/jsdom": "^21.1.7",
     "@types/node": "^22.13.11",
@@ -61,6 +83,8 @@
     "jest-environment-jsdom": "^29.7.0",
     "jest-fetch-mock": "^3.0.3",
     "jest-mock-axios": "^4.7.2",
+    "rollup": "^4.53.3",
+    "rollup-plugin-dts": "^6.3.0",
     "start-server-and-test": "^2.0.13",
     "ts-jest": "^29.1.0",
     "ts-loader": "^9.5.4",
