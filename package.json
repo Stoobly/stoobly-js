@@ -31,6 +31,7 @@
     "lint": "eslint --fix --ext .js,.jsx,.ts ./src ./test",
     "prepack": "npm install && npm run build && npm ci --omit dev",
     "test": "jest",
+    "test:e2e": "npm run build && npm run test:cypress && npm run test:playwright",
     "test:cypress": "start-server-and-test test-server http://localhost:3000 test:cypress:run",
     "test:cypress:open": "cypress open --config-file e2e/cypress.config.mjs",
     "test:cypress:run": "cypress run --config-file e2e/cypress.config.mjs",
