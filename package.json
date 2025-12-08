@@ -29,7 +29,7 @@
     "build": "rm -rf dist && rollup -c",
     "clean": "rm -rf ./node_modules/.cache ./dist",
     "lint": "eslint --fix --ext .js,.jsx,.ts ./src ./test",
-    "prepack": "npm install && npm run build && npm ci --omit dev",
+    "prepack": "npm run build && npm ci --omit dev",
     "test": "jest",
     "test:e2e": "npm run build && npm run test:cypress && npm run test:playwright",
     "test:cypress": "start-server-and-test test-server http://localhost:3000 test:cypress:run",
