@@ -1,16 +1,25 @@
 {
   "compilerOptions": {
+    "target": "es2017",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "outDir": "./dist",
+    "checkJs": false,
+    "alwaysStrict": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "strict": true,
+    "strictFunctionTypes": true,
     "noEmit": true,
     "paths": {
       "@constants/*": ["./src/constants/*"],
       "@core/*": ["./src/core/*"],
-      "@models/*": ["./src/models/*"],
-      "@types/*": ["./src/types/*"]
+      "@models/*": ["./src/models/*"]
     },
     "types": ["jest", "node"]
   },
-  "extends": "./tsconfig.cjs.json",
   "include": ["src/**/*.ts", "test/**/*.ts"],
+  "exclude": ["./src/**/__tests__/**/*", "./src/**/*.spec.ts", "./src/**/*.test.ts"],
   "ts-node": {
     "experimentalResolver": true
   }
