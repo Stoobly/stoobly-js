@@ -1,8 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "../../src/constants/custom_headers";
-import { RecordOrder, RecordPolicy } from "../../src/constants/proxy";
-import Stoobly from '../../src/stoobly';
+import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY, SESSION_ID, TEST_TITLE, RecordOrder, RecordPolicy, RecordStrategy } from "../../dist/esm/constants.js";
+import Stoobly from '../../dist/esm/stoobly.js';
 import { SERVER_URL } from '../server-config';
 
 test.describe('applyScenario', () => {
@@ -220,6 +219,48 @@ test.describe('startRecord', () => {
 
       const body = await response.json();
       expect(body[RECORD_POLICY.toLowerCase()]).toBeUndefined();
+      expect(body[PROXY_MODE.toLowerCase()]).toEqual('record');
+    });
+
+    test('should send record strategy header when strategy is "full"', async ({ page }) => {
+      await stoobly.playwright.startRecord({ strategy: RecordStrategy.Full });
+
+      page.goto(targetUrl);
+
+      const response = await page.waitForResponse(response => {
+        return response.url().startsWith(targetUrl) && response.status() === 200;
+      });
+
+      const body = await response.json();
+      expect(body[RECORD_STRATEGY.toLowerCase()]).toEqual(RecordStrategy.Full);
+      expect(body[PROXY_MODE.toLowerCase()]).toEqual('record');
+    });
+
+    test('should send record strategy header when strategy is "minimal"', async ({ page }) => {
+      await stoobly.playwright.startRecord({ strategy: RecordStrategy.Minimal });
+
+      page.goto(targetUrl);
+
+      const response = await page.waitForResponse(response => {
+        return response.url().startsWith(targetUrl) && response.status() === 200;
+      });
+
+      const body = await response.json();
+      expect(body[RECORD_STRATEGY.toLowerCase()]).toEqual(RecordStrategy.Minimal);
+      expect(body[PROXY_MODE.toLowerCase()]).toEqual('record');
+    });
+
+    test('should not send record strategy header when strategy is not provided', async ({ page }) => {
+      await stoobly.playwright.startRecord();
+
+      page.goto(targetUrl);
+
+      const response = await page.waitForResponse(response => {
+        return response.url().startsWith(targetUrl) && response.status() === 200;
+      });
+
+      const body = await response.json();
+      expect(body[RECORD_STRATEGY.toLowerCase()]).toBeUndefined();
       expect(body[PROXY_MODE.toLowerCase()]).toEqual('record');
     });
   });

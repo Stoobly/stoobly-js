@@ -1,6 +1,5 @@
-import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "../../src/constants/custom_headers";
-import { RecordOrder, RecordPolicy } from "../../src/constants/proxy";
-import Stoobly from '../../src/stoobly';
+import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY, SESSION_ID, TEST_TITLE, RecordOrder, RecordPolicy, RecordStrategy } from "../../dist/esm/constants.js";
+import Stoobly from '../../dist/esm/stoobly.js';
 import { SERVER_URL } from '../server-config';
 
 describe('applyScenario', () => {
@@ -178,6 +177,51 @@ describe('startRecord', () => {
       cy.wait('@getHeaders').then((interception) => {
         const responseBody = interception.response?.body || {};
         expect(responseBody[RECORD_POLICY.toLowerCase()]).to.be.undefined;
+        expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
+      });
+    });
+
+    it('should send record strategy header when strategy is "full"', () => {
+      const stoobly = new Stoobly();
+      stoobly.cypress.startRecord({ urls: [targetUrl], strategy: RecordStrategy.Full });
+
+      cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+
+      cy.visit(SERVER_URL);
+
+      cy.wait('@getHeaders').then((interception) => {
+        const responseBody = interception.response?.body || {};
+        expect(responseBody[RECORD_STRATEGY.toLowerCase()]).to.equal(RecordStrategy.Full);
+        expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
+      });
+    });
+
+    it('should send record strategy header when strategy is "minimal"', () => {
+      const stoobly = new Stoobly();
+      stoobly.cypress.startRecord({ urls: [targetUrl], strategy: RecordStrategy.Minimal });
+
+      cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+
+      cy.visit(SERVER_URL);
+
+      cy.wait('@getHeaders').then((interception) => {
+        const responseBody = interception.response?.body || {};
+        expect(responseBody[RECORD_STRATEGY.toLowerCase()]).to.equal(RecordStrategy.Minimal);
+        expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
+      });
+    });
+
+    it('should not send record strategy header when strategy is not provided', () => {
+      const stoobly = new Stoobly();
+      stoobly.cypress.startRecord({ urls: [targetUrl] });
+
+      cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+
+      cy.visit(SERVER_URL);
+
+      cy.wait('@getHeaders').then((interception) => {
+        const responseBody = interception.response?.body || {};
+        expect(responseBody[RECORD_STRATEGY.toLowerCase()]).to.be.undefined;
         expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
       });
     });
