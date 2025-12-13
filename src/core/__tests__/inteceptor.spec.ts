@@ -1,11 +1,12 @@
 import {jest} from '@jest/globals';
 import {SpiedFunction} from 'jest-mock';
 
-import {SCENARIO_KEY, SESSION_ID, TEST_TITLE} from '@constants/custom_headers';
+import {SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE} from '@constants/custom_headers';
 import {Interceptor} from '@core/interceptor';
 
 describe('Interceptor', () => {
   const scenarioKey = 'test-key';
+  const scenarioName = 'test-scenario-name';
   const sessionId = 'test-session';
   const testTitle = 'sample-test';
   const allowedOrigin = 'https://docs.stoobly.com';
@@ -24,9 +25,13 @@ describe('Interceptor', () => {
     beforeAll(() => {
       Interceptor.originalFetch = fetchMock;
 
-      interceptor = new Interceptor();
-      (interceptor as any).withScenario(scenarioKey);
+      interceptor = new Interceptor({
+        scenarioKey,
+        sessionId,
+        urls: [allowedUrl],
+      });
       interceptor.withTestTitle(testTitle);
+      interceptor.apply();
     });
 
     afterAll(() => {
@@ -35,9 +40,6 @@ describe('Interceptor', () => {
 
     describe('when strict matching', () => {
       beforeAll(async () => {
-        interceptor.urls = [allowedUrl];
-        interceptor.apply({ sessionId });
-
         await fetch(allowedUrl);
       });
 
@@ -68,8 +70,13 @@ describe('Interceptor', () => {
 
     describe('when RegExp matching', () => {
       beforeAll(async () => {
-        interceptor.urls = [new RegExp(`${allowedOrigin}/.*`)];
-        interceptor.apply({ sessionId });
+        interceptor = new Interceptor({
+          scenarioKey,
+          sessionId,
+          urls: [new RegExp(`${allowedOrigin}/.*`)],
+        });
+        interceptor.withTestTitle(testTitle);
+        interceptor.apply();
 
         await fetch(allowedUrl);
       });
@@ -103,7 +110,13 @@ describe('Interceptor', () => {
       const notAllowedUrl = `${notAllowedOrigin}/test`;
 
       beforeAll(async () => {
-        interceptor.apply({ sessionId });
+        interceptor = new Interceptor({
+          scenarioKey,
+          sessionId,
+          urls: [allowedUrl], // Only allow the original URL, not the notAllowedUrl
+        });
+        interceptor.withTestTitle(testTitle);
+        interceptor.apply();
 
         await fetch(notAllowedUrl);
       });
@@ -134,6 +147,69 @@ describe('Interceptor', () => {
     });
   });
 
+  describe('fetch with scenarioName', () => {
+    const allowedUrl = `${allowedOrigin}/test`;
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    beforeAll(() => {
+      Interceptor.originalFetch = fetchMock;
+
+      interceptor = new Interceptor({
+        scenarioName,
+        sessionId,
+        urls: [allowedUrl],
+      });
+      interceptor.withTestTitle(testTitle);
+      interceptor.apply();
+    });
+
+    afterAll(() => {
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    describe('when strict matching', () => {
+      beforeAll(async () => {
+        await fetch(allowedUrl);
+      });
+
+      test(`adds '${SCENARIO_NAME}' header to fetch requests`, async () => {
+        expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+          headers: expect.objectContaining({
+            [SCENARIO_NAME]: scenarioName,
+          }),
+        });
+      });
+
+      test(`does not add '${SCENARIO_KEY}' header when using scenarioName`, async () => {
+        expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+          headers: expect.not.objectContaining({
+            [SCENARIO_KEY]: expect.anything(),
+          }),
+        });
+      });
+
+      test(`adds '${SESSION_ID}' header to fetch requests`, async () => {
+        expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+          headers: expect.objectContaining({
+            [SESSION_ID]: expect.any(String),
+          }),
+        });
+      });
+
+      test(`adds '${TEST_TITLE}' header to fetch requests`, async () => {
+        expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+          headers: expect.objectContaining({
+            [TEST_TITLE]: testTitle,
+          }),
+        });
+      });
+    });
+  });
+
   describe('XMLHttpRequest.prototype.open', () => {
     const allowedUrl = `${allowedOrigin}/test`;
 
@@ -145,8 +221,11 @@ describe('Interceptor', () => {
     let xhrInterceptor: Interceptor;
 
     beforeAll(() => {
-      xhrInterceptor = new Interceptor();
-      (xhrInterceptor as any).withScenario(scenarioKey);
+      xhrInterceptor = new Interceptor({
+        scenarioKey,
+        sessionId,
+        urls: [allowedUrl],
+      });
       xhrInterceptor.withTestTitle(testTitle);
     });
 
@@ -156,8 +235,7 @@ describe('Interceptor', () => {
 
     describe('when strict matching', () => {
       beforeAll(async () => {
-        xhrInterceptor.urls = [allowedUrl];
-        xhrInterceptor.apply({ sessionId });
+        xhrInterceptor.apply();
 
         const xhr = new XMLHttpRequest();
         setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
@@ -188,8 +266,13 @@ describe('Interceptor', () => {
 
     describe('when RegExp matching', () => {
       beforeAll(async () => {
-        xhrInterceptor.urls = [new RegExp(`${allowedOrigin}/.*`)];
-        xhrInterceptor.apply({ sessionId });
+        xhrInterceptor = new Interceptor({
+          scenarioKey,
+          sessionId,
+          urls: [new RegExp(`${allowedOrigin}/.*`)],
+        });
+        xhrInterceptor.withTestTitle(testTitle);
+        xhrInterceptor.apply();
 
         const xhr = new XMLHttpRequest();
         setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
@@ -222,7 +305,13 @@ describe('Interceptor', () => {
       const notAllowedUrl = `${notAllowedOrigin}/test`;
 
       beforeAll(async () => {
-        xhrInterceptor.apply({ sessionId });
+        xhrInterceptor = new Interceptor({
+          scenarioKey,
+          sessionId,
+          urls: [allowedUrl], // Only allow the original URL, not the notAllowedUrl
+        });
+        xhrInterceptor.withTestTitle(testTitle);
+        xhrInterceptor.apply();
 
         const xhr = new XMLHttpRequest();
         setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
@@ -257,6 +346,67 @@ describe('Interceptor', () => {
           SESSION_ID,
           expect.any(String)
         );
+      });
+    });
+  });
+
+  describe('XMLHttpRequest.prototype.open with scenarioName', () => {
+    const allowedUrl = `${allowedOrigin}/test`;
+
+    const originalXMLHttpRequestOpen: typeof XMLHttpRequest.prototype.open =
+      XMLHttpRequest.prototype.open;
+    let setRequestHeaderMock: SpiedFunction<
+      (name: string, value: string) => void
+    >;
+    let xhrInterceptor: Interceptor;
+
+    beforeAll(() => {
+      xhrInterceptor = new Interceptor({
+        scenarioName,
+        sessionId,
+        urls: [allowedUrl],
+      });
+      xhrInterceptor.withTestTitle(testTitle);
+      xhrInterceptor.apply();
+    });
+
+    afterAll(() => {
+      XMLHttpRequest.prototype.open = originalXMLHttpRequestOpen;
+    });
+
+    describe('when strict matching', () => {
+      beforeAll(async () => {
+        const xhr = new XMLHttpRequest();
+        setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
+        xhr.open('GET', allowedUrl);
+        // Manually trigger readyState change to OPENED (1)
+        Object.defineProperty(xhr, 'readyState', { value: 1, writable: true });
+        xhr.dispatchEvent(new Event('readystatechange'));
+      });
+
+      test(`adds '${SCENARIO_NAME}' header to XMLHttpRequest`, async () => {
+        expect(setRequestHeaderMock).toHaveBeenCalledWith(
+          SCENARIO_NAME,
+          scenarioName
+        );
+      });
+
+      test(`does not add '${SCENARIO_KEY}' header when using scenarioName`, async () => {
+        expect(setRequestHeaderMock).not.toHaveBeenCalledWith(
+          SCENARIO_KEY,
+          expect.anything()
+        );
+      });
+
+      test(`adds '${SESSION_ID}' header to XMLHttpRequest`, async () => {
+        expect(setRequestHeaderMock).toHaveBeenCalledWith(
+          SESSION_ID,
+          expect.any(String)
+        );
+      });
+
+      test(`adds '${TEST_TITLE}' header to XMLHttpRequest`, async () => {
+        expect(setRequestHeaderMock).toHaveBeenCalledWith(TEST_TITLE, testTitle);
       });
     });
   });
