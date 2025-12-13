@@ -42,41 +42,44 @@ Configures requests with origin https://docs.stoobly.com to specify a scenario. 
 
 ```js
 const stoobly = new Stoobly();
+const interceptor = stoobly.interceptor({
+    scenarioKey: '<SCENARIO-KEY>',
+    scenarioName: '<SCENARIO-NAME>', // If scenario name is used instead of key, it should be unique
+    urls: [new RegExp('https://docs.stoobly.com/.*')]
+});
 
-const sessionId = stoobly.applyScenario('<SCENARIO-KEY>', { urls: [new RegExp('https://docs.stoobly.com/.*')] });
+interceptor.apply();
 ```
 
 Configures requests with origin https://docs.stoobly.com to specify a scenario. Resume a session by specifying a `sessionId`.
 
 ```js
 const stoobly = new Stoobly();
+const interceptor = stoobly.interceptor({
+    scenarioKey: '<SCENARIO-KEY>',
+    sessionId: '<SESSION-ID>',
+    urls: [new RegExp('https://docs.stoobly.com/.*')]
+});
 
-stoobly.applyScenario('<SCENARIO-KEY>', { urls: [new RegExp('https://docs.stoobly.com/.*')], sessionId: '<SESSION-ID>' });
+interceptor.apply();
 ```
 
 Configures requests https://docs.stoobly.com/use-cases and https://docs.stoobly.com/getting-started to specify a scenario.
 
 ```js
 const stoobly = new Stoobly();
-
-stoobly.applyScenario('<SCENARIO-KEY>', { 
+const interceptor = stoobly.interceptor({
+    scenarioKey: '<SCENARIO-KEY>',
     urls: [
         'https://docs.stoobly.com/use-cases',
         'https://docs.stoobly.com/getting-started'
     ]
 });
+
+interceptor.apply();
 ```
 
 ### Recording requests
-
-Starts recording HTTP(s) requests.
-
-```js
-const stoobly = new Stoobly();
-
-// If no URLs are specified, defaults to all
-const sessionId = stoobly.startRecord({ urls: [new RegExp('https://docs.stoobly.com/.*')] });
-```
 
 Record requests with specific policy, order, and strategy options:
 
@@ -84,44 +87,57 @@ Record requests with specific policy, order, and strategy options:
 import { RecordPolicy, RecordOrder, RecordStrategy } from 'stoobly/constants';
 
 const stoobly = new Stoobly();
-
-stoobly.startRecord({ 
+const interceptor = stoobly.interceptor({
     urls: ['https://docs.stoobly.com/use-cases'],
-    policy: RecordPolicy.All,
-    order: RecordOrder.Overwrite, // Defaults to RecordOrder.Append
-    strategy: RecordStrategy.Full
+    record: {
+        policy: RecordPolicy.All,
+        order: RecordOrder.Overwrite, // Defaults to RecordOrder.Append
+        strategy: RecordStrategy.Full,
+    }
 });
+
+interceptor.startRecord();
 ```
 
 Stop recording requests:
 
 ```js
-stoobly.stopRecord();
+interceptor.stopRecord();
 ```
 
 ### Integrating with Cypress
 
 ```js
+import Stoobly from 'stoobly';
+import { RecordPolicy, RecordOrder, RecordStrategy } from 'stoobly/constants';
+
+const stoobly = new Stoobly();
+const stooblyInterceptor = stoobly.cypressInterceptor({
+    record: {
+        policy: RecordPolicy.All,
+        order: RecordOrder.Overwrite, // Defaults to RecordOrder.Append
+        strategy: RecordStrategy.Full,
+    },
+    scenarioKey: '<SCENARIO-KEY>',
+    urls: ['<URLS>'],
+});
+
 describe('Scenario', () => {
-    const stoobly = new Stoobly();
-
     beforeAll(() => {
-        const urls = ['<URLS>'];
-        stoobly.cypress.urls = urls;
-    });
-
-    beforeEach(() => { 
         // WARNING: if a synchronous request is used, this will cause Cypress to hang. See: https://github.com/cypress-io/cypress/issues/29566
         // Example of a synchronous request: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest_API/Synchronous_and_Asynchronous_Requests#synchronous_request
-        stoobly.cypress.applyScenario('<SCENARIO-KEY>');
+        stooblyInterceptor.apply();
+
+        // Use the following instead to record requests
+        // stooblyInterceptor.startRecord();
     });
 });
 ```
 
 **Key Points:**
-- The Stoobly instance is created once inside the `describe` block
+- The Stoobly instance and interceptor are created once outside the `describe` block
 - Test titles are automatically detected at request interception time for each test
-- `stoobly.cypress.applyScenario` cannot be applied in `beforeAll` because it uses `cy.intercept`. `cy.intercept` gets reset before every test. See: https://docs.cypress.io/api/commands/intercept#:~:text=All%20intercepts%20are%20automatically%20cleared%20before%20every%20test.
+- `interceptor.apply()` must be called in `beforeEach` because it uses `cy.intercept`. `cy.intercept` gets reset before every test. See: https://docs.cypress.io/api/commands/intercept#:~:text=All%20intercepts%20are%20automatically%20cleared%20before%20every%20test.
 
 
 ### Integrating with Playwright
@@ -129,25 +145,36 @@ describe('Scenario', () => {
 ```js
 import { test } from '@playwright/test';
 import Stoobly from 'stoobly';
+import { RecordPolicy, RecordOrder, RecordStrategy } from 'stoobly/constants';
+
+const stoobly = new Stoobly();
+const stooblyInterceptor = stoobly.playwrightInterceptor({
+    record: {
+        policy: RecordPolicy.All,
+        order: RecordOrder.Overwrite, // Defaults to RecordOrder.Append
+        strategy: RecordStrategy.Full,
+    },
+    scenarioKey: '<SCENARIO-KEY>',
+    urls: ['<URLS>'],
+});
 
 test.describe('Scenario', () => {
-    const stoobly = new Stoobly();
-
     test.beforeAll(() => {
-        const urls = ['<URLS>'];
-        stoobly.playwright.urls = urls;
+        stooblyInterceptor.apply();
+
+        // Use the following instead to record requests
+        // stooblyInterceptor.startRecord();
     });
 
     test.beforeEach(async ({ page }, testInfo) => {
-        stoobly.playwright.withPage(testInfo.page).withTestTitle(testInfo.title);
-        await stoobly.playwright.applyScenario('<SCENARIO-KEY>');
+        stooblyInterceptor.withPage(page).withTestTitle(testInfo.title);
     });
 });
 ```
 
 **Key Points:**
-- The Stoobly instance is created once inside the `describe` block
-- `withTestTitle()` must be called in `beforeEach()` to update the test titles for each test because Playwright does not provide a global API to auto-detect test titles
+- The Stoobly instance and interceptor are created once outside the `describe` block
+- `withPage()` and `withTestTitle()` must be called in `beforeEach()` to update the page and test titles for each test because Playwright does not provide a global API to auto-detect test titles
 - Test titles are applied at request interception time
 
 ## Testing
