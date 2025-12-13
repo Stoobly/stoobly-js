@@ -38,10 +38,6 @@ export class Interceptor {
     return this._sessionId;
   }
 
-  set sessionId(sessionId: string | null) {
-    this._sessionId = sessionId;
-  }
-
   // Applies HTTP request interception to fetch and XMLHttpRequest. Clears existing
   // interceptors, sets URL filters if provided, and decorates fetch/XMLHttpRequest to inject custom headers. 
   apply() {
@@ -148,6 +144,10 @@ export class Interceptor {
     } else {
       this.headers[SESSION_ID] = sessionId;
     }
+
+    this._sessionId = this.headers[SESSION_ID];
+
+    return this;
   }
 
   private allowedUrl(url: string) {
