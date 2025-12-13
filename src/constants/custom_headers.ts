@@ -3,5 +3,6 @@ export const RECORD_ORDER = 'X-Stoobly-Record-Order';
 export const RECORD_POLICY = 'X-Stoobly-Record-Policy';
 export const RECORD_STRATEGY = 'X-Stoobly-Record-Strategy';
 export const SCENARIO_KEY = 'X-Stoobly-Scenario-Key';
+export const SCENARIO_NAME = 'X-Stoobly-Scenario-Name';
 export const SESSION_ID = 'X-Stoobly-Session-Id';
 export const TEST_TITLE = 'X-Stoobly-Test-Title';

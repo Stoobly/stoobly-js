@@ -1,29 +1,22 @@
-import {InterceptOptions} from "../types/options";
+import {InterceptorOptions} from "../types/options";
 import {Interceptor} from "./interceptor";
 import {setTestFramework, CYPRESS_FRAMEWORK} from "../utils/test-detection";
 
 export class Cypress extends Interceptor {
   private appliedCypress: boolean = false;
 
-  apply(options?: InterceptOptions) {
+  constructor(options: InterceptorOptions) {
+    super(options);
+
+    setTestFramework(CYPRESS_FRAMEWORK);
+  }
+
+  apply() {
     this.clear();
 
-    if (options?.urls) {
-      this.urls = options.urls;
-    }
-
-    const cb = () => this.decorateCypress();
-
-    return this.withSession(cb, options?.sessionId);
+    this.decorateCypress();
   }
 
-  applyScenario(scenarioKey?: string, options?: InterceptOptions) {
-    setTestFramework(CYPRESS_FRAMEWORK);
-
-    this.withScenario(scenarioKey);
-    return this.apply(options);
-  }
-  
   clear() {
     if (!this.appliedCypress) {
       return;

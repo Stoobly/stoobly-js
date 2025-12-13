@@ -1,23 +1,24 @@
 import { test, expect } from '@playwright/test';
 
-import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY, SESSION_ID, TEST_TITLE, RecordOrder, RecordPolicy, RecordStrategy } from "../../dist/esm/constants.js";
+import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE, RecordOrder, RecordPolicy, RecordStrategy } from "../../dist/esm/constants.js";
 import Stoobly from '../../dist/esm/stoobly.js';
 import { SERVER_URL } from '../server-config';
 
+const stoobly = new Stoobly();
+const targetUrl = `${SERVER_URL}/headers`;
+const interceptor = stoobly.playwrightInterceptor({ 
+  urls: [targetUrl],
+});
+
 test.describe('applyScenario', () => {
-  const stoobly = new Stoobly();
   const scenarioKey = 'test';
   const sessionId = 'id';
-  const targetUrl = `${SERVER_URL}/headers`;
-
-  test.beforeAll(async () => {
-    stoobly.playwright.urls = [targetUrl];
-  });
 
   test.beforeEach(async ({ page }, testInfo) => {
-    stoobly.playwright.withPage(page);
-    stoobly.playwright.withTestTitle(testInfo.title);
-    await stoobly.playwright.applyScenario(scenarioKey, { sessionId });
+    interceptor.withPage(page).withTestTitle(testInfo.title);
+    interceptor.withScenarioKey(scenarioKey);
+    interceptor.withSessionId(sessionId);
+    await interceptor.apply();
   });
 
   test('should send request with Stoobly headers', async ({ page }, testInfo) => {
@@ -49,13 +50,15 @@ test.describe('applyScenario', () => {
     expect(body[TEST_TITLE.toLowerCase()]).toEqual('another test should have a different test title in the headers');
   });
 
-  test('should set Stoobly headers when test title is not set', async ({ page }) => {
-    // Create a new Stoobly instance without setting test title
-    // Not using the instance from beforeEach which does have withTestTitle called
-    const stoobly = new Stoobly();
-    stoobly.playwright.urls = [targetUrl];
-    // Don't call withTestTitle - simulate forgetting to set it
-    await stoobly.playwright.withPage(page).applyScenario(scenarioKey, { sessionId });
+  test.describe('when test title is not set', () => {
+    test.beforeEach(async ({ page }, testInfo) => {
+      interceptor.withPage(page).withTestTitle(undefined);
+      interceptor.withScenarioKey(scenarioKey);
+      interceptor.withSessionId(sessionId);
+      await interceptor.apply();
+    });
+
+    test('should set Stoobly headers when test title is not set', async ({ page }, testInfo) => {
 
     page.goto(targetUrl);
 
@@ -70,25 +73,52 @@ test.describe('applyScenario', () => {
     expect(body[SESSION_ID.toLowerCase()]).toEqual(sessionId);
     // Should not have test title header when not set
     expect(body[TEST_TITLE.toLowerCase()]).toBeUndefined();
+    });
+  });
+});
+
+test.describe('applyScenario with scenarioName', () => {
+  const scenarioName = 'test-scenario-name';
+  const sessionId = 'id';
+
+  test.beforeEach(async ({ page }, testInfo) => {
+    interceptor.withPage(page).withTestTitle(testInfo.title);
+    interceptor.withScenarioKey(undefined); // Clear scenario key when using scenario name
+    interceptor.withScenarioName(scenarioName);
+    interceptor.withSessionId(sessionId);
+    await interceptor.apply();
+  });
+
+  test('should send request with scenario name header', async ({ page }, testInfo) => {
+    page.goto(targetUrl);
+
+    // Wait for the specific response by URL or predicate
+    const response = await page.waitForResponse(response => {
+      return response.url().startsWith(targetUrl) && response.status() === 200;
+    });
+
+    const body = await response.json();
+
+    expect(body[SCENARIO_NAME.toLowerCase()]).toEqual(scenarioName);
+    expect(body[SESSION_ID.toLowerCase()]).toEqual(sessionId);
+    expect(body[TEST_TITLE.toLowerCase()]).toEqual(testInfo.title);
+    // Should not have scenario key when using scenario name
+    expect(body[SCENARIO_KEY.toLowerCase()]).toBeUndefined();
   });
 });
 
 test.describe('startRecord', () => {
-  const stoobly = new Stoobly();
   const sessionId = 'record-session';
-  const targetUrl = `${SERVER_URL}/headers`;
-
-  test.beforeAll(async () => {
-    stoobly.playwright.urls = [targetUrl];
-  });
 
   test.beforeEach(async ({ page }, testInfo) => {
-    stoobly.playwright.withPage(page);
-    stoobly.playwright.withTestTitle(testInfo.title);
+    interceptor.stopRecord();
+    interceptor.withPage(page).withTestTitle(testInfo.title);
+    interceptor.withSessionId(sessionId);
+    interceptor.startRecord();
+    await interceptor.apply();
   });
 
   test('should send request with intercept and record headers', async ({ page }) => {
-    await stoobly.playwright.startRecord({ sessionId });
 
     page.goto(targetUrl);
 
@@ -103,8 +133,16 @@ test.describe('startRecord', () => {
     expect(body[TEST_TITLE.toLowerCase()]).toEqual('should send request with intercept and record headers');
   });
 
-  test('should send record headers without session id when not provided', async ({ page }) => {
-    await stoobly.playwright.startRecord();
+  test.describe('without session id', () => {
+    test.beforeEach(async ({ page }, testInfo) => {
+      interceptor.stopRecord();
+      interceptor.withPage(page).withTestTitle(testInfo.title);
+      interceptor.withSessionId(undefined);
+      interceptor.startRecord();
+      await interceptor.apply();
+    });
+
+    test('should send record headers without session id when not provided', async ({ page }, testInfo) => {
 
     page.goto(targetUrl);
 
@@ -117,10 +155,19 @@ test.describe('startRecord', () => {
     expect(body[PROXY_MODE.toLowerCase()]).toEqual('record');
     expect(body[SESSION_ID.toLowerCase()]).toBeDefined();
     expect(body[SESSION_ID.toLowerCase()]).not.toEqual(sessionId);
+    });
   });
 
-  test('stopRecord should remove intercept headers', async ({ page }) => {
-    await stoobly.playwright.startRecord({ sessionId });
+  test.describe('stopRecord', () => {
+    test.beforeEach(async ({ page }, testInfo) => {
+      interceptor.stopRecord();
+      interceptor.withPage(page).withTestTitle(testInfo.title);
+      interceptor.withSessionId(sessionId);
+      interceptor.startRecord();
+      await interceptor.apply();
+    });
+
+    test('should remove intercept headers', async ({ page }, testInfo) => {
 
     // First request with recording enabled
     page.goto(targetUrl);
@@ -131,7 +178,7 @@ test.describe('startRecord', () => {
     expect(body[PROXY_MODE.toLowerCase()]).toEqual('record');
 
     // Stop recording
-    stoobly.playwright.stopRecord();
+    interceptor.stopRecord();
 
     // Second request should not have intercept headers
     page.goto(targetUrl);
@@ -140,23 +187,23 @@ test.describe('startRecord', () => {
     });
     body = await response.json();
     expect(body[PROXY_MODE.toLowerCase()]).toBeUndefined();
+    });
   });
 
   test.describe('record options', () => {
-    const stoobly = new Stoobly();
-    const targetUrl = `${SERVER_URL}/headers`;
-
-    test.beforeAll(async () => {
-      stoobly.playwright.urls = [targetUrl];
-    });
-
     test.beforeEach(async ({ page }, testInfo) => {
-      stoobly.playwright.withPage(page);
-      stoobly.playwright.withTestTitle(testInfo.title);
+      interceptor.stopRecord();
+      interceptor.withPage(page).withTestTitle(testInfo.title);
+      // Reset all record options
+      interceptor.withRecordPolicy(undefined);
+      interceptor.withRecordOrder(undefined);
+      interceptor.withRecordStrategy(undefined);
     });
 
     test('should send record policy header when policy is "all"', async ({ page }, testInfo) => {
-      await stoobly.playwright.startRecord({ policy: RecordPolicy.All });
+      interceptor.withRecordPolicy(RecordPolicy.All);
+      interceptor.startRecord();
+      await interceptor.apply();
 
       page.goto(targetUrl);
 
@@ -170,7 +217,11 @@ test.describe('startRecord', () => {
     });
 
     test('should send record policy header when policy is "found"', async ({ page }, testInfo) => {
-      await stoobly.playwright.startRecord({ policy: RecordPolicy.Found });
+      interceptor.withRecordPolicy(RecordPolicy.Found);
+      interceptor.withRecordOrder(undefined);
+      interceptor.withRecordStrategy(undefined);
+      interceptor.startRecord();
+      await interceptor.apply();
 
       page.goto(targetUrl);
 
@@ -183,7 +234,11 @@ test.describe('startRecord', () => {
     });
 
     test('should send record policy header when policy is "not_found"', async ({ page }, testInfo) => {
-      await stoobly.playwright.startRecord({ policy: RecordPolicy.NotFound });
+      interceptor.withRecordPolicy(RecordPolicy.NotFound);
+      interceptor.withRecordOrder(undefined);
+      interceptor.withRecordStrategy(undefined);
+      interceptor.startRecord();
+      await interceptor.apply();
 
       page.goto(targetUrl);
 
@@ -196,7 +251,11 @@ test.describe('startRecord', () => {
     });
 
     test('should send record order header when order is "overwrite"', async ({ page }, testInfo) => {
-      await stoobly.playwright.startRecord({ order: RecordOrder.Overwrite });
+      interceptor.withRecordPolicy(undefined);
+      interceptor.withRecordOrder(RecordOrder.Overwrite);
+      interceptor.withRecordStrategy(undefined);
+      interceptor.startRecord();
+      await interceptor.apply();
 
       page.goto(targetUrl);
 
@@ -209,7 +268,11 @@ test.describe('startRecord', () => {
     });
 
     test('should not send record policy header when policy is not provided', async ({ page }, testInfo) => {
-      await stoobly.playwright.startRecord();
+      interceptor.withRecordPolicy(undefined);
+      interceptor.withRecordOrder(undefined);
+      interceptor.withRecordStrategy(undefined);
+      interceptor.startRecord();
+      await interceptor.apply();
 
       page.goto(targetUrl);
 
@@ -223,7 +286,11 @@ test.describe('startRecord', () => {
     });
 
     test('should send record strategy header when strategy is "full"', async ({ page }) => {
-      await stoobly.playwright.startRecord({ strategy: RecordStrategy.Full });
+      interceptor.withRecordPolicy(undefined);
+      interceptor.withRecordOrder(undefined);
+      interceptor.withRecordStrategy(RecordStrategy.Full);
+      interceptor.startRecord();
+      await interceptor.apply();
 
       page.goto(targetUrl);
 
@@ -237,7 +304,11 @@ test.describe('startRecord', () => {
     });
 
     test('should send record strategy header when strategy is "minimal"', async ({ page }) => {
-      await stoobly.playwright.startRecord({ strategy: RecordStrategy.Minimal });
+      interceptor.withRecordPolicy(undefined);
+      interceptor.withRecordOrder(undefined);
+      interceptor.withRecordStrategy(RecordStrategy.Minimal);
+      interceptor.startRecord();
+      await interceptor.apply();
 
       page.goto(targetUrl);
 
@@ -251,7 +322,11 @@ test.describe('startRecord', () => {
     });
 
     test('should not send record strategy header when strategy is not provided', async ({ page }) => {
-      await stoobly.playwright.startRecord();
+      interceptor.withRecordPolicy(undefined);
+      interceptor.withRecordOrder(undefined);
+      interceptor.withRecordStrategy(undefined);
+      interceptor.startRecord();
+      await interceptor.apply();
 
       page.goto(targetUrl);
 
@@ -267,15 +342,17 @@ test.describe('startRecord', () => {
 });
 
 test.describe('clear', () => {
-  const targetUrl = `${SERVER_URL}/headers`;
+  test.beforeEach(async ({ page }, testInfo) => {
+    interceptor.withPage(page).withTestTitle(testInfo.title);
+  });
 
   test('should remove handlers when explicitly called on active page', async ({ page }) => {
-    const stoobly = new Stoobly();
     const scenarioKey = 'test-clear';
     const sessionId = 'clear-session';
 
-    stoobly.playwright.urls = [targetUrl];
-    await stoobly.playwright.withPage(page).applyScenario(scenarioKey, { sessionId });
+    interceptor.withScenarioKey(scenarioKey);
+    interceptor.withSessionId(sessionId);
+    await interceptor.apply();
 
     // First request should have headers
     let responsePromise = page.waitForResponse(response => {
@@ -288,7 +365,7 @@ test.describe('clear', () => {
     expect(body[SESSION_ID.toLowerCase()]).toEqual(sessionId);
 
     // Clear handlers
-    stoobly.playwright.clear();
+    await interceptor.clear();
 
     // Second request should not have headers
     responsePromise = page.waitForResponse(response => {
@@ -302,33 +379,27 @@ test.describe('clear', () => {
   });
 
   test('should handle multiple clears without error', async ({ page }) => {
-    const stoobly = new Stoobly();
-
-    stoobly.playwright.urls = [targetUrl];
-    stoobly.playwright.withPage(page);
-    await stoobly.playwright.applyScenario('test-multi-clear');
+    interceptor.withScenarioKey('test-multi-clear');
+    await interceptor.apply();
 
     // First clear
-    await stoobly.playwright.clear();
+    await interceptor.clear();
 
     // Second clear should be safe (no-op)
-    await stoobly.playwright.clear();
+    await interceptor.clear();
 
     // Third clear
-    await stoobly.playwright.clear();
+    await interceptor.clear();
 
     // All clears completed without throwing errors
     expect(true).toBe(true);
   });
 
   test('should not error when setting urls after page from previous test closes', async ({ page }) => {
-    const stoobly = new Stoobly();
-
-    // Simulate the pattern from the test suite: set urls before withPage
+    // Simulate the pattern from the test suite: modify interceptor
     // This should not error even if there was a previous page that's now closed
-    stoobly.playwright.urls = [targetUrl];
-    stoobly.playwright.withPage(page);
-    await stoobly.playwright.applyScenario('test-urls-set');
+    interceptor.withScenarioKey('test-urls-set');
+    await interceptor.apply();
 
     // Verify it still works
     const responsePromise = page.waitForResponse(response => {
@@ -341,12 +412,13 @@ test.describe('clear', () => {
   });
 
   test('should not error when changing urls multiple times', async ({ page }) => {
-    const stoobly = new Stoobly();
     const url1 = `${SERVER_URL}/headers`;
     const url2 = `${SERVER_URL}/*`;
 
-    stoobly.playwright.withPage(page);
-    await stoobly.playwright.applyScenario('test-url-change', { urls: [url1] });
+    interceptor.stopRecord();
+    interceptor.urls = [url1];
+    interceptor.withScenarioKey('test-url-change');
+    await interceptor.apply();
 
     // Make a request
     let responsePromise = page.waitForResponse(response => {
@@ -355,14 +427,17 @@ test.describe('clear', () => {
     await page.goto(targetUrl);
     await responsePromise;
 
-    // Change urls (this triggers internal clear via setter)
-    stoobly.playwright.urls = [url2];
+    // Change urls
+    await interceptor.clear();
+    interceptor.urls = [url2];
+    interceptor.withScenarioKey('test-url-change-2');
+    await interceptor.apply();
 
     // Change again
-    stoobly.playwright.urls = [url1];
-
-    // Verify it still works
-    await stoobly.playwright.applyScenario('test-url-change-2');
+    await interceptor.clear();
+    interceptor.urls = [url1];
+    interceptor.withScenarioKey('test-url-change-2');
+    await interceptor.apply();
     responsePromise = page.waitForResponse(response => {
       return response.url().startsWith(targetUrl) && response.status() === 200;
     });
