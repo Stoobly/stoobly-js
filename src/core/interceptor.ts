@@ -1,14 +1,26 @@
-import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
+import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
 import { ProxyMode, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/proxy";
 
-import { InterceptOptions, RecordOptions } from "../types/options";
+import { InterceptorOptions } from "../types/options";
 import { getTestTitle } from "../utils/test-detection";
 
 export class Interceptor {
+  constructor(options: InterceptorOptions) {
+    this.urls = options.urls;
+
+    this.withRecordOrder(options.record?.order);
+    this.withRecordPolicy(options.record?.policy);
+    this.withRecordStrategy(options.record?.strategy);
+    this.withScenarioKey(options.scenarioKey);
+    this.withScenarioName(options.scenarioName);
+    this.withSessionId(options.sessionId);
+  }
+
   static originalXMLHttpRequestOpen = typeof XMLHttpRequest !== 'undefined' ? XMLHttpRequest.prototype.open : null;
   static originalFetch = typeof window !== 'undefined' ? window.fetch.bind(window) : null;
 
   protected _urls: (RegExp | string)[] = [];
+  protected _sessionId: string | null = null;
 
   private appliedFetch: boolean = false;
   private appliedXMLHttpRequestOpen: boolean = false;
@@ -22,30 +34,21 @@ export class Interceptor {
     this._urls = urls;
   }
 
-  // Applies HTTP request interception to fetch and XMLHttpRequest. Clears existing
-  // interceptors, sets URL filters if provided, and decorates fetch/XMLHttpRequest to
-  // inject custom headers. Returns a promise resolving to the session ID.
-  apply(options?: InterceptOptions) {
-    this.clear();
-
-    if (options?.urls) {
-      this.urls = options.urls;
-    }
-
-    const cb = () => {
-      this.decorateFetch();
-      this.decorateXMLHttpRequestOpen();
-    }
-
-    return this.withSession(cb, options?.sessionId);
+  get sessionId(): string | null {
+    return this._sessionId;
   }
 
-  // Applies scenario headers to fetch and XMLHttpRequest. Sets the scenario key if provided,
-  // and returns a promise resolving to the session ID.
-  applyScenario(scenarioKey?: string, options?: InterceptOptions) {
-    // If a scenario key is not provided, this is the equivalent of unsetting the scenario key
-    this.withScenario(scenarioKey);
-    return this.apply(options);
+  set sessionId(sessionId: string | null) {
+    this._sessionId = sessionId;
+  }
+
+  // Applies HTTP request interception to fetch and XMLHttpRequest. Clears existing
+  // interceptors, sets URL filters if provided, and decorates fetch/XMLHttpRequest to inject custom headers. 
+  apply() {
+    this.clear();
+
+    this.decorateFetch();
+    this.decorateXMLHttpRequestOpen();
   }
 
   clear() {
@@ -55,22 +58,16 @@ export class Interceptor {
   
   // Starts recording HTTP requests. Sets proxy mode to record, applies record policy and order
   // if provided, and returns a promise resolving to the session ID.
-  startRecord(options?: RecordOptions) {
+  startRecord() {
     this.withProxyMode(ProxyMode.record);
-    this.withRecordOrder(options?.order);
-    this.withRecordPolicy(options?.policy);
-    this.withRecordStrategy(options?.strategy);
 
-    return this.apply(options);
+    this.apply();
   }
 
   // Resets proxy mode, record policy, and order headers to their default values.
   // This effectively stops recording requests without modifying other headers.
   stopRecord() {
     this.withProxyMode();
-    this.withRecordOrder();
-    this.withRecordPolicy();
-    this.withRecordStrategy();
 
     // Do not call apply, the changes will reflect dynamically
   }
@@ -85,7 +82,7 @@ export class Interceptor {
     return this;
   }
 
-  protected withProxyMode(mode?: ProxyMode) {
+  withProxyMode(mode?: ProxyMode) {
     if (!mode) {
       delete this.headers[PROXY_MODE];
     } else {
@@ -95,7 +92,7 @@ export class Interceptor {
     return this;
   }
 
-  protected withRecordOrder(order?: RecordOrder) {
+  withRecordOrder(order?: RecordOrder) {
     if (!order) {
       delete this.headers[RECORD_ORDER];
     } else {
@@ -105,7 +102,7 @@ export class Interceptor {
     return this;
   }
 
-  protected withRecordPolicy(policy?: RecordPolicy) {
+  withRecordPolicy(policy?: RecordPolicy) {
     if (!policy) {
       delete this.headers[RECORD_POLICY];
     } else {
@@ -115,7 +112,7 @@ export class Interceptor {
     return this;
   }
 
-  protected withRecordStrategy(strategy?: RecordStrategy) {
+  withRecordStrategy(strategy?: RecordStrategy) {
     if (!strategy) {
       delete this.headers[RECORD_STRATEGY];
     } else {
@@ -125,7 +122,7 @@ export class Interceptor {
     return this;
   }
 
-  protected withScenario(key?: string) {
+  withScenarioKey(key?: string) {
     if (!key) {
       delete this.headers[SCENARIO_KEY];
     } else {
@@ -135,10 +132,22 @@ export class Interceptor {
     return this;
   }
 
-  protected async withSession(cb: () => void | Promise<void>, sessionId?: string) {
-    this.headers[SESSION_ID] = sessionId || (new Date()).getTime().toString();
-    await cb();
-    return this.headers[SESSION_ID];
+  withScenarioName(name?: string) {
+    if (!name) {
+      delete this.headers[SCENARIO_NAME];
+    } else {
+      this.headers[SCENARIO_NAME] = name;
+    }
+
+    return this;
+  }
+
+  withSessionId(sessionId?: string) {
+    if (!sessionId) {
+      this.headers[SESSION_ID] = (new Date()).getTime().toString();
+    } else {
+      this.headers[SESSION_ID] = sessionId;
+    }
   }
 
   private allowedUrl(url: string) {
