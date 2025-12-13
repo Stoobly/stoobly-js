@@ -41,6 +41,8 @@ import Stoobly from 'stoobly';
 Configures requests with origin https://docs.stoobly.com to specify a scenario. `sessionId` defaults to current time.
 
 ```js
+import Stoobly from 'stoobly';
+
 const stoobly = new Stoobly();
 const interceptor = stoobly.interceptor({
     scenarioKey: '<SCENARIO-KEY>',
@@ -54,6 +56,8 @@ interceptor.apply();
 Configures requests with origin https://docs.stoobly.com to specify a scenario. Resume a session by specifying a `sessionId`.
 
 ```js
+import Stoobly from 'stoobly';
+
 const stoobly = new Stoobly();
 const interceptor = stoobly.interceptor({
     scenarioKey: '<SCENARIO-KEY>',
@@ -67,6 +71,8 @@ interceptor.apply();
 Configures requests https://docs.stoobly.com/use-cases and https://docs.stoobly.com/getting-started to specify a scenario.
 
 ```js
+import Stoobly from 'stoobly';
+
 const stoobly = new Stoobly();
 const interceptor = stoobly.interceptor({
     scenarioKey: '<SCENARIO-KEY>',
@@ -84,6 +90,7 @@ interceptor.apply();
 Record requests with specific policy, order, and strategy options:
 
 ```js
+import Stoobly from 'stoobly';
 import { RecordPolicy, RecordOrder, RecordStrategy } from 'stoobly/constants';
 
 const stoobly = new Stoobly();
