@@ -1,5 +1,5 @@
 import { RecordOrder, RecordPolicy, RecordStrategy } from "@constants/proxy";
-import { InterceptorFramework } from "@constants/option";
+import { InterceptorFramework } from "@constants/options";
 
 export interface RecordOptions {
   order?: RecordOrder;
