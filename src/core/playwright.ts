@@ -1,5 +1,5 @@
 import {Page, Route as PlaywrightRoute, Request as PlaywrightRequest } from "../types/playwright";
-import {InterceptOptions} from "../types/options";
+import {InterceptorOptions} from "../types/options";
 import {Interceptor} from "./interceptor";
 import {setTestFramework, PLAYWRIGHT_FRAMEWORK} from "../utils/test-detection";
 
@@ -7,6 +7,12 @@ export class Playwright extends Interceptor {
   private appliedPlaywright: boolean = false;
   private handlers: Map<string, (route: PlaywrightRoute, req: PlaywrightRequest) => Promise<void>> = new Map();
   private _page: Page | null = null;
+
+  constructor(options: InterceptorOptions) {
+    super(options);
+
+    setTestFramework(PLAYWRIGHT_FRAMEWORK);
+  }
 
   get page() {
     if (!this._page) {
@@ -22,38 +28,15 @@ export class Playwright extends Interceptor {
 
   // Applies HTTP request interception to the current page. Clears existing handlers,
   // sets URL filters if provided, and decorates Playwright to inject custom headers.
-  // Returns a promise resolving to the session ID.
-  async apply(options?: InterceptOptions) {
+  async apply() {
     await this.clear();
-
-    if (options?.urls) {
-      this.urls = options.urls;
-    }
-
-    const cb = async () => this.decoratePlaywright(this.page);
-
-    return await this.withSession(cb, options?.sessionId);
+    await this.decoratePlaywright(this.page);
   } 
-
-  applyScenario(scenarioKey?: string, options?: InterceptOptions) {
-    setTestFramework(PLAYWRIGHT_FRAMEWORK);
-
-    this.withScenario(scenarioKey);
-    return this.apply(options);
-  }
-
-  get urls() {
-    return this._urls;
-  }
-
-  set urls(urls: (RegExp | string)[]) {
-    this._urls = urls;
-  }
 
   // Clears all HTTP request interceptors. Unroutes all registered routes and resets the
   // appliedPlaywright flag. Returns a promise resolving to the session ID.
   async clear() {
-    if (!this.appliedPlaywright || !this.page) {
+    if (!this.appliedPlaywright || !this._page) {
       return;
     }
 
