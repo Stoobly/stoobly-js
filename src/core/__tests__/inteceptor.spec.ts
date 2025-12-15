@@ -22,7 +22,7 @@ describe('Interceptor', () => {
     });
     const originalFetch: typeof window.fetch = window.fetch;
 
-    beforeAll(() => {
+    beforeAll(async () => {
       Interceptor.originalFetch = fetchMock;
 
       interceptor = new Interceptor({
@@ -31,7 +31,7 @@ describe('Interceptor', () => {
         urls: [allowedUrl],
       });
       interceptor.withTestTitle(testTitle);
-      interceptor.apply();
+      await interceptor.start();
     });
 
     afterAll(() => {
@@ -76,7 +76,7 @@ describe('Interceptor', () => {
           urls: [new RegExp(`${allowedOrigin}/.*`)],
         });
         interceptor.withTestTitle(testTitle);
-        interceptor.apply();
+        await interceptor.start();
 
         await fetch(allowedUrl);
       });
@@ -116,7 +116,7 @@ describe('Interceptor', () => {
           urls: [allowedUrl], // Only allow the original URL, not the notAllowedUrl
         });
         interceptor.withTestTitle(testTitle);
-        interceptor.apply();
+        await interceptor.start();
 
         await fetch(notAllowedUrl);
       });
@@ -129,7 +129,7 @@ describe('Interceptor', () => {
     describe('deactivate', () => {
       beforeAll(async () => {
         fetchMock.mockClear();
-        interceptor.clear();
+        interceptor.stop();
 
         await fetch(allowedUrl);
       });
@@ -155,7 +155,7 @@ describe('Interceptor', () => {
     });
     const originalFetch: typeof window.fetch = window.fetch;
 
-    beforeAll(() => {
+    beforeAll(async () => {
       Interceptor.originalFetch = fetchMock;
 
       interceptor = new Interceptor({
@@ -164,7 +164,7 @@ describe('Interceptor', () => {
         urls: [allowedUrl],
       });
       interceptor.withTestTitle(testTitle);
-      interceptor.apply();
+      await interceptor.start();
     });
 
     afterAll(() => {
@@ -235,7 +235,7 @@ describe('Interceptor', () => {
 
     describe('when strict matching', () => {
       beforeAll(async () => {
-        xhrInterceptor.apply();
+        await xhrInterceptor.start();
 
         const xhr = new XMLHttpRequest();
         setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
@@ -272,7 +272,7 @@ describe('Interceptor', () => {
           urls: [new RegExp(`${allowedOrigin}/.*`)],
         });
         xhrInterceptor.withTestTitle(testTitle);
-        xhrInterceptor.apply();
+        await xhrInterceptor.start();
 
         const xhr = new XMLHttpRequest();
         setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
@@ -311,7 +311,7 @@ describe('Interceptor', () => {
           urls: [allowedUrl], // Only allow the original URL, not the notAllowedUrl
         });
         xhrInterceptor.withTestTitle(testTitle);
-        xhrInterceptor.apply();
+        await xhrInterceptor.start();
 
         const xhr = new XMLHttpRequest();
         setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
@@ -325,8 +325,8 @@ describe('Interceptor', () => {
     });
 
     describe('deactivate', () => {
-      beforeAll(() => {
-        xhrInterceptor.clear();
+      beforeAll(async () => {
+        await xhrInterceptor.stop();
 
         const xhr = new XMLHttpRequest();
         setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
@@ -360,14 +360,14 @@ describe('Interceptor', () => {
     >;
     let xhrInterceptor: Interceptor;
 
-    beforeAll(() => {
+    beforeAll(async () => {
       xhrInterceptor = new Interceptor({
         scenarioName,
         sessionId,
         urls: [allowedUrl],
       });
       xhrInterceptor.withTestTitle(testTitle);
-      xhrInterceptor.apply();
+      await xhrInterceptor.start();
     });
 
     afterAll(() => {
