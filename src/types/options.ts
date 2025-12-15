@@ -1,5 +1,5 @@
 import { RecordOrder, RecordPolicy, RecordStrategy } from "@constants/proxy";
-import { InterceptorFramework } from "@constants/options";
+import { TestFramework } from "../utils/test-detection";
 
 export interface RecordOptions {
   order?: RecordOrder;
@@ -8,7 +8,7 @@ export interface RecordOptions {
 }
 
 export interface InterceptorOptions {
-  framework?: InterceptorFramework;
+  framework?: TestFramework;
   record?: RecordOptions;
   scenarioKey?: string;
   scenarioName?: string;
