@@ -11,13 +11,11 @@ export class Cypress extends Interceptor {
     setTestFramework(CYPRESS_FRAMEWORK);
   }
 
-  apply() {
-    this.clear();
-
+  protected async apply() {
     this.decorateCypress();
   }
 
-  clear() {
+  protected async clear() {
     if (!this.appliedCypress) {
       return;
     }
