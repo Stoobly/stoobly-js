@@ -50,10 +50,10 @@ const interceptor = stoobly.interceptor({
     urls: [new RegExp('https://docs.stoobly.com/.*')]
 });
 
-interceptor.apply();
+const sessionId = interceptor.start();
 ```
 
-Configures requests with origin https://docs.stoobly.com to specify a scenario. Resume a session by specifying a `sessionId`.
+Configures requests with origin https://docs.stoobly.com to specify a scenario. After a session has started, change sessions with `withSessionId()`.
 
 ```js
 import Stoobly from 'stoobly';
@@ -65,7 +65,8 @@ const interceptor = stoobly.interceptor({
     urls: [new RegExp('https://docs.stoobly.com/.*')]
 });
 
-interceptor.apply();
+const sessionId = interceptor.start();
+interceptor.withSessionId('<NEW-SESSION-ID>');
 ```
 
 Configures requests https://docs.stoobly.com/use-cases and https://docs.stoobly.com/getting-started to specify a scenario.
@@ -82,7 +83,7 @@ const interceptor = stoobly.interceptor({
     ]
 });
 
-interceptor.apply();
+interceptor.start();
 ```
 
 ### Recording requests
@@ -133,7 +134,7 @@ describe('Scenario', () => {
     beforeAll(() => {
         // WARNING: if a synchronous request is used, this will cause Cypress to hang. See: https://github.com/cypress-io/cypress/issues/29566
         // Example of a synchronous request: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest_API/Synchronous_and_Asynchronous_Requests#synchronous_request
-        stooblyInterceptor.apply();
+        stooblyInterceptor.start();
 
         // Use the following instead to record requests
         // stooblyInterceptor.startRecord();
@@ -144,7 +145,7 @@ describe('Scenario', () => {
 **Key Points:**
 - The Stoobly instance and interceptor are created once outside the `describe` block
 - Test titles are automatically detected at request interception time for each test
-- `interceptor.apply()` must be called in `beforeEach` because it uses `cy.intercept`. `cy.intercept` gets reset before every test. See: https://docs.cypress.io/api/commands/intercept#:~:text=All%20intercepts%20are%20automatically%20cleared%20before%20every%20test.
+- `interceptor.start()` must be called in `beforeEach` because it uses `cy.intercept`. `cy.intercept` gets reset before every test. See: https://docs.cypress.io/api/commands/intercept#:~:text=All%20intercepts%20are%20automatically%20cleared%20before%20every%20test.
 
 
 ### Integrating with Playwright
@@ -166,15 +167,12 @@ const stooblyInterceptor = stoobly.playwrightInterceptor({
 });
 
 test.describe('Scenario', () => {
-    test.beforeAll(() => {
-        stooblyInterceptor.apply();
-
-        // Use the following instead to record requests
-        // stooblyInterceptor.startRecord();
-    });
-
     test.beforeEach(async ({ page }, testInfo) => {
         stooblyInterceptor.withPage(page).withTestTitle(testInfo.title);
+        await stooblyInterceptor.start();
+
+        // Use the following instead to record requests
+        // await stooblyInterceptor.startRecord();
     });
 });
 ```
