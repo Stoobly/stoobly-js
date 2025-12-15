@@ -4,24 +4,23 @@ import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY,
 import Stoobly from '../../dist/esm/stoobly.js';
 import { SERVER_URL } from '../server-config';
 
-const stoobly = new Stoobly();
+const scenarioKey = 'test';
 const targetUrl = `${SERVER_URL}/headers`;
+
+const stoobly = new Stoobly();
 const interceptor = stoobly.playwrightInterceptor({ 
   urls: [targetUrl],
+  scenarioKey,
 });
 
-test.describe('applyScenario', () => {
-  const scenarioKey = 'test';
-  const sessionId = 'id';
+test.describe('Apply scenario with key', () => {
 
   test.beforeEach(async ({ page }, testInfo) => {
     interceptor.withPage(page).withTestTitle(testInfo.title);
-    interceptor.withScenarioKey(scenarioKey);
-    interceptor.withSessionId(sessionId);
-    await interceptor.apply();
+    await interceptor.start();
   });
 
-  test('should send request with Stoobly headers', async ({ page }, testInfo) => {
+  test('should send default intercept headers', async ({ page }, testInfo) => {
     page.goto(targetUrl);
 
     // Wait for the specific response by URL or predicate
@@ -32,9 +31,8 @@ test.describe('applyScenario', () => {
     const body = await response.json();
 
     expect(body[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
-    expect(body[SESSION_ID.toLowerCase()]).toEqual(sessionId);
     expect(body[TEST_TITLE.toLowerCase()]).toEqual(testInfo.title);
-    expect(body[TEST_TITLE.toLowerCase()]).toEqual('should send request with Stoobly headers');
+    expect(body[SESSION_ID.toLowerCase()]).toBeDefined();
   });
 
   test('another test should have a different test title in the headers', async ({ page }) => {
@@ -53,40 +51,37 @@ test.describe('applyScenario', () => {
   test.describe('when test title is not set', () => {
     test.beforeEach(async ({ page }, testInfo) => {
       interceptor.withPage(page).withTestTitle(undefined);
-      interceptor.withScenarioKey(scenarioKey);
-      interceptor.withSessionId(sessionId);
-      await interceptor.apply();
+      await interceptor.start();
     });
 
     test('should set Stoobly headers when test title is not set', async ({ page }, testInfo) => {
+      page.goto(targetUrl);
 
-    page.goto(targetUrl);
+      // Wait for the specific response by URL or predicate
+      const response = await page.waitForResponse(response => {
+        return response.url().startsWith(targetUrl) && response.status() === 200;
+      });
 
-    // Wait for the specific response by URL or predicate
-    const response = await page.waitForResponse(response => {
-      return response.url().startsWith(targetUrl) && response.status() === 200;
-    });
+      const body = await response.json();
 
-    const body = await response.json();
-
-    expect(body[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
-    expect(body[SESSION_ID.toLowerCase()]).toEqual(sessionId);
-    // Should not have test title header when not set
-    expect(body[TEST_TITLE.toLowerCase()]).toBeUndefined();
+      expect(body[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
+      // Should not have test title header when not set
+      expect(body[TEST_TITLE.toLowerCase()]).toBeUndefined();
     });
   });
 });
 
-test.describe('applyScenario with scenarioName', () => {
+test.describe('Apply scenario with name', () => {
   const scenarioName = 'test-scenario-name';
   const sessionId = 'id';
 
   test.beforeEach(async ({ page }, testInfo) => {
     interceptor.withPage(page).withTestTitle(testInfo.title);
+    await interceptor.start();
+
     interceptor.withScenarioKey(undefined); // Clear scenario key when using scenario name
     interceptor.withScenarioName(scenarioName);
     interceptor.withSessionId(sessionId);
-    await interceptor.apply();
   });
 
   test('should send request with scenario name header', async ({ page }, testInfo) => {
@@ -108,18 +103,12 @@ test.describe('applyScenario with scenarioName', () => {
 });
 
 test.describe('startRecord', () => {
-  const sessionId = 'record-session';
-
   test.beforeEach(async ({ page }, testInfo) => {
-    interceptor.stopRecord();
     interceptor.withPage(page).withTestTitle(testInfo.title);
-    interceptor.withSessionId(sessionId);
-    interceptor.startRecord();
-    await interceptor.apply();
+    await interceptor.startRecord();
   });
 
   test('should send request with intercept and record headers', async ({ page }) => {
-
     page.goto(targetUrl);
 
     const response = await page.waitForResponse(response => {
@@ -129,82 +118,46 @@ test.describe('startRecord', () => {
     const body = await response.json();
 
     expect(body[PROXY_MODE.toLowerCase()]).toEqual('record');
-    expect(body[SESSION_ID.toLowerCase()]).toEqual(sessionId);
     expect(body[TEST_TITLE.toLowerCase()]).toEqual('should send request with intercept and record headers');
-  });
-
-  test.describe('without session id', () => {
-    test.beforeEach(async ({ page }, testInfo) => {
-      interceptor.stopRecord();
-      interceptor.withPage(page).withTestTitle(testInfo.title);
-      interceptor.withSessionId(undefined);
-      interceptor.startRecord();
-      await interceptor.apply();
-    });
-
-    test('should send record headers without session id when not provided', async ({ page }, testInfo) => {
-
-    page.goto(targetUrl);
-
-    const response = await page.waitForResponse(response => {
-      return response.url().startsWith(targetUrl) && response.status() === 200;
-    });
-
-    const body = await response.json();
-
-    expect(body[PROXY_MODE.toLowerCase()]).toEqual('record');
-    expect(body[SESSION_ID.toLowerCase()]).toBeDefined();
-    expect(body[SESSION_ID.toLowerCase()]).not.toEqual(sessionId);
-    });
   });
 
   test.describe('stopRecord', () => {
     test.beforeEach(async ({ page }, testInfo) => {
-      interceptor.stopRecord();
       interceptor.withPage(page).withTestTitle(testInfo.title);
-      interceptor.withSessionId(sessionId);
-      interceptor.startRecord();
-      await interceptor.apply();
+      await interceptor.startRecord();
     });
 
     test('should remove intercept headers', async ({ page }, testInfo) => {
+      // First request with recording enabled
+      page.goto(targetUrl);
+      let response = await page.waitForResponse(response => {
+        return response.url().startsWith(targetUrl) && response.status() === 200;
+      });
+      let body = await response.json();
+      expect(body[PROXY_MODE.toLowerCase()]).toEqual('record');
 
-    // First request with recording enabled
-    page.goto(targetUrl);
-    let response = await page.waitForResponse(response => {
-      return response.url().startsWith(targetUrl) && response.status() === 200;
-    });
-    let body = await response.json();
-    expect(body[PROXY_MODE.toLowerCase()]).toEqual('record');
+      // Stop recording
+      await interceptor.stopRecord();
 
-    // Stop recording
-    interceptor.stopRecord();
-
-    // Second request should not have intercept headers
-    page.goto(targetUrl);
-    response = await page.waitForResponse(response => {
-      return response.url().startsWith(targetUrl) && response.status() === 200;
-    });
-    body = await response.json();
-    expect(body[PROXY_MODE.toLowerCase()]).toBeUndefined();
+      // Second request should not have intercept headers
+      page.goto(targetUrl);
+      response = await page.waitForResponse(response => {
+        return response.url().startsWith(targetUrl) && response.status() === 200;
+      });
+      body = await response.json();
+      expect(body[PROXY_MODE.toLowerCase()]).toBeUndefined();
     });
   });
 
   test.describe('record options', () => {
     test.beforeEach(async ({ page }, testInfo) => {
-      interceptor.stopRecord();
       interceptor.withPage(page).withTestTitle(testInfo.title);
-      // Reset all record options
-      interceptor.withRecordPolicy(undefined);
-      interceptor.withRecordOrder(undefined);
-      interceptor.withRecordStrategy(undefined);
+      await interceptor.startRecord();
     });
 
     test('should send record policy header when policy is "all"', async ({ page }, testInfo) => {
-      interceptor.withRecordPolicy(RecordPolicy.All);
-      interceptor.startRecord();
-      await interceptor.apply();
-
+      //interceptor.withRecordPolicy(RecordPolicy.All);
+      await interceptor.startRecord({ record: { policy: RecordPolicy.All } });
       page.goto(targetUrl);
 
       const response = await page.waitForResponse(response => {
@@ -213,15 +166,10 @@ test.describe('startRecord', () => {
 
       const body = await response.json();
       expect(body[RECORD_POLICY.toLowerCase()]).toEqual(RecordPolicy.All);
-      expect(body[PROXY_MODE.toLowerCase()]).toEqual('record');
     });
 
     test('should send record policy header when policy is "found"', async ({ page }, testInfo) => {
       interceptor.withRecordPolicy(RecordPolicy.Found);
-      interceptor.withRecordOrder(undefined);
-      interceptor.withRecordStrategy(undefined);
-      interceptor.startRecord();
-      await interceptor.apply();
 
       page.goto(targetUrl);
 
@@ -235,10 +183,6 @@ test.describe('startRecord', () => {
 
     test('should send record policy header when policy is "not_found"', async ({ page }, testInfo) => {
       interceptor.withRecordPolicy(RecordPolicy.NotFound);
-      interceptor.withRecordOrder(undefined);
-      interceptor.withRecordStrategy(undefined);
-      interceptor.startRecord();
-      await interceptor.apply();
 
       page.goto(targetUrl);
 
@@ -251,11 +195,7 @@ test.describe('startRecord', () => {
     });
 
     test('should send record order header when order is "overwrite"', async ({ page }, testInfo) => {
-      interceptor.withRecordPolicy(undefined);
       interceptor.withRecordOrder(RecordOrder.Overwrite);
-      interceptor.withRecordStrategy(undefined);
-      interceptor.startRecord();
-      await interceptor.apply();
 
       page.goto(targetUrl);
 
@@ -267,12 +207,30 @@ test.describe('startRecord', () => {
       expect(body[RECORD_ORDER.toLowerCase()]).toEqual(RecordOrder.Overwrite);
     });
 
+    test('should only send record order "overwrite" header once', async ({ page }, testInfo) => {
+      interceptor.withRecordOrder(RecordOrder.Overwrite);
+
+      page.goto(targetUrl);
+      
+      const response = await page.waitForResponse(response => {
+        return response.url().startsWith(targetUrl) && response.status() === 200;
+      });
+
+      const body = await response.json();
+      expect(body[RECORD_ORDER.toLowerCase()]).toEqual(RecordOrder.Overwrite);
+
+      page.goto(targetUrl);
+
+      const response2 = await page.waitForResponse(response => {
+        return response.url().startsWith(targetUrl) && response.status() === 200;
+      });
+
+      const body2 = await response2.json();
+      expect(body2[RECORD_ORDER.toLowerCase()]).toBeUndefined();
+    });
+
     test('should not send record policy header when policy is not provided', async ({ page }, testInfo) => {
       interceptor.withRecordPolicy(undefined);
-      interceptor.withRecordOrder(undefined);
-      interceptor.withRecordStrategy(undefined);
-      interceptor.startRecord();
-      await interceptor.apply();
 
       page.goto(targetUrl);
 
@@ -282,15 +240,10 @@ test.describe('startRecord', () => {
 
       const body = await response.json();
       expect(body[RECORD_POLICY.toLowerCase()]).toBeUndefined();
-      expect(body[PROXY_MODE.toLowerCase()]).toEqual('record');
     });
 
     test('should send record strategy header when strategy is "full"', async ({ page }) => {
-      interceptor.withRecordPolicy(undefined);
-      interceptor.withRecordOrder(undefined);
       interceptor.withRecordStrategy(RecordStrategy.Full);
-      interceptor.startRecord();
-      await interceptor.apply();
 
       page.goto(targetUrl);
 
@@ -300,15 +253,10 @@ test.describe('startRecord', () => {
 
       const body = await response.json();
       expect(body[RECORD_STRATEGY.toLowerCase()]).toEqual(RecordStrategy.Full);
-      expect(body[PROXY_MODE.toLowerCase()]).toEqual('record');
     });
 
     test('should send record strategy header when strategy is "minimal"', async ({ page }) => {
-      interceptor.withRecordPolicy(undefined);
-      interceptor.withRecordOrder(undefined);
       interceptor.withRecordStrategy(RecordStrategy.Minimal);
-      interceptor.startRecord();
-      await interceptor.apply();
 
       page.goto(targetUrl);
 
@@ -318,15 +266,10 @@ test.describe('startRecord', () => {
 
       const body = await response.json();
       expect(body[RECORD_STRATEGY.toLowerCase()]).toEqual(RecordStrategy.Minimal);
-      expect(body[PROXY_MODE.toLowerCase()]).toEqual('record');
     });
 
     test('should not send record strategy header when strategy is not provided', async ({ page }) => {
-      interceptor.withRecordPolicy(undefined);
-      interceptor.withRecordOrder(undefined);
       interceptor.withRecordStrategy(undefined);
-      interceptor.startRecord();
-      await interceptor.apply();
 
       page.goto(targetUrl);
 
@@ -336,14 +279,14 @@ test.describe('startRecord', () => {
 
       const body = await response.json();
       expect(body[RECORD_STRATEGY.toLowerCase()]).toBeUndefined();
-      expect(body[PROXY_MODE.toLowerCase()]).toEqual('record');
     });
   });
 });
 
-test.describe('clear', () => {
+test.describe('stop', () => {
   test.beforeEach(async ({ page }, testInfo) => {
     interceptor.withPage(page).withTestTitle(testInfo.title);
+    await interceptor.start();
   });
 
   test('should remove handlers when explicitly called on active page', async ({ page }) => {
@@ -352,7 +295,6 @@ test.describe('clear', () => {
 
     interceptor.withScenarioKey(scenarioKey);
     interceptor.withSessionId(sessionId);
-    await interceptor.apply();
 
     // First request should have headers
     let responsePromise = page.waitForResponse(response => {
@@ -365,7 +307,7 @@ test.describe('clear', () => {
     expect(body[SESSION_ID.toLowerCase()]).toEqual(sessionId);
 
     // Clear handlers
-    await interceptor.clear();
+    await interceptor.stop();
 
     // Second request should not have headers
     responsePromise = page.waitForResponse(response => {
@@ -378,74 +320,54 @@ test.describe('clear', () => {
     expect(body[SESSION_ID.toLowerCase()]).toBeUndefined();
   });
 
-  test('should handle multiple clears without error', async ({ page }) => {
+  test('should handle multiple stops without error', async ({ page }) => {
+    await interceptor.stop();
     interceptor.withScenarioKey('test-multi-clear');
-    await interceptor.apply();
+    await interceptor.start();
 
-    // First clear
-    await interceptor.clear();
+    // First stop
+    await interceptor.stop();
 
-    // Second clear should be safe (no-op)
-    await interceptor.clear();
+    // Second stop should be safe (no-op)
+    await interceptor.stop();
 
-    // Third clear
-    await interceptor.clear();
+    // Third stop
+    await interceptor.stop();
 
     // All clears completed without throwing errors
     expect(true).toBe(true);
   });
-
-  test('should not error when setting urls after page from previous test closes', async ({ page }) => {
-    // Simulate the pattern from the test suite: modify interceptor
-    // This should not error even if there was a previous page that's now closed
-    interceptor.withScenarioKey('test-urls-set');
-    await interceptor.apply();
-
-    // Verify it still works
-    const responsePromise = page.waitForResponse(response => {
-      return response.url().startsWith(targetUrl) && response.status() === 200;
-    });
-    await page.goto(targetUrl);
-    const response = await responsePromise;
-    const body = await response.json();
-    expect(body[SCENARIO_KEY.toLowerCase()]).toEqual('test-urls-set');
-  });
-
-  test('should not error when changing urls multiple times', async ({ page }) => {
-    const url1 = `${SERVER_URL}/headers`;
-    const url2 = `${SERVER_URL}/*`;
-
-    interceptor.stopRecord();
-    interceptor.urls = [url1];
-    interceptor.withScenarioKey('test-url-change');
-    await interceptor.apply();
-
-    // Make a request
-    let responsePromise = page.waitForResponse(response => {
-      return response.url().startsWith(targetUrl) && response.status() === 200;
-    });
-    await page.goto(targetUrl);
-    await responsePromise;
-
-    // Change urls
-    await interceptor.clear();
-    interceptor.urls = [url2];
-    interceptor.withScenarioKey('test-url-change-2');
-    await interceptor.apply();
-
-    // Change again
-    await interceptor.clear();
-    interceptor.urls = [url1];
-    interceptor.withScenarioKey('test-url-change-2');
-    await interceptor.apply();
-    responsePromise = page.waitForResponse(response => {
-      return response.url().startsWith(targetUrl) && response.status() === 200;
-    });
-    await page.goto(targetUrl);
-    const response = await responsePromise;
-    const body = await response.json();
-    expect(body[SCENARIO_KEY.toLowerCase()]).toEqual('test-url-change-2');
-  });
 });
 
 
+test.describe('urls', () => {
+  test.beforeEach(async ({ page }) => {
+    interceptor.withPage(page);
+    await interceptor.start();
+  });
+  
+  test('should apply new urls when changing urls', async ({ page }) => {
+    const scenarioKey = 'test-url-change';
+    interceptor.withScenarioKey(scenarioKey);
+
+    page.goto(targetUrl);
+
+    // Wait for the specific response by URL or predicate
+    const response = await page.waitForResponse(response => {
+      return response.url().startsWith(targetUrl) && response.status() === 200;
+    });
+
+    const body = await response.json();
+    expect(body[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
+
+    await interceptor.start({ urls: [`${SERVER_URL}/different`] });
+
+    page.goto(targetUrl);
+
+    const response2 = await page.waitForResponse(response => {
+      return response.url().startsWith(targetUrl) && response.status() === 200;
+    });
+    const body2 = await response2.json();
+    expect(body2[SCENARIO_KEY.toLowerCase()]).toBeUndefined();
+  });
+})
