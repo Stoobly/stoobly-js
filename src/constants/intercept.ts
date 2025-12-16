@@ -1,13 +1,13 @@
-export enum FirewallAction {
-  Exclude = 'exclude',
-  Include = 'include',
-}
-
-export enum ProxyMode {
+export enum InterceptMode {
   mock = 'mock',
   record = 'record',
   replay = 'replay',
   test = 'test',
+}
+
+export enum FirewallAction {
+  Exclude = 'exclude',
+  Include = 'include',
 }
 
 export enum MockPolicy {

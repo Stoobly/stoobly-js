@@ -1,71 +1,55 @@
 import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
-import { ProxyMode, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/proxy";
+import { InterceptMode, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/intercept";
 
 import { InterceptorOptions } from "../types/options";
 import { getTestTitle } from "../utils/test-detection";
 
 export class Interceptor {
   constructor(options: InterceptorOptions) {
-    this.urls = options.urls;
-
-    this.withRecordOrder(options.record?.order);
-    this.withRecordPolicy(options.record?.policy);
-    this.withRecordStrategy(options.record?.strategy);
-    this.withScenarioKey(options.scenarioKey);
-    this.withScenarioName(options.scenarioName);
-    this.withSessionId(options.sessionId);
+    this.options = options;
   }
 
   static originalXMLHttpRequestOpen = typeof XMLHttpRequest !== 'undefined' ? XMLHttpRequest.prototype.open : null;
   static originalFetch = typeof window !== 'undefined' ? window.fetch.bind(window) : null;
 
-  protected _urls: (RegExp | string)[] = [];
-  protected _sessionId: string | null = null;
+  protected headers: Record<string, string> = {};
+  protected options: InterceptorOptions;
+  protected urls: (RegExp | string)[] = [];
 
+  private started: boolean = false;
   private appliedFetch: boolean = false;
   private appliedXMLHttpRequestOpen: boolean = false;
-  private headers: Record<string, string> = {};
-
-  get urls() {
-    return this._urls;
-  }
-
-  set urls(urls: (RegExp | string)[]) {
-    this._urls = urls;
-  }
-
-  get sessionId(): string | null {
-    return this._sessionId;
-  }
 
   // Applies HTTP request interception to fetch and XMLHttpRequest. Clears existing
   // interceptors, sets URL filters if provided, and decorates fetch/XMLHttpRequest to inject custom headers. 
-  apply() {
-    this.clear();
+  apply(options?: Partial<InterceptorOptions>): string | Promise<string> {
+    this.restore();
 
-    this.decorateFetch();
-    this.decorateXMLHttpRequestOpen();
-  }
+    // After clearing intercepts on old urls, apply intercepts on new urls
+    this.urls = options?.urls || this.options.urls;
 
-  clear() {
-    this.clearFetch();
-    this.clearXMLHttpRequestOpen();
+    this.decorate();
+
+    return this.applySession(options);
   }
   
   // Starts recording HTTP requests. Sets proxy mode to record, applies record policy and order
   // if provided, and returns a promise resolving to the session ID.
-  startRecord() {
-    this.withProxyMode(ProxyMode.record);
+  applyRecord(options?: Partial<InterceptorOptions>) {
+    this.withInterceptMode(InterceptMode.record);
+    return this.apply(options);
+  }
 
-    this.apply();
+  clear() {
+    this.restore();
+    this.clearSession();
   }
 
   // Resets proxy mode, record policy, and order headers to their default values.
   // This effectively stops recording requests without modifying other headers.
-  stopRecord() {
-    this.withProxyMode();
-
-    // Do not call apply, the changes will reflect dynamically
+  clearRecord() {
+    this.withInterceptMode();
+    this.clear();
   }
 
   withTestTitle(title?: string) {
@@ -78,7 +62,7 @@ export class Interceptor {
     return this;
   }
 
-  withProxyMode(mode?: ProxyMode) {
+  withInterceptMode(mode?: InterceptMode) {
     if (!mode) {
       delete this.headers[PROXY_MODE];
     } else {
@@ -140,14 +124,75 @@ export class Interceptor {
 
   withSessionId(sessionId?: string) {
     if (!sessionId) {
-      this.headers[SESSION_ID] = (new Date()).getTime().toString();
+      delete this.headers[SESSION_ID];
     } else {
       this.headers[SESSION_ID] = sessionId;
     }
 
-    this._sessionId = this.headers[SESSION_ID];
-
     return this;
+  }
+
+  protected decorate() {
+    this.decorateFetch();
+    this.decorateXMLHttpRequestOpen(); 
+  }
+
+  protected restore() {
+    this.restoreFetch();
+    this.restoreXMLHttpRequestOpen();
+  }
+
+  protected decorateHeaders(initialHeaders: Record<string, string>) {
+    const headers = {
+      ...initialHeaders,
+      ...this.headers,
+    };
+
+    // Only send overwrite record order once
+    if (this.headers[RECORD_ORDER] === RecordOrder.Overwrite) {
+      delete this.headers[RECORD_ORDER];
+    }
+
+    // Dynamically detect test title at interception time
+    if (!this.headers[TEST_TITLE]) {
+      const testTitle = getTestTitle();
+
+      if (testTitle) {
+        headers[TEST_TITLE] = testTitle;
+      }
+    }
+
+    return headers;
+  }
+
+  protected applySession(_options?: Partial<InterceptorOptions>) {
+    // In the case where apply() is called multiple times, 
+    // return the session ID without setting headers to default values
+    if (this.started) {
+      return this.headers[SESSION_ID];
+    } else {
+      this.started = true;
+    }
+
+    const options = {
+      ...this.options,
+      ..._options,
+    }
+    
+    this.withRecordOrder(options.record?.order);
+    this.withRecordPolicy(options.record?.policy);
+    this.withRecordStrategy(options.record?.strategy);
+    this.withScenarioKey(options.scenarioKey);
+    this.withScenarioName(options.scenarioName);
+
+    const sessionId = options.sessionId || (new Date()).getTime().toString();
+    this.withSessionId(sessionId);
+    return sessionId;
+  }
+
+  protected clearSession() {
+    this.headers = {};
+    this.started = false;
   }
 
   private allowedUrl(url: string) {
@@ -168,7 +213,7 @@ export class Interceptor {
     return false;
   }
 
-  private clearFetch() {
+  private restoreFetch() {
     if (this.appliedFetch && Interceptor.originalFetch) {
       window.fetch = Interceptor.originalFetch;
     }
@@ -176,7 +221,7 @@ export class Interceptor {
     this.appliedFetch = false;
   }
 
-  private clearXMLHttpRequestOpen() {
+  private restoreXMLHttpRequestOpen() {
     if (this.appliedXMLHttpRequestOpen && Interceptor.originalXMLHttpRequestOpen) {
       XMLHttpRequest.prototype.open = Interceptor.originalXMLHttpRequestOpen;
     }
@@ -211,24 +256,6 @@ export class Interceptor {
     };
 
     this.appliedFetch = true;
-  }
-
-  protected decorateHeaders(initialHeaders: Record<string, string>) {
-    const headers = {
-      ...initialHeaders,
-      ...this.headers,
-    };
-
-    // Dynamically detect test title at interception time
-    if (!this.headers[TEST_TITLE]) {
-      const testTitle = getTestTitle();
-
-      if (testTitle) {
-        headers[TEST_TITLE] = testTitle;
-      }
-    }
-
-    return headers;
   }
 
   private decorateXMLHttpRequestOpen() {

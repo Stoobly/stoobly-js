@@ -50,10 +50,10 @@ const interceptor = stoobly.interceptor({
     urls: [new RegExp('https://docs.stoobly.com/.*')]
 });
 
-interceptor.apply();
+const sessionId = interceptor.apply();
 ```
 
-Configures requests with origin https://docs.stoobly.com to specify a scenario. Resume a session by specifying a `sessionId`.
+Configures requests with origin https://docs.stoobly.com to specify a scenario. After a session has started, change sessions with `withSessionId()`.
 
 ```js
 import Stoobly from 'stoobly';
@@ -65,7 +65,8 @@ const interceptor = stoobly.interceptor({
     urls: [new RegExp('https://docs.stoobly.com/.*')]
 });
 
-interceptor.apply();
+const sessionId = interceptor.apply();
+interceptor.withSessionId('<NEW-SESSION-ID>');
 ```
 
 Configures requests https://docs.stoobly.com/use-cases and https://docs.stoobly.com/getting-started to specify a scenario.
@@ -103,13 +104,13 @@ const interceptor = stoobly.interceptor({
     }
 });
 
-interceptor.startRecord();
+interceptor.applyRecord();
 ```
 
 Stop recording requests:
 
 ```js
-interceptor.stopRecord();
+interceptor.clearRecord();
 ```
 
 ### Integrating with Cypress
@@ -130,13 +131,13 @@ const stooblyInterceptor = stoobly.cypressInterceptor({
 });
 
 describe('Scenario', () => {
-    beforeAll(() => {
+    beforeEach(() => {
         // WARNING: if a synchronous request is used, this will cause Cypress to hang. See: https://github.com/cypress-io/cypress/issues/29566
         // Example of a synchronous request: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest_API/Synchronous_and_Asynchronous_Requests#synchronous_request
         stooblyInterceptor.apply();
 
         // Use the following instead to record requests
-        // stooblyInterceptor.startRecord();
+        // stooblyInterceptor.applyRecord();
     });
 });
 ```
@@ -166,15 +167,13 @@ const stooblyInterceptor = stoobly.playwrightInterceptor({
 });
 
 test.describe('Scenario', () => {
-    test.beforeAll(() => {
-        stooblyInterceptor.apply();
+    test.beforeEach(async ({ page }, testInfo) => {
+        await stooblyInterceptor.withPage(page).apply();
 
         // Use the following instead to record requests
-        // stooblyInterceptor.startRecord();
-    });
+        // await stooblyInterceptor.withPage(page).applyRecord();
 
-    test.beforeEach(async ({ page }, testInfo) => {
-        stooblyInterceptor.withPage(page).withTestTitle(testInfo.title);
+        stooblyInterceptor.withTestTitle(testInfo.title);
     });
 });
 ```

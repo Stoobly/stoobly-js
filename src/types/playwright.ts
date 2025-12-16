@@ -1,4 +1,5 @@
 export interface Page {
+  isClosed: () => boolean;
   route: (
     url: string, 
     route: (
