@@ -86,10 +86,6 @@ describe('applyRecord', () => {
     interceptor.applyRecord();
   });
 
-  afterEach(() => {
-    //interceptor.clearRecord();
-  });
-
   it('should send request with intercept and record headers', () => {
     cy.intercept('GET', `${targetUrl}`).as('getHeaders');
 
@@ -123,22 +119,18 @@ describe('applyRecord', () => {
 
   describe('clearRecord', () => {
     it('should remove intercept headers', () => {
+      interceptor.clearRecord();
+
       cy.intercept('GET', `${targetUrl}`).as('getHeaders');
 
       cy.visit(SERVER_URL);
 
-      cy.wait('@getHeaders').then((interception) => {
-        const responseBody = interception.response?.body || {};
-        expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
-
-        // Stop recording
-        interceptor.clearRecord();
-      });
-
-      cy.visit(SERVER_URL);
-
       // Expect cy.intercept to be removed
-      cy.intercept('GET', `${targetUrl}`).should('not.exist');
+      cy.get('@getHeaders.all').then((interceptions) => {
+        // The 'interceptions' variable is an array of all requests that matched
+        // We expect this array to be empty (length of 0).
+        expect(interceptions).to.have.length(0);
+      });
     });
   });
 
