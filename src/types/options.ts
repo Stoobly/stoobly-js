@@ -1,4 +1,4 @@
-import { RecordOrder, RecordPolicy, RecordStrategy } from "@constants/proxy";
+import { RecordOrder, RecordPolicy, RecordStrategy } from "@constants/intercept";
 import { TestFramework } from "../utils/test-detection";
 
 export interface RecordOptions {

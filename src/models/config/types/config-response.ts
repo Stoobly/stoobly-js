@@ -1,13 +1,13 @@
 import { 
   FirewallAction, 
   MockPolicy, 
-  ProxyMode, 
+  InterceptMode, 
   RecordPolicy, 
   ReplayPolicy, 
   RequestParameter,
   TestPolicy, 
   TestStrategy 
-} from '@constants/proxy';
+} from '@constants/intercept';
 
 import { HTTP_METHOD } from '.';
 
@@ -49,14 +49,14 @@ export interface ProxyDataRules {
 export interface ProxyFirewallRule {
   action: FirewallAction;
   methods: HTTP_METHOD[];
-  modes: ProxyMode[];
+  modes: InterceptMode[];
   pattern: string;
 }
 
 export interface ProxyMatchRule {
   components: RequestParameter[];
   methods: HTTP_METHOD[];
-  modes: ProxyMode[];
+  modes: InterceptMode[];
   pattern: string;
 }
 
@@ -80,14 +80,14 @@ export interface Rewrite {
 
 export interface ParameterRule {
   type: RequestParameter;
-  modes?: ProxyMode[];
+  modes?: InterceptMode[];
   name: string;
   value?: string;
 }
 
 export interface ProxyInterceptSettings {
   active: boolean;
-  mode: ProxyMode;
+  mode: InterceptMode;
   project_key: string;
   scenario_key: string;
   upstream_url: string;

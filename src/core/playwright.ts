@@ -2,7 +2,7 @@ import {Page, Route as PlaywrightRoute, Request as PlaywrightRequest } from "../
 import {InterceptorOptions} from "../types/options";
 import {Interceptor} from "./interceptor";
 import {setTestFramework, PLAYWRIGHT_FRAMEWORK} from "../utils/test-detection";
-import { ProxyMode } from "@constants/proxy";
+import { InterceptMode } from "@constants/intercept";
 
 export class Playwright extends Interceptor {
   private appliedPlaywright: boolean = false;
@@ -29,29 +29,29 @@ export class Playwright extends Interceptor {
 
   // Applies HTTP request interception to fetch and XMLHttpRequest. Clears existing
   // interceptors, sets URL filters if provided, and decorates fetch/XMLHttpRequest to inject custom headers. 
-  async start(options?: Partial<InterceptorOptions>) {
-    await this.clear();
+  async apply(options?: Partial<InterceptorOptions>) {
+    await this.restore();
 
     // After clearing intercepts on old urls, apply intercepts on new urls
     this.urls = options?.urls || this.options.urls;
-    await this.apply();
+    await this.decorate();
 
-    return this.startSession(options);
+    return this.applySession(options);
   }
 
-  async startRecord(options?: Partial<InterceptorOptions>) {
-    this.withProxyMode(ProxyMode.record);
-    return await this.start(options);
+  async applyRecord(options?: Partial<InterceptorOptions>) {
+    this.withInterceptMode(InterceptMode.record);
+    return await this.apply(options);
   }
 
-  async stop() {
+  async clear() {
+    await this.restore();
+    this.clearSession();
+  }
+
+  async clearRecord() {
+    this.withInterceptMode();
     await this.clear();
-    this.stopSession();
-  }
-
-  async stopRecord() {
-    this.withProxyMode(ProxyMode.record);
-    await this.stop();
   }
   
   // Sets the current page for request interception. Clears any existing handlers if the page
@@ -69,13 +69,15 @@ export class Playwright extends Interceptor {
 
   // Applies HTTP request interception to the current page.
   // Sets URL filters if provided, and decorates Playwright to inject custom headers.
-  protected async apply() {
-    await this.decoratePlaywright(this.page);
+  protected async decorate() {
+    if (this.page && !this.page.isClosed()) {
+      await this.decoratePlaywright(this.page);
+    }
   } 
 
   // Clears all HTTP request interceptors. Unroutes all registered routes and resets the
   // appliedPlaywright flag. Returns a promise resolving to the session ID.
-  protected async clear() {
+  protected async restore() {
     if (!this.appliedPlaywright || !this._page) {
       return;
     }

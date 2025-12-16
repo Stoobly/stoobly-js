@@ -16,7 +16,11 @@ describe('apply scenario with key', () => {
 
   beforeEach(() => {
     // Test title is automatically detected in the Cypress integration
-    interceptor.start({ sessionId });
+    interceptor.apply({ sessionId });
+  });
+
+  after(() => {
+    interceptor.clear();
   });
 
   it('should send default intercept headers', () => {
@@ -53,7 +57,11 @@ describe('apply scenario with name', () => {
 
   beforeEach(() => {
     // Test title is automatically detected in the Cypress integration
-    interceptor.start({ scenarioKey: undefined, scenarioName });
+    interceptor.apply({ scenarioKey: undefined, scenarioName });
+  });
+
+  after(() => {
+    interceptor.clear();
   });
 
   it('should send request with scenario name header', () => {
@@ -73,9 +81,13 @@ describe('apply scenario with name', () => {
   });
 });
 
-describe.only('startRecord', () => {
+describe('applyRecord', () => {
   beforeEach(() => {
-    interceptor.startRecord();
+    interceptor.applyRecord();
+  });
+
+  afterEach(() => {
+    //interceptor.clearRecord();
   });
 
   it('should send request with intercept and record headers', () => {
@@ -109,7 +121,7 @@ describe.only('startRecord', () => {
     });
   });
 
-  describe('stopRecord', () => {
+  describe('clearRecord', () => {
     it('should remove intercept headers', () => {
       cy.intercept('GET', `${targetUrl}`).as('getHeaders');
 
@@ -120,7 +132,7 @@ describe.only('startRecord', () => {
         expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
 
         // Stop recording
-        interceptor.stopRecord();
+        interceptor.clearRecord();
       });
 
       cy.visit(SERVER_URL);

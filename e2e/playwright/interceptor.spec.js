@@ -16,8 +16,8 @@ const interceptor = stoobly.playwrightInterceptor({
 test.describe('Apply scenario with key', () => {
 
   test.beforeEach(async ({ page }, testInfo) => {
-    interceptor.withPage(page).withTestTitle(testInfo.title);
-    await interceptor.start();
+    await interceptor.withPage(page).apply();
+    interceptor.withTestTitle(testInfo.title);
   });
 
   test('should send default intercept headers', async ({ page }, testInfo) => {
@@ -49,12 +49,9 @@ test.describe('Apply scenario with key', () => {
   });
 
   test.describe('when test title is not set', () => {
-    test.beforeEach(async ({ page }, testInfo) => {
-      interceptor.withPage(page).withTestTitle(undefined);
-      await interceptor.start();
-    });
-
     test('should set Stoobly headers when test title is not set', async ({ page }, testInfo) => {
+      interceptor.withTestTitle(undefined);
+
       page.goto(targetUrl);
 
       // Wait for the specific response by URL or predicate
@@ -76,15 +73,15 @@ test.describe('Apply scenario with name', () => {
   const sessionId = 'id';
 
   test.beforeEach(async ({ page }, testInfo) => {
-    interceptor.withPage(page).withTestTitle(testInfo.title);
-    await interceptor.start();
-
-    interceptor.withScenarioKey(undefined); // Clear scenario key when using scenario name
-    interceptor.withScenarioName(scenarioName);
-    interceptor.withSessionId(sessionId);
+    await interceptor.withPage(page).apply();
+    interceptor.withTestTitle(testInfo.title);
   });
 
   test('should send request with scenario name header', async ({ page }, testInfo) => {
+    interceptor.withScenarioKey(undefined); // Clear scenario key when using scenario name
+    interceptor.withScenarioName(scenarioName);
+    interceptor.withSessionId(sessionId);
+
     page.goto(targetUrl);
 
     // Wait for the specific response by URL or predicate
@@ -102,10 +99,10 @@ test.describe('Apply scenario with name', () => {
   });
 });
 
-test.describe('startRecord', () => {
+test.describe('applyRecord', () => {
   test.beforeEach(async ({ page }, testInfo) => {
-    interceptor.withPage(page).withTestTitle(testInfo.title);
-    await interceptor.startRecord();
+    await interceptor.withPage(page).applyRecord();
+    interceptor.withTestTitle(testInfo.title);
   });
 
   test('should send request with intercept and record headers', async ({ page }) => {
@@ -121,10 +118,10 @@ test.describe('startRecord', () => {
     expect(body[TEST_TITLE.toLowerCase()]).toEqual('should send request with intercept and record headers');
   });
 
-  test.describe('stopRecord', () => {
+  test.describe('clearRecord', () => {
     test.beforeEach(async ({ page }, testInfo) => {
-      interceptor.withPage(page).withTestTitle(testInfo.title);
-      await interceptor.startRecord();
+      await interceptor.withPage(page).applyRecord();
+      interceptor.withTestTitle(testInfo.title);
     });
 
     test('should remove intercept headers', async ({ page }, testInfo) => {
@@ -137,7 +134,7 @@ test.describe('startRecord', () => {
       expect(body[PROXY_MODE.toLowerCase()]).toEqual('record');
 
       // Stop recording
-      await interceptor.stopRecord();
+      await interceptor.clearRecord();
 
       // Second request should not have intercept headers
       page.goto(targetUrl);
@@ -151,13 +148,12 @@ test.describe('startRecord', () => {
 
   test.describe('record options', () => {
     test.beforeEach(async ({ page }, testInfo) => {
-      interceptor.withPage(page).withTestTitle(testInfo.title);
-      await interceptor.startRecord();
+      await interceptor.withPage(page).applyRecord();
+      interceptor.withTestTitle(testInfo.title);
     });
 
     test('should send record policy header when policy is "all"', async ({ page }, testInfo) => {
-      //interceptor.withRecordPolicy(RecordPolicy.All);
-      await interceptor.startRecord({ record: { policy: RecordPolicy.All } });
+      interceptor.withRecordPolicy(RecordPolicy.All);
       page.goto(targetUrl);
 
       const response = await page.waitForResponse(response => {
@@ -285,8 +281,8 @@ test.describe('startRecord', () => {
 
 test.describe('stop', () => {
   test.beforeEach(async ({ page }, testInfo) => {
-    interceptor.withPage(page).withTestTitle(testInfo.title);
-    await interceptor.start();
+    await interceptor.withPage(page).apply();
+    interceptor.withTestTitle(testInfo.title);
   });
 
   test('should remove handlers when explicitly called on active page', async ({ page }) => {
@@ -307,7 +303,7 @@ test.describe('stop', () => {
     expect(body[SESSION_ID.toLowerCase()]).toEqual(sessionId);
 
     // Clear handlers
-    await interceptor.stop();
+    await interceptor.clear();
 
     // Second request should not have headers
     responsePromise = page.waitForResponse(response => {
@@ -321,18 +317,18 @@ test.describe('stop', () => {
   });
 
   test('should handle multiple stops without error', async ({ page }) => {
-    await interceptor.stop();
+    await interceptor.clear();
     interceptor.withScenarioKey('test-multi-clear');
-    await interceptor.start();
+    await interceptor.apply();
 
     // First stop
-    await interceptor.stop();
+    await interceptor.clear();
 
     // Second stop should be safe (no-op)
-    await interceptor.stop();
+    await interceptor.clear();
 
     // Third stop
-    await interceptor.stop();
+    await interceptor.clear();
 
     // All clears completed without throwing errors
     expect(true).toBe(true);
@@ -343,7 +339,7 @@ test.describe('stop', () => {
 test.describe('urls', () => {
   test.beforeEach(async ({ page }) => {
     interceptor.withPage(page);
-    await interceptor.start();
+    await interceptor.apply();
   });
   
   test('should apply new urls when changing urls', async ({ page }) => {
@@ -360,7 +356,7 @@ test.describe('urls', () => {
     const body = await response.json();
     expect(body[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
 
-    await interceptor.start({ urls: [`${SERVER_URL}/different`] });
+    await interceptor.apply({ urls: [`${SERVER_URL}/different`] });
 
     page.goto(targetUrl);
 

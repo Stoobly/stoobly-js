@@ -1,5 +1,5 @@
 import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
-import { ProxyMode, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/proxy";
+import { InterceptMode, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/intercept";
 
 import { InterceptorOptions } from "../types/options";
 import { getTestTitle } from "../utils/test-detection";
@@ -22,34 +22,34 @@ export class Interceptor {
 
   // Applies HTTP request interception to fetch and XMLHttpRequest. Clears existing
   // interceptors, sets URL filters if provided, and decorates fetch/XMLHttpRequest to inject custom headers. 
-  start(options?: Partial<InterceptorOptions>): string | Promise<string> {
-    this.clear();
+  apply(options?: Partial<InterceptorOptions>): string | Promise<string> {
+    this.restore();
 
     // After clearing intercepts on old urls, apply intercepts on new urls
     this.urls = options?.urls || this.options.urls;
 
-    this.apply();
+    this.decorate();
 
-    return this.startSession(options);
+    return this.applySession(options);
   }
   
   // Starts recording HTTP requests. Sets proxy mode to record, applies record policy and order
   // if provided, and returns a promise resolving to the session ID.
-  startRecord(options?: Partial<InterceptorOptions>) {
-    this.withProxyMode(ProxyMode.record);
-    return this.start(options);
+  applyRecord(options?: Partial<InterceptorOptions>) {
+    this.withInterceptMode(InterceptMode.record);
+    return this.apply(options);
   }
 
-  stop() {
-    this.clear();
-    this.stopSession();
+  clear() {
+    this.restore();
+    this.clearSession();
   }
 
   // Resets proxy mode, record policy, and order headers to their default values.
   // This effectively stops recording requests without modifying other headers.
-  stopRecord() {
-    this.withProxyMode();
-    this.stop();
+  clearRecord() {
+    this.withInterceptMode();
+    this.clear();
   }
 
   withTestTitle(title?: string) {
@@ -62,7 +62,7 @@ export class Interceptor {
     return this;
   }
 
-  withProxyMode(mode?: ProxyMode) {
+  withInterceptMode(mode?: InterceptMode) {
     if (!mode) {
       delete this.headers[PROXY_MODE];
     } else {
@@ -132,14 +132,14 @@ export class Interceptor {
     return this;
   }
 
-  protected async apply() {
+  protected decorate() {
     this.decorateFetch();
     this.decorateXMLHttpRequestOpen(); 
   }
 
-  protected async clear() {
-    this.clearFetch();
-    this.clearXMLHttpRequestOpen();
+  protected restore() {
+    this.restoreFetch();
+    this.restoreXMLHttpRequestOpen();
   }
 
   protected decorateHeaders(initialHeaders: Record<string, string>) {
@@ -165,8 +165,8 @@ export class Interceptor {
     return headers;
   }
 
-  protected startSession(_options?: Partial<InterceptorOptions>) {
-    // In the case where start() is called multiple times, 
+  protected applySession(_options?: Partial<InterceptorOptions>) {
+    // In the case where apply() is called multiple times, 
     // return the session ID without setting headers to default values
     if (this.started) {
       return this.headers[SESSION_ID];
@@ -190,7 +190,7 @@ export class Interceptor {
     return sessionId;
   }
 
-  protected stopSession() {
+  protected clearSession() {
     this.headers = {};
     this.started = false;
   }
@@ -213,7 +213,7 @@ export class Interceptor {
     return false;
   }
 
-  private clearFetch() {
+  private restoreFetch() {
     if (this.appliedFetch && Interceptor.originalFetch) {
       window.fetch = Interceptor.originalFetch;
     }
@@ -221,7 +221,7 @@ export class Interceptor {
     this.appliedFetch = false;
   }
 
-  private clearXMLHttpRequestOpen() {
+  private restoreXMLHttpRequestOpen() {
     if (this.appliedXMLHttpRequestOpen && Interceptor.originalXMLHttpRequestOpen) {
       XMLHttpRequest.prototype.open = Interceptor.originalXMLHttpRequestOpen;
     }

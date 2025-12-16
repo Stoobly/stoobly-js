@@ -31,7 +31,7 @@ describe('Interceptor', () => {
         urls: [allowedUrl],
       });
       interceptor.withTestTitle(testTitle);
-      await interceptor.start();
+      await interceptor.apply();
     });
 
     afterAll(() => {
@@ -76,7 +76,7 @@ describe('Interceptor', () => {
           urls: [new RegExp(`${allowedOrigin}/.*`)],
         });
         interceptor.withTestTitle(testTitle);
-        await interceptor.start();
+        await interceptor.apply();
 
         await fetch(allowedUrl);
       });
@@ -116,7 +116,7 @@ describe('Interceptor', () => {
           urls: [allowedUrl], // Only allow the original URL, not the notAllowedUrl
         });
         interceptor.withTestTitle(testTitle);
-        await interceptor.start();
+        await interceptor.apply();
 
         await fetch(notAllowedUrl);
       });
@@ -129,7 +129,7 @@ describe('Interceptor', () => {
     describe('deactivate', () => {
       beforeAll(async () => {
         fetchMock.mockClear();
-        interceptor.stop();
+        interceptor.clear();
 
         await fetch(allowedUrl);
       });
@@ -164,7 +164,7 @@ describe('Interceptor', () => {
         urls: [allowedUrl],
       });
       interceptor.withTestTitle(testTitle);
-      await interceptor.start();
+      await interceptor.apply();
     });
 
     afterAll(() => {
@@ -235,7 +235,7 @@ describe('Interceptor', () => {
 
     describe('when strict matching', () => {
       beforeAll(async () => {
-        await xhrInterceptor.start();
+        await xhrInterceptor.apply();
 
         const xhr = new XMLHttpRequest();
         setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
@@ -272,7 +272,7 @@ describe('Interceptor', () => {
           urls: [new RegExp(`${allowedOrigin}/.*`)],
         });
         xhrInterceptor.withTestTitle(testTitle);
-        await xhrInterceptor.start();
+        await xhrInterceptor.apply();
 
         const xhr = new XMLHttpRequest();
         setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
@@ -311,7 +311,7 @@ describe('Interceptor', () => {
           urls: [allowedUrl], // Only allow the original URL, not the notAllowedUrl
         });
         xhrInterceptor.withTestTitle(testTitle);
-        await xhrInterceptor.start();
+        await xhrInterceptor.apply();
 
         const xhr = new XMLHttpRequest();
         setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
@@ -326,7 +326,7 @@ describe('Interceptor', () => {
 
     describe('deactivate', () => {
       beforeAll(async () => {
-        await xhrInterceptor.stop();
+        await xhrInterceptor.clear();
 
         const xhr = new XMLHttpRequest();
         setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
@@ -367,7 +367,7 @@ describe('Interceptor', () => {
         urls: [allowedUrl],
       });
       xhrInterceptor.withTestTitle(testTitle);
-      await xhrInterceptor.start();
+      await xhrInterceptor.apply();
     });
 
     afterAll(() => {
