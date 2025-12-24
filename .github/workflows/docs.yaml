@@ -27,5 +27,5 @@ jobs:
       - uses: actions/upload-pages-artifact@v4
         with:
           path: docs
-      - id: Deploy page
+      - name: Deploy page
         uses: actions/deploy-pages@v4
