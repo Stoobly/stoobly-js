@@ -28,4 +28,5 @@ jobs:
         with:
           path: docs
       - name: Deploy page
+        id: deployment
         uses: actions/deploy-pages@v4
