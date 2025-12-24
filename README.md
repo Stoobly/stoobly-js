@@ -92,7 +92,21 @@ Record requests with specific policy, order, and strategy options:
 
 ```js
 import Stoobly from 'stoobly';
-import { RecordPolicy, RecordOrder, RecordStrategy } from 'stoobly/constants';
+import {
+  RecordPolicy,
+  RecordOrder,
+  RecordStrategy,
+
+  // Additional constants available:
+  //
+  // InterceptMode,   // mock, record, replay, test
+  // MockPolicy,      // All, Found
+  // ReplayPolicy,    // All
+  // TestPolicy,      // All, Found
+  // TestStrategy,    // Diff, Fuzzy, Custom
+  // FirewallAction,  // Exclude, Include
+  // RequestParameter // Header, BodyParam, QueryParam
+} from 'stoobly/constants';
 
 const stoobly = new Stoobly();
 const interceptor = stoobly.interceptor({
@@ -112,6 +126,19 @@ Stop recording requests:
 ```js
 interceptor.clearRecord();
 ```
+
+Stop all interception (recording, mocking, etc.):
+
+```js
+interceptor.clear();
+```
+
+### Test Framework Integration
+
+- **Using Cypress?** See [Integrating with Cypress](#integrating-with-cypress) and use `cypressInterceptor()`
+- **Using Playwright?** See [Integrating with Playwright](#integrating-with-playwright) and use `playwrightInterceptor()`
+- **Not using a test framework?** The examples above use `interceptor()`, which patches `fetch` and `XMLHttpRequest` directly
+
 
 ### Integrating with Cypress
 
@@ -203,4 +230,11 @@ Run Playwright end-to-end tests:
 
 ```sh
 npm run test:playwright
+```
+
+## Generating Docs
+
+Regenerate TypeDoc docs:
+```sh
+npx typedoc
 ```
