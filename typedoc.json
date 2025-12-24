@@ -1,0 +1,13 @@
+{
+  "entryPoints": [
+    "src/stoobly.ts",
+    "src/types/index.ts",
+    "src/constants/index.ts",
+    "src/core/interceptor.ts",
+    "src/core/cypress.ts",
+    "src/core/playwright.ts",
+    "src/models/config/config.ts",
+    "src/models/config/scenario.ts"
+  ],
+  "out": "docs"
+}
