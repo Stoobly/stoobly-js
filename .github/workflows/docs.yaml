@@ -18,10 +18,14 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
-      - run: npm ci
-      - run: npx typedoc
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate documentation
+        run: |
+          npx typedoc
+          touch docs/.nojekyll
       - uses: actions/upload-pages-artifact@v4
         with:
           path: docs
-      - id: deployment
+      - id: Deploy page
         uses: actions/deploy-pages@v4
