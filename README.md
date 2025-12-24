@@ -231,3 +231,10 @@ Run Playwright end-to-end tests:
 ```sh
 npm run test:playwright
 ```
+
+## Generating Docs
+
+Regenerate TypeDoc docs:
+```sh
+npx typedoc
+```
