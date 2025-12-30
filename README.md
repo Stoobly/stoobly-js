@@ -7,6 +7,7 @@
 ![Cypress](https://img.shields.io/badge/Cypress-17202C?logo=cypress&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-45ba4b?logo=playwright&logoColor=white)
 ![License](https://img.shields.io/github/license/Stoobly/stoobly-js)
+[![Docs](https://img.shields.io/badge/docs-stoobly--js-blue?logo=readthedocs)](https://stoobly.github.io/stoobly-js/)
 
 The Stoobly Javascript library provides convenient access to [stoobly-agent](https://github.com/Stoobly/stoobly-agent) API.
 
@@ -232,9 +233,11 @@ Run Playwright end-to-end tests:
 npm run test:playwright
 ```
 
-## Generating Docs
+## Documentation
 
-Regenerate TypeDoc docs:
+Full API documentation is available at: https://stoobly.github.io/stoobly-js/
+
+To regenerate TypeDoc docs locally:
 ```sh
 npx typedoc
 ```
