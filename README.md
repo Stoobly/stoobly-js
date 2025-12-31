@@ -1,3 +1,4 @@
+
 # Stoobly Node.js library
 
 ![Node.js Version](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
@@ -10,6 +11,27 @@
 [![Docs](https://img.shields.io/badge/docs-stoobly--js-blue?logo=readthedocs)](https://stoobly.github.io/stoobly-js/)
 
 The Stoobly Javascript library provides convenient access to [stoobly-agent](https://github.com/Stoobly/stoobly-agent) API.
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE: `npx doctoc README.md --notitle`
+ -->
+
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Examples](#examples)
+  - [Setting a scenario](#setting-a-scenario)
+  - [Recording requests](#recording-requests)
+  - [Test Framework Integration](#test-framework-integration)
+  - [Integrating with Cypress](#integrating-with-cypress)
+  - [Integrating with Playwright](#integrating-with-playwright)
+- [Testing](#testing)
+  - [Test Cypress Integration](#test-cypress-integration)
+  - [Test Playwright Integration](#test-playwright-integration)
+- [Documentation](#documentation)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 
 ## Requirements
 
