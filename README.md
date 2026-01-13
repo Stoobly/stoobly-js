@@ -233,6 +233,26 @@ test.describe('Scenario', () => {
 - `withPage()` and `withTestTitle()` must be called in `beforeEach()` to update the page and test titles for each test because Playwright does not provide a global API to auto-detect test titles
 - Test titles are applied at request interception time
 
+#### Intercepting Browser Extension Requests with Playwright
+
+By default, Playwright intercepts requests at the page level using `withPage()`. To intercept requests from browser extensions, service workers, or all pages in a browser context, use `withContext()`:
+
+```js
+test.beforeEach(async ({ context, page }, testInfo) => {
+    await stooblyInterceptor
+        .withContext(context)  // Intercept all requests in the browser context
+        .apply();
+    stooblyInterceptor.withTestTitle(testInfo.title);
+});
+```
+
+**Using `withContext()` enables:**
+- Intercepting requests from browser extensions
+- Intercepting requests from service workers
+- Intercepting requests across all pages in the same browser context
+
+**Note:** You can use `withContext()` alone, `withPage()` alone, or both together. When both are used, routes are applied to both the page and context, ensuring comprehensive request interception.
+
 ## Testing
 
 Run unit tests:
