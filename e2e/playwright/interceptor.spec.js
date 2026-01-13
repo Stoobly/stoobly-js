@@ -367,3 +367,154 @@ test.describe('urls', () => {
     expect(body2[SCENARIO_KEY.toLowerCase()]).toBeUndefined();
   });
 })
+
+test.describe('Context routing', () => {
+  const contextInterceptor = stoobly.playwrightInterceptor({ 
+    urls: [targetUrl],
+    scenarioKey,
+  });
+
+  test.beforeEach(async ({}, testInfo) => {
+    await contextInterceptor.clear();
+    contextInterceptor.withTestTitle(testInfo.title);
+  });
+
+  test('should intercept with context-only routing', async ({ context }, testInfo) => {
+    await contextInterceptor.withContext(context).apply();
+    
+    const page = await context.newPage();
+    page.goto(targetUrl);
+
+    const response = await page.waitForResponse(response => {
+      return response.url().startsWith(targetUrl) && response.status() === 200;
+    });
+
+    const body = await response.json();
+    expect(body[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
+    expect(body[TEST_TITLE.toLowerCase()]).toEqual(testInfo.title);
+    expect(body[SESSION_ID.toLowerCase()]).toBeDefined();
+    
+    await page.close();
+  });
+
+  test('should intercept with page-only routing', async ({ page }, testInfo) => {
+    await contextInterceptor.withPage(page).apply();
+    
+    page.goto(targetUrl);
+
+    const response = await page.waitForResponse(response => {
+      return response.url().startsWith(targetUrl) && response.status() === 200;
+    });
+
+    const body = await response.json();
+    expect(body[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
+    expect(body[TEST_TITLE.toLowerCase()]).toEqual(testInfo.title);
+    expect(body[SESSION_ID.toLowerCase()]).toBeDefined();
+  });
+
+  test('should NOT intercept new pages with page-only routing', async ({ context, page }, testInfo) => {
+    await contextInterceptor.withPage(page).apply();
+    
+    // Original page should be intercepted
+    page.goto(targetUrl);
+    const response1 = await page.waitForResponse(response => {
+      return response.url().startsWith(targetUrl) && response.status() === 200;
+    });
+    const body1 = await response1.json();
+    expect(body1[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
+    
+    // New page should NOT be intercepted (no context routing)
+    const page2 = await context.newPage();
+    page2.goto(targetUrl);
+    const response2 = await page2.waitForResponse(response => {
+      return response.url().startsWith(targetUrl) && response.status() === 200;
+    });
+    const body2 = await response2.json();
+    expect(body2[SCENARIO_KEY.toLowerCase()]).toBeUndefined();
+    
+    await page2.close();
+  });
+
+  test('should intercept new pages with context routing', async ({ context }, testInfo) => {
+    await contextInterceptor.withContext(context).apply();
+    
+    // Create a new page in the same context
+    const page2 = await context.newPage();
+    page2.goto(targetUrl);
+
+    // Wait for response from the second page
+    const response = await page2.waitForResponse(response => {
+      return response.url().startsWith(targetUrl) && response.status() === 200;
+    });
+
+    const body = await response.json();
+
+    // Should have interceptor headers even though it's a different page
+    expect(body[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
+    expect(body[SESSION_ID.toLowerCase()]).toBeDefined();
+
+    await page2.close();
+  });
+
+  test('should intercept both original and new pages with dual routing', async ({ context, page }, testInfo) => {
+    await contextInterceptor.withContext(context).withPage(page).apply();
+    
+    // Both page and context routing should be active
+    page.goto(targetUrl);
+
+    const response1 = await page.waitForResponse(response => {
+      return response.url().startsWith(targetUrl) && response.status() === 200;
+    });
+
+    const body1 = await response1.json();
+    expect(body1[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
+
+    // Create a new page - should also be intercepted via context routing
+    const page2 = await context.newPage();
+    page2.goto(targetUrl);
+
+    const response2 = await page2.waitForResponse(response => {
+      return response.url().startsWith(targetUrl) && response.status() === 200;
+    });
+
+    const body2 = await response2.json();
+    expect(body2[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
+
+    await page2.close();
+  });
+
+  test('should clear both page and context routes', async ({ context, page }, testInfo) => {
+    await contextInterceptor.withContext(context).withPage(page).apply();
+    
+    // Verify routes are active
+    page.goto(targetUrl);
+    const response1 = await page.waitForResponse(response => {
+      return response.url().startsWith(targetUrl) && response.status() === 200;
+    });
+    const body1 = await response1.json();
+    expect(body1[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
+
+    // Clear routes
+    await contextInterceptor.clear();
+
+    // Verify routes are removed from original page
+    page.goto(targetUrl);
+    const response2 = await page.waitForResponse(response => {
+      return response.url().startsWith(targetUrl) && response.status() === 200;
+    });
+    const body2 = await response2.json();
+    expect(body2[SCENARIO_KEY.toLowerCase()]).toBeUndefined();
+
+    // Verify routes are removed from new pages in context
+    const page2 = await context.newPage();
+    page2.goto(targetUrl);
+    const response3 = await page2.waitForResponse(response => {
+      return response.url().startsWith(targetUrl) && response.status() === 200;
+    });
+    const body3 = await response3.json();
+    expect(body3[SCENARIO_KEY.toLowerCase()]).toBeUndefined();
+
+    await page2.close();
+  });
+})
+
