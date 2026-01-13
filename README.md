@@ -1,3 +1,4 @@
+
 # Stoobly Node.js library
 
 ![Node.js Version](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
@@ -7,8 +8,30 @@
 ![Cypress](https://img.shields.io/badge/Cypress-17202C?logo=cypress&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-45ba4b?logo=playwright&logoColor=white)
 ![License](https://img.shields.io/github/license/Stoobly/stoobly-js)
+[![Docs](https://img.shields.io/badge/docs-stoobly--js-blue?logo=readthedocs)](https://stoobly.github.io/stoobly-js/)
 
 The Stoobly Javascript library provides convenient access to [stoobly-agent](https://github.com/Stoobly/stoobly-agent) API.
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE: `npx doctoc README.md --notitle`
+ -->
+
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Examples](#examples)
+  - [Setting a scenario](#setting-a-scenario)
+  - [Recording requests](#recording-requests)
+  - [Test Framework Integration](#test-framework-integration)
+  - [Integrating with Cypress](#integrating-with-cypress)
+  - [Integrating with Playwright](#integrating-with-playwright)
+- [Testing](#testing)
+  - [Test Cypress Integration](#test-cypress-integration)
+  - [Test Playwright Integration](#test-playwright-integration)
+- [Documentation](#documentation)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 
 ## Requirements
 
@@ -92,7 +115,21 @@ Record requests with specific policy, order, and strategy options:
 
 ```js
 import Stoobly from 'stoobly';
-import { RecordPolicy, RecordOrder, RecordStrategy } from 'stoobly/constants';
+import {
+  RecordPolicy,
+  RecordOrder,
+  RecordStrategy,
+
+  // Additional constants available:
+  //
+  // InterceptMode,   // mock, record, replay, test
+  // MockPolicy,      // All, Found
+  // ReplayPolicy,    // All
+  // TestPolicy,      // All, Found
+  // TestStrategy,    // Diff, Fuzzy, Custom
+  // FirewallAction,  // Exclude, Include
+  // RequestParameter // Header, BodyParam, QueryParam
+} from 'stoobly/constants';
 
 const stoobly = new Stoobly();
 const interceptor = stoobly.interceptor({
@@ -112,6 +149,19 @@ Stop recording requests:
 ```js
 interceptor.clearRecord();
 ```
+
+Stop all interception (recording, mocking, etc.):
+
+```js
+interceptor.clear();
+```
+
+### Test Framework Integration
+
+- **Using Cypress?** See [Integrating with Cypress](#integrating-with-cypress) and use `cypressInterceptor()`
+- **Using Playwright?** See [Integrating with Playwright](#integrating-with-playwright) and use `playwrightInterceptor()`
+- **Not using a test framework?** The examples above use `interceptor()`, which patches `fetch` and `XMLHttpRequest` directly
+
 
 ### Integrating with Cypress
 
@@ -203,4 +253,13 @@ Run Playwright end-to-end tests:
 
 ```sh
 npm run test:playwright
+```
+
+## Documentation
+
+Full API documentation is available at: https://stoobly.github.io/stoobly-js/
+
+To regenerate TypeDoc docs locally:
+```sh
+npx typedoc
 ```

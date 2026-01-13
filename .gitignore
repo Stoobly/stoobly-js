@@ -104,6 +104,9 @@ dist
 .temp
 .cache
 
+# Generated docs
+docs/
+
 # Docusaurus cache and generated files
 .docusaurus
 
