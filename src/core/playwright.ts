@@ -164,7 +164,6 @@ export class Playwright extends Interceptor {
       } catch (error) {
         // Ignore errors if context/page is already closed
         console.warn('Failed to route:', (error as Error).message);
-        return;
       }
     }
 
