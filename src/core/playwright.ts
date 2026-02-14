@@ -156,7 +156,7 @@ export class Playwright extends Interceptor {
     for (const url of this.urls) {
       const handler = async (route: PlaywrightRoute, req: PlaywrightRequest) => {
         const headers = this.decorateHeaders(req.headers());
-        this.filterOverwriteHeader(headers, url as string, urlsToVisit);
+        this.filterOverwriteHeader(headers, url, urlsToVisit);
 
         await route.continue({ headers: headers });
       }
