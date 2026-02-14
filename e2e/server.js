@@ -14,6 +14,11 @@ app.get('/headers', (req, res) => {
   res.json(req.headers);
 });
 
+app.get('/api/data', (req, res) => {
+  console.log('GET /api/data');
+  res.json(req.headers);
+});
+
 app.listen(3000, () => {
   console.log(`Mock server running on ${SERVER_URL}`);
 });
