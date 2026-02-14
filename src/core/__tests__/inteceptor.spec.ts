@@ -1,7 +1,8 @@
 import {jest} from '@jest/globals';
 import {SpiedFunction} from 'jest-mock';
 
-import {SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE} from '@constants/custom_headers';
+import {OVERWRITE_ID, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE} from '@constants/custom_headers';
+import {InterceptMode, RecordOrder, RecordPolicy, RecordStrategy} from '@constants/intercept';
 import {Interceptor} from '@core/interceptor';
 
 describe('Interceptor', () => {
@@ -407,6 +408,485 @@ describe('Interceptor', () => {
 
       test(`adds '${TEST_TITLE}' header to XMLHttpRequest`, async () => {
         expect(setRequestHeaderMock).toHaveBeenCalledWith(TEST_TITLE, testTitle);
+      });
+    });
+  });
+
+  describe('applyRecord', () => {
+    const allowedUrl = `${allowedOrigin}/test`;
+    const initialHeaderKey = 'X-Custom-Header';
+    const initialHeaderValue = 'custom-value';
+    const anotherInitialHeaderKey = 'Authorization';
+    const anotherInitialHeaderValue = 'Bearer token123';
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    beforeAll(async () => {
+      Interceptor.originalFetch = fetchMock;
+
+      interceptor = new Interceptor({
+        scenarioKey,
+        scenarioName,
+        sessionId,
+        urls: [allowedUrl],
+        record: {
+          order: RecordOrder.Overwrite,
+          policy: RecordPolicy.All,
+          strategy: RecordStrategy.Full,
+        },
+      });
+      interceptor.withTestTitle(testTitle);
+      await interceptor.applyRecord();
+    });
+
+    afterAll(() => {
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('preserves initial headers aside from intercept mode header when applyRecord is called', async () => {
+      await fetch(allowedUrl, {
+        headers: {
+          [initialHeaderKey]: initialHeaderValue,
+          [anotherInitialHeaderKey]: anotherInitialHeaderValue,
+        },
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [initialHeaderKey]: initialHeaderValue,
+          [anotherInitialHeaderKey]: anotherInitialHeaderValue,
+          [PROXY_MODE]: InterceptMode.record,
+          [RECORD_ORDER]: RecordOrder.Overwrite,
+          [OVERWRITE_ID]: expect.any(String),
+          [RECORD_POLICY]: RecordPolicy.All,
+          [RECORD_STRATEGY]: RecordStrategy.Full,
+          [SCENARIO_KEY]: scenarioKey,
+          [SCENARIO_NAME]: scenarioName,
+          [SESSION_ID]: expect.any(String),
+          [TEST_TITLE]: testTitle,
+        }),
+      });
+    });
+  });
+
+  describe('applyRecord with RecordOrder.Overwrite per URL behavior', () => {
+    const allowedUrl = `${allowedOrigin}/test-per-url`;
+    const initialHeaderKey = 'X-Custom-Header';
+    const initialHeaderValue = 'custom-value';
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    beforeAll(async () => {
+      Interceptor.originalFetch = fetchMock;
+
+      interceptor = new Interceptor({
+        scenarioKey,
+        scenarioName,
+        sessionId,
+        urls: [allowedUrl],
+        record: {
+          order: RecordOrder.Overwrite,
+          policy: RecordPolicy.All,
+          strategy: RecordStrategy.Full,
+        },
+      });
+      interceptor.withTestTitle(testTitle);
+      await interceptor.applyRecord();
+    });
+
+    afterAll(() => {
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('sends overwrite header only once per URL', async () => {
+      fetchMock.mockClear();
+
+      // First request to allowedUrl should include RECORD_ORDER
+      await fetch(allowedUrl, {
+        headers: {
+          [initialHeaderKey]: initialHeaderValue,
+        },
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [RECORD_ORDER]: RecordOrder.Overwrite,
+          [OVERWRITE_ID]: expect.any(String),
+        }),
+      });
+
+      fetchMock.mockClear();
+
+      // Second request to same URL should NOT include RECORD_ORDER or OVERWRITE_ID
+      await fetch(allowedUrl, {
+        headers: {
+          [initialHeaderKey]: initialHeaderValue,
+        },
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.not.objectContaining({
+          [RECORD_ORDER]: expect.anything(),
+        }),
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.not.objectContaining({
+          [OVERWRITE_ID]: expect.anything(),
+        }),
+      });
+    });
+  });
+
+  describe('applyRecord with RecordOrder.Overwrite per URL pattern (RegExp)', () => {
+    const urlPattern = new RegExp(`${allowedOrigin}/api/.*`);
+    const url1 = `${allowedOrigin}/api/users`;
+    const url2 = `${allowedOrigin}/api/posts`;
+    const initialHeaderKey = 'X-Custom-Header';
+    const initialHeaderValue = 'custom-value';
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    beforeAll(async () => {
+      Interceptor.originalFetch = fetchMock;
+
+      interceptor = new Interceptor({
+        scenarioKey,
+        scenarioName,
+        sessionId,
+        urls: [urlPattern],
+        record: {
+          order: RecordOrder.Overwrite,
+          policy: RecordPolicy.All,
+          strategy: RecordStrategy.Full,
+        },
+      });
+      interceptor.withTestTitle(testTitle);
+      await interceptor.applyRecord();
+    });
+
+    afterAll(() => {
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('sends overwrite header only once per URL pattern, not per actual URL', async () => {
+      fetchMock.mockClear();
+
+      // First request to url1 should include RECORD_ORDER
+      await fetch(url1, {
+        headers: {
+          [initialHeaderKey]: initialHeaderValue,
+        },
+      });
+
+      expect(fetchMock).toHaveBeenLastCalledWith(url1, {
+        headers: expect.objectContaining({
+          [RECORD_ORDER]: RecordOrder.Overwrite,
+          [OVERWRITE_ID]: expect.any(String),
+        }),
+      });
+
+      fetchMock.mockClear();
+
+      // Request to url2 (different URL, same pattern) should NOT include RECORD_ORDER or OVERWRITE_ID
+      await fetch(url2, {
+        headers: {
+          [initialHeaderKey]: initialHeaderValue,
+        },
+      });
+
+      expect(fetchMock).toHaveBeenLastCalledWith(url2, {
+        headers: expect.not.objectContaining({
+          [RECORD_ORDER]: expect.anything(),
+        }),
+      });
+
+      expect(fetchMock).toHaveBeenLastCalledWith(url2, {
+        headers: expect.not.objectContaining({
+          [OVERWRITE_ID]: expect.anything(),
+        }),
+      });
+    });
+  });
+
+  describe('with RecordOrder.Overwrite and multiple URLs', () => {
+    const allowedUrl1 = `${allowedOrigin}/test1`;
+    const allowedUrl2 = `${allowedOrigin}/test2`;
+    const initialHeaderKey = 'X-Custom-Header';
+    const initialHeaderValue = 'custom-value';
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    beforeAll(async () => {
+      Interceptor.originalFetch = fetchMock;
+
+      interceptor = new Interceptor({
+        scenarioKey,
+        scenarioName,
+        sessionId,
+        urls: [allowedUrl1, allowedUrl2],
+        record: {
+          order: RecordOrder.Overwrite,
+          policy: RecordPolicy.All,
+          strategy: RecordStrategy.Full,
+        },
+      });
+      interceptor.withTestTitle(testTitle);
+      await interceptor.applyRecord();
+    });
+
+    afterAll(() => {
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('sends overwrite header once per unique URL', async () => {
+      fetchMock.mockClear();
+
+      // First request to allowedUrl1 should include RECORD_ORDER
+      await fetch(allowedUrl1, {
+        headers: {
+          [initialHeaderKey]: initialHeaderValue,
+        },
+      });
+
+      expect(fetchMock).toHaveBeenLastCalledWith(allowedUrl1, {
+        headers: expect.objectContaining({
+          [RECORD_ORDER]: RecordOrder.Overwrite,
+          [OVERWRITE_ID]: expect.any(String),
+        }),
+      });
+
+      fetchMock.mockClear();
+
+      // First request to allowedUrl2 should also include RECORD_ORDER
+      await fetch(allowedUrl2, {
+        headers: {
+          [initialHeaderKey]: initialHeaderValue,
+        },
+      });
+
+      expect(fetchMock).toHaveBeenLastCalledWith(allowedUrl2, {
+        headers: expect.objectContaining({
+          [RECORD_ORDER]: RecordOrder.Overwrite,
+          [OVERWRITE_ID]: expect.any(String),
+        }),
+      });
+
+      fetchMock.mockClear();
+
+      // Second request to allowedUrl1 should NOT include RECORD_ORDER
+      await fetch(allowedUrl1, {
+        headers: {
+          [initialHeaderKey]: initialHeaderValue,
+        },
+      });
+
+      expect(fetchMock).toHaveBeenLastCalledWith(allowedUrl1, {
+        headers: expect.not.objectContaining({
+          [RECORD_ORDER]: expect.anything(),
+        }),
+      });
+
+      fetchMock.mockClear();
+
+      // Second request to allowedUrl2 should NOT include RECORD_ORDER
+      await fetch(allowedUrl2, {
+        headers: {
+          [initialHeaderKey]: initialHeaderValue,
+        },
+      });
+
+      expect(fetchMock).toHaveBeenLastCalledWith(allowedUrl2, {
+        headers: expect.not.objectContaining({
+          [RECORD_ORDER]: expect.anything(),
+        }),
+      });
+    });
+  });
+
+  describe('applyRecord with RecordOrder.Overwrite - multiple apply() calls', () => {
+    const allowedUrl = `${allowedOrigin}/test-reapply`;
+    const initialHeaderKey = 'X-Custom-Header';
+    const initialHeaderValue = 'custom-value';
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    beforeAll(async () => {
+      Interceptor.originalFetch = fetchMock;
+
+      interceptor = new Interceptor({
+        scenarioKey,
+        scenarioName,
+        sessionId,
+        urls: [allowedUrl],
+        record: {
+          order: RecordOrder.Overwrite,
+          policy: RecordPolicy.All,
+          strategy: RecordStrategy.Full,
+        },
+      });
+      interceptor.withTestTitle(testTitle);
+    });
+
+    afterAll(() => {
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('resets URL tracking when apply() is called again', async () => {
+      // First apply()
+      await interceptor.applyRecord();
+      fetchMock.mockClear();
+
+      // First request should include RECORD_ORDER
+      await fetch(allowedUrl, {
+        headers: {
+          [initialHeaderKey]: initialHeaderValue,
+        },
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [RECORD_ORDER]: RecordOrder.Overwrite,
+          [OVERWRITE_ID]: expect.any(String),
+        }),
+      });
+
+      fetchMock.mockClear();
+
+      // Second request should NOT include RECORD_ORDER or OVERWRITE_ID
+      await fetch(allowedUrl, {
+        headers: {
+          [initialHeaderKey]: initialHeaderValue,
+        },
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.not.objectContaining({
+          [RECORD_ORDER]: expect.anything(),
+        }),
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.not.objectContaining({
+          [OVERWRITE_ID]: expect.anything(),
+        }),
+      });
+
+      // Call apply() again - this should reset urlsToVisit
+      await interceptor.applyRecord();
+      fetchMock.mockClear();
+
+      // First request after reapply should include RECORD_ORDER again
+      await fetch(allowedUrl, {
+        headers: {
+          [initialHeaderKey]: initialHeaderValue,
+        },
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [RECORD_ORDER]: RecordOrder.Overwrite,
+          [OVERWRITE_ID]: expect.any(String),
+        }),
+      });
+
+      fetchMock.mockClear();
+
+      // Second request after reapply should NOT include RECORD_ORDER or OVERWRITE_ID
+      await fetch(allowedUrl, {
+        headers: {
+          [initialHeaderKey]: initialHeaderValue,
+        },
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.not.objectContaining({
+          [RECORD_ORDER]: expect.anything(),
+        }),
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.not.objectContaining({
+          [OVERWRITE_ID]: expect.anything(),
+        }),
+      });
+    });
+
+    describe('with RecordOrder.Append', () => {
+      const allowedUrl = `${allowedOrigin}/test`;
+      const initialHeaderKey = 'X-Custom-Header';
+      const initialHeaderValue = 'custom-value';
+
+      const fetchMock = jest.fn(async (): Promise<Response> => {
+        return Promise.resolve(new Response(null, {status: 200}));
+      });
+      const originalFetch: typeof window.fetch = window.fetch;
+
+      beforeAll(async () => {
+        Interceptor.originalFetch = fetchMock;
+
+        interceptor = new Interceptor({
+          scenarioKey,
+          scenarioName,
+          sessionId,
+          urls: [allowedUrl],
+          record: {
+            order: RecordOrder.Append,
+            policy: RecordPolicy.All,
+            strategy: RecordStrategy.Full,
+          },
+        });
+        interceptor.withTestTitle(testTitle);
+        await interceptor.applyRecord();
+      });
+
+      afterAll(() => {
+        Interceptor.originalFetch = originalFetch;
+      });
+
+      test('does not include OVERWRITE_ID header when RecordOrder is not Overwrite', async () => {
+        fetchMock.mockClear();
+
+        await fetch(allowedUrl, {
+          headers: {
+            [initialHeaderKey]: initialHeaderValue,
+          },
+        });
+
+        expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+          headers: expect.objectContaining({
+            [initialHeaderKey]: initialHeaderValue,
+            [PROXY_MODE]: InterceptMode.record,
+            [RECORD_ORDER]: RecordOrder.Append,
+            [RECORD_POLICY]: RecordPolicy.All,
+            [RECORD_STRATEGY]: RecordStrategy.Full,
+            [SCENARIO_KEY]: scenarioKey,
+            [SCENARIO_NAME]: scenarioName,
+            [SESSION_ID]: expect.any(String),
+            [TEST_TITLE]: testTitle,
+          }),
+        });
+
+        expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+          headers: expect.not.objectContaining({
+            [OVERWRITE_ID]: expect.anything(),
+          }),
+        });
       });
     });
   });
