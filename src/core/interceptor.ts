@@ -1,17 +1,14 @@
-import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
+import { OVERWRITE_ID, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
 import { InterceptMode, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/intercept";
 
 import { InterceptorOptions } from "../types/options";
 import { getTestTitle } from "../utils/test-detection";
 
 export class Interceptor {
-  constructor(options: InterceptorOptions) {
-    this.options = options;
-  }
-
   static originalXMLHttpRequestOpen = typeof XMLHttpRequest !== 'undefined' ? XMLHttpRequest.prototype.open : null;
   static originalFetch = typeof window !== 'undefined' ? window.fetch.bind(window) : null;
 
+  private id: string;
   protected headers: Record<string, string> = {};
   protected options: InterceptorOptions;
   protected urls: (RegExp | string)[] = [];
@@ -19,6 +16,11 @@ export class Interceptor {
   private started: boolean = false;
   private appliedFetch: boolean = false;
   private appliedXMLHttpRequestOpen: boolean = false;
+
+  constructor(options: InterceptorOptions) {
+    this.options = options;
+    this.id = Math.random().toString(36).substring(2, 15);
+  }
 
   // Applies HTTP request interception to fetch and XMLHttpRequest. Clears existing
   // interceptors, sets URL filters if provided, and decorates fetch/XMLHttpRequest to inject custom headers. 
@@ -75,8 +77,33 @@ export class Interceptor {
   withRecordOrder(order?: RecordOrder) {
     if (!order) {
       delete this.headers[RECORD_ORDER];
+      delete this.headers[OVERWRITE_ID];
     } else {
       this.headers[RECORD_ORDER] = order;
+    }
+
+    if (order === RecordOrder.Overwrite) {
+      // Use instance ID for OVERWRITE_ID to group all requests in this recording session.
+      // The ID remains constant across multiple apply() calls, ensuring that all requests
+      // from the same interceptor instance belong to the same "overwrite batch" on the server.
+      // This allows the server to treat all first requests (per URL pattern) as part of a 
+      // single atomic overwrite operation that replaces existing scenario data.
+      //
+      // Example scenario use case:
+      //   const interceptor = new Interceptor({ 
+      //     scenarioKey: 'user-login',
+      //     record: { order: RecordOrder.Overwrite }
+      //   });
+      //   // this.id = "abc123" (generated once)
+      //
+      //   // Test Run 1:
+      //   await interceptor.apply();
+      //   // Server: "Replace 'user-login' scenario with requests from batch abc123"
+      //
+      //   // Test Run 2 (same interceptor, new apply()):
+      //   await interceptor.apply();
+      //   // Server: "Replace 'user-login' scenario with requests from batch abc123 (updated)"
+      this.headers[OVERWRITE_ID] = this.id;
     }
 
     return this;
@@ -148,11 +175,6 @@ export class Interceptor {
       ...this.headers,
     };
 
-    // Only send overwrite record order once
-    if (this.headers[RECORD_ORDER] === RecordOrder.Overwrite) {
-      delete this.headers[RECORD_ORDER];
-    }
-
     // Dynamically detect test title at interception time
     if (!this.headers[TEST_TITLE]) {
       const testTitle = getTestTitle();
@@ -163,6 +185,81 @@ export class Interceptor {
     }
 
     return headers;
+  }
+
+  /**
+   * Filters out the overwrite record order header after the first request to each URL pattern.
+   * 
+   * The overwrite header (RECORD_ORDER and OVERWRITE_ID) should only be sent once per URL 
+   * pattern in this.urls, not once per actual request URL. This method mutates the urlsToVisit 
+   * array to track which patterns have already been visited.
+   * 
+   * Implementation notes:
+   * - urlsToVisit is a copy of this.urls created when the interceptor is decorated
+   * - Each request removes its matching pattern from urlsToVisit
+   * - When urlsToVisit is empty or pattern not found, both RECORD_ORDER and OVERWRITE_ID 
+   *   are removed from subsequent requests
+   * 
+   * Pattern matching:
+   * - String patterns: Direct equality check (url === urlPattern)
+   * - RegExp patterns: Pattern test against the actual URL
+   * 
+   * Lifecycle safety:
+   * - For fetch/XHR: urlsToVisit is created once per decorate() call and shared across
+   *   all intercepted requests. This is safe because restore() removes the interceptor
+   *   and decorate() creates a fresh urlsToVisit.
+   * - For Playwright: urlsToVisit is created per decoratePlaywright() call. When withPage()
+   *   is called with a different page (e.g., in beforeEach), the old handlers are cleaned
+   *   up via restore() and new handlers with fresh urlsToVisit are created.
+   * - For Cypress: Same lifecycle as Playwright - decorateCypress() creates fresh urlsToVisit
+   *   and restore() cleans up old interceptors.
+   * 
+   * Example:
+   *   this.urls = [/\/api\/.*\/], 'https://example.com/exact']
+   *   
+   *   Request 1: 'https://example.com/api/users'
+   *     → Matches /\/api\/.*, removes from urlsToVisit 
+   *     → Includes RECORD_ORDER and OVERWRITE_ID
+   *   Request 2: 'https://example.com/api/posts'
+   *     → Pattern already removed 
+   *     → Omits RECORD_ORDER and OVERWRITE_ID
+   *   Request 3: 'https://example.com/exact'
+   *     → Matches 'https://example.com/exact', removes from urlsToVisit 
+   *     → Includes RECORD_ORDER and OVERWRITE_ID
+   *   Request 4: 'https://example.com/exact'
+   *     → Pattern already removed 
+   *     → Omits RECORD_ORDER and OVERWRITE_ID
+   * 
+   * @param headers - The headers object to potentially modify
+   * @param url - The URL or URL pattern being requested (actual URL for fetch/XHR, pattern for Playwright/Cypress)
+   * @param urlsToVisit - Mutable array of URL patterns that haven't been visited yet
+   */
+  protected filterOverwriteHeader(
+    headers: Record<string, string>,
+    url: RegExp | string,
+    urlsToVisit: (RegExp | string)[],
+  ) {
+    // Only send overwrite record order once for the first request to each URL pattern
+    if (headers[RECORD_ORDER] === RecordOrder.Overwrite) {
+      for (let i = 0; i < urlsToVisit.length; ++i) {
+        const urlPattern = urlsToVisit[i];
+
+        if (urlPattern === url) {
+          urlsToVisit.splice(i, 1);
+          return;
+        }
+
+        // URL pattern is either a string or a regular expression
+        // If URL pattern is a regular expression, test it against the url as a string
+        if (urlPattern instanceof RegExp && urlPattern.test(url as string)) {
+          urlsToVisit.splice(i, 1);
+          return;
+        }
+      }
+      // Pattern not found in urlsToVisit, remove both overwrite headers
+      delete headers[RECORD_ORDER];
+      delete headers[OVERWRITE_ID];
+    }
   }
 
   protected applySession(_options?: Partial<InterceptorOptions>) {
@@ -236,6 +333,7 @@ export class Interceptor {
 
     const self = this;
     const original = Interceptor.originalFetch;
+    const urlsToVisit = this.urls.slice();
 
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       const url = input instanceof Request ? input.url : input.toString();
@@ -248,8 +346,10 @@ export class Interceptor {
         if (!init.headers) {
           init.headers = {};
         }
-
-        init.headers = self.decorateHeaders(init.headers as Record<string, string>);
+        
+        const headers = self.decorateHeaders(init.headers as Record<string, string>);
+        self.filterOverwriteHeader(headers, url, urlsToVisit);
+        init.headers = headers;
       }
 
       return original(input, init);
@@ -265,6 +365,7 @@ export class Interceptor {
 
     const self = this;
     const original = Interceptor.originalXMLHttpRequestOpen;
+    const urlsToVisit = this.urls.slice();
 
     XMLHttpRequest.prototype.open = function (
       _method: string,
@@ -283,6 +384,7 @@ export class Interceptor {
         }
 
         const headers = self.decorateHeaders({});
+        self.filterOverwriteHeader(headers, url, urlsToVisit);
 
         Object.entries(headers).forEach(([key, value]) => {
           this.setRequestHeader(key, value);
