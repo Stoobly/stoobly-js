@@ -150,12 +150,15 @@ export class Playwright extends Interceptor {
     target: Page | BrowserContext,
     handlers: Map<string, (route: PlaywrightRoute, req: PlaywrightRequest) => Promise<void>>
   ) {
+    const urlsToVisit = this.urls.slice();
+
     // Register routes on the current page or context
     for (const url of this.urls) {
       const handler = async (route: PlaywrightRoute, req: PlaywrightRequest) => {
         const headers = this.decorateHeaders(req.headers());
+        this.filterOverwriteHeader(headers, url as string, urlsToVisit);
 
-        await route.continue({ headers });
+        await route.continue({ headers: headers });
       }
       
       try {
