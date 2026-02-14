@@ -1,3 +1,4 @@
+export const OVERWRITE_ID = 'X-Stoobly-Overwrite-Id';
 export const PROXY_MODE = 'X-Stoobly-Proxy-Mode';
 export const RECORD_ORDER = 'X-Stoobly-Record-Order';
 export const RECORD_POLICY = 'X-Stoobly-Record-Policy';
