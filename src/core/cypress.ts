@@ -34,9 +34,13 @@ export class Cypress extends Interceptor {
       return;
     }
 
+    const urlsToVisit = this.urls.slice();
+
     this.urls.forEach((url) => {
       (window as any).cy?.intercept(url, (req: { continue: () => void, headers: any }) => {
-        req.headers = this.decorateHeaders(req.headers); 
+        const headers = this.decorateHeaders(req.headers);
+        this.filterOverwriteHeader(headers, url, urlsToVisit);
+        req.headers = headers;
 
         req.continue();
       });
