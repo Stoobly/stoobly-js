@@ -544,10 +544,11 @@ test.describe('Record order overwrite - per URL pattern tracking', () => {
     await overwriteInterceptor.withPage(page).applyRecord();
 
     // First request to url1 - should include RECORD_ORDER and OVERWRITE_ID
-    page.goto(url1);
-    const response1 = await page.waitForResponse(response => {
+    const response1Promise = page.waitForResponse(response => {
       return response.url().startsWith(url1) && response.status() === 200;
     });
+    await page.goto(url1);
+    const response1 = await response1Promise;
     const body1 = await response1.json();
     
     expect(body1[RECORD_ORDER.toLowerCase()]).toEqual(RecordOrder.Overwrite);
@@ -555,30 +556,33 @@ test.describe('Record order overwrite - per URL pattern tracking', () => {
     const overwriteId = body1['x-stoobly-overwrite-id'];
 
     // Second request to url1 - should NOT include RECORD_ORDER or OVERWRITE_ID
-    page.goto(url1);
-    const response2 = await page.waitForResponse(response => {
+    const response2Promise = page.waitForResponse(response => {
       return response.url().startsWith(url1) && response.status() === 200;
     });
+    await page.goto(url1);
+    const response2 = await response2Promise;
     const body2 = await response2.json();
     
     expect(body2[RECORD_ORDER.toLowerCase()]).toBeUndefined();
     expect(body2['x-stoobly-overwrite-id']).toBeUndefined();
 
     // First request to url2 - should include RECORD_ORDER and OVERWRITE_ID (same ID)
-    await page.goto(url2);
-    const response3 = await page.waitForResponse(response => {
+    const response3Promise = page.waitForResponse(response => {
       return response.url().startsWith(url2) && response.status() === 200;
     });
+    await page.goto(url2);
+    const response3 = await response3Promise;
     const body3 = await response3.json();
     
     expect(body3[RECORD_ORDER.toLowerCase()]).toEqual(RecordOrder.Overwrite);
     expect(body3['x-stoobly-overwrite-id']).toEqual(overwriteId); // Same ID across patterns
     
     // Second request to url2 - should NOT include RECORD_ORDER or OVERWRITE_ID
-    await page.goto(url2);
-    const response4 = await page.waitForResponse(response => {
+    const response4Promise = page.waitForResponse(response => {
       return response.url().startsWith(url2) && response.status() === 200;
     });
+    await page.goto(url2);
+    const response4 = await response4Promise;
     const body4 = await response4.json();
     
     expect(body4[RECORD_ORDER.toLowerCase()]).toBeUndefined();
@@ -592,20 +596,22 @@ test.describe('Record order overwrite - per URL pattern tracking', () => {
     await overwriteInterceptor.withPage(page).applyRecord();
 
     // First request should have overwrite headers
-    page.goto(url1);
-    const response1 = await page.waitForResponse(response => {
+    const response1Promise = page.waitForResponse(response => {
       return response.url().startsWith(url1) && response.status() === 200;
     });
+    await page.goto(url1);
+    const response1 = await response1Promise;
     const body1 = await response1.json();
     
     expect(body1[RECORD_ORDER.toLowerCase()]).toEqual(RecordOrder.Overwrite);
     expect(body1['x-stoobly-overwrite-id']).toBeDefined();
 
     // Second request should NOT have overwrite headers
-    page.goto(url1);
-    const response2 = await page.waitForResponse(response => {
+    const response2Promise = page.waitForResponse(response => {
       return response.url().startsWith(url1) && response.status() === 200;
     });
+    await page.goto(url1);
+    const response2 = await response2Promise;
     const body2 = await response2.json();
     
     expect(body2[RECORD_ORDER.toLowerCase()]).toBeUndefined();
@@ -615,10 +621,11 @@ test.describe('Record order overwrite - per URL pattern tracking', () => {
     await overwriteInterceptor.withPage(page).applyRecord();
 
     // First request after reapply should have overwrite headers again
-    page.goto(url1);
-    const response3 = await page.waitForResponse(response => {
+    const response3Promise = page.waitForResponse(response => {
       return response.url().startsWith(url1) && response.status() === 200;
     });
+    await page.goto(url1);
+    const response3 = await response3Promise;
     const body3 = await response3.json();
     
     expect(body3[RECORD_ORDER.toLowerCase()]).toEqual(RecordOrder.Overwrite);
