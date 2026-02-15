@@ -256,9 +256,17 @@ export class Interceptor {
 
         // Case 2: urlPattern is a RegExp and url is an actual request URL string (fetch/XHR)
         // Test if the pattern matches the actual URL
-        if (urlPattern instanceof RegExp && typeof url === 'string' && urlPattern.test(url)) {
-          urlsToVisit.splice(i, 1);
-          return;
+        if (urlPattern instanceof RegExp && typeof url === 'string') {
+          // Handle stateful RegExp with global/sticky flags
+          // Reset lastIndex to avoid issues with repeated tests on the same RegExp instance
+          const match = urlPattern.test(url);
+          if (urlPattern.global || urlPattern.sticky) {
+            urlPattern.lastIndex = 0;
+          }
+          if (match) {
+            urlsToVisit.splice(i, 1);
+            return;
+          }
         }
 
         // Case 3: Direct string equality (exact string patterns)
