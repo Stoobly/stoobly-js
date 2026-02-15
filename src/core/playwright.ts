@@ -150,7 +150,7 @@ export class Playwright extends Interceptor {
     target: Page | BrowserContext,
     handlers: Map<string, (route: PlaywrightRoute, req: PlaywrightRequest) => Promise<void>>
   ) {
-    const urlsToVisit = this.urls.slice();
+    const urlsToVisit = this.urlsToVisit;
 
     // Register routes on the current page or context
     for (const url of this.urls) {

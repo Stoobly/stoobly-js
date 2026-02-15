@@ -22,6 +22,10 @@ export class Interceptor {
     this.id = Math.random().toString(36).substring(2, 15);
   }
 
+  get urlsToVisit() {
+    return this.urls.slice();
+  }
+
   // Applies HTTP request interception to fetch and XMLHttpRequest. Clears existing
   // interceptors, sets URL filters if provided, and decorates fetch/XMLHttpRequest to inject custom headers. 
   apply(options?: Partial<InterceptorOptions>): string | Promise<string> {
@@ -244,14 +248,21 @@ export class Interceptor {
       for (let i = 0; i < urlsToVisit.length; ++i) {
         const urlPattern = urlsToVisit[i];
 
-        if (urlPattern === url) {
+        // Case 1: Both url and urlPattern are the same RegExp object (Playwright/Cypress)
+        if (url instanceof RegExp && urlPattern instanceof RegExp && url.source === urlPattern.source) {
           urlsToVisit.splice(i, 1);
           return;
         }
 
-        // URL pattern is either a string or a regular expression
-        // If URL pattern is a regular expression, test it against the url as a string
-        if (urlPattern instanceof RegExp && urlPattern.test(url as string)) {
+        // Case 2: urlPattern is a RegExp and url is an actual request URL string (fetch/XHR)
+        // Test if the pattern matches the actual URL
+        if (urlPattern instanceof RegExp && typeof url === 'string' && urlPattern.test(url)) {
+          urlsToVisit.splice(i, 1);
+          return;
+        }
+
+        // Case 3: Direct string equality (exact string patterns)
+        if (urlPattern === url) {
           urlsToVisit.splice(i, 1);
           return;
         }
@@ -333,7 +344,7 @@ export class Interceptor {
 
     const self = this;
     const original = Interceptor.originalFetch;
-    const urlsToVisit = this.urls.slice();
+    const urlsToVisit = this.urlsToVisit;
 
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       const url = input instanceof Request ? input.url : input.toString();
@@ -365,7 +376,7 @@ export class Interceptor {
 
     const self = this;
     const original = Interceptor.originalXMLHttpRequestOpen;
-    const urlsToVisit = this.urls.slice();
+    const urlsToVisit = this.urlsToVisit;
 
     XMLHttpRequest.prototype.open = function (
       _method: string,
