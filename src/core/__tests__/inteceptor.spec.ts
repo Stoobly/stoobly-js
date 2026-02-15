@@ -890,4 +890,224 @@ describe('Interceptor', () => {
       });
     });
   });
+
+  describe('filterOverwriteHeader', () => {
+    let testInterceptor: Interceptor;
+    let headers: Record<string, string>;
+    let urlsToVisit: (RegExp | string)[];
+
+    beforeAll(() => {
+      testInterceptor = new Interceptor({
+        urls: [],
+      });
+    });
+
+    beforeEach(() => {
+      headers = {
+        [RECORD_ORDER]: RecordOrder.Overwrite,
+        [OVERWRITE_ID]: 'test-id',
+      };
+    });
+
+    describe('with string patterns', () => {
+      beforeEach(() => {
+        urlsToVisit = ['https://example.com/exact', 'https://example.com/other'];
+      });
+
+      test('removes pattern on exact string match', () => {
+        const url = 'https://example.com/exact';
+        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+
+        expect(urlsToVisit).toEqual(['https://example.com/other']);
+        expect(headers[RECORD_ORDER]).toBe(RecordOrder.Overwrite);
+        expect(headers[OVERWRITE_ID]).toBe('test-id');
+      });
+
+      test('removes overwrite headers when no match found', () => {
+        const url = 'https://example.com/notfound';
+        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+
+        expect(urlsToVisit).toEqual(['https://example.com/exact', 'https://example.com/other']);
+        expect(headers[RECORD_ORDER]).toBeUndefined();
+        expect(headers[OVERWRITE_ID]).toBeUndefined();
+      });
+    });
+
+    describe('with RegExp patterns', () => {
+      beforeEach(() => {
+        urlsToVisit = [/\/api\/.*/, /\/admin\/.*/];
+      });
+
+      test('removes pattern when actual URL matches RegExp', () => {
+        const url = 'https://example.com/api/users';
+        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+
+        expect(urlsToVisit).toHaveLength(1);
+        expect(urlsToVisit[0]).toEqual(/\/admin\/.*/);
+        expect(headers[RECORD_ORDER]).toBe(RecordOrder.Overwrite);
+        expect(headers[OVERWRITE_ID]).toBe('test-id');
+      });
+
+      test('removes pattern when RegExp pattern matches another RegExp pattern', () => {
+        const url = /\/api\/.*/;
+        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+
+        expect(urlsToVisit).toHaveLength(1);
+        expect(urlsToVisit[0]).toEqual(/\/admin\/.*/);
+        expect(headers[RECORD_ORDER]).toBe(RecordOrder.Overwrite);
+        expect(headers[OVERWRITE_ID]).toBe('test-id');
+      });
+
+      test('removes overwrite headers when URL does not match any pattern', () => {
+        const url = 'https://example.com/other/path';
+        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+
+        expect(urlsToVisit).toHaveLength(2);
+        expect(headers[RECORD_ORDER]).toBeUndefined();
+        expect(headers[OVERWRITE_ID]).toBeUndefined();
+      });
+    });
+
+    describe('with RegExp global flag', () => {
+      test('handles RegExp with global flag correctly', () => {
+        const pattern = /\/api\/.*/g;
+        urlsToVisit = [pattern];
+
+        // First test
+        const url1 = 'https://example.com/api/users';
+        testInterceptor['filterOverwriteHeader'](headers, url1, urlsToVisit);
+
+        expect(urlsToVisit).toHaveLength(0);
+        expect(headers[RECORD_ORDER]).toBe(RecordOrder.Overwrite);
+
+        // Verify lastIndex was reset (pattern should have lastIndex = 0)
+        expect(pattern.lastIndex).toBe(0);
+      });
+
+      test('handles failed match with global flag correctly', () => {
+        const pattern = /\/api\/.*/g;
+        urlsToVisit = [pattern];
+
+        // Test URL that doesn't match
+        const url = 'https://example.com/other/path';
+        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+
+        expect(urlsToVisit).toHaveLength(1);
+        expect(headers[RECORD_ORDER]).toBeUndefined();
+        expect(headers[OVERWRITE_ID]).toBeUndefined();
+
+        // Verify lastIndex was reset
+        expect(pattern.lastIndex).toBe(0);
+      });
+
+      test('handles multiple tests with global flag correctly', () => {
+        const pattern = /\/api\/.*/g;
+        urlsToVisit = [pattern, /\/admin\/.*/];
+
+        // First, test a non-matching URL
+        headers = {
+          [RECORD_ORDER]: RecordOrder.Overwrite,
+          [OVERWRITE_ID]: 'test-id',
+        };
+        const url1 = 'https://example.com/other/path';
+        testInterceptor['filterOverwriteHeader'](headers, url1, urlsToVisit);
+
+        expect(pattern.lastIndex).toBe(0);
+        expect(urlsToVisit).toHaveLength(2);
+
+        // Then test a matching URL - should work despite previous test
+        headers = {
+          [RECORD_ORDER]: RecordOrder.Overwrite,
+          [OVERWRITE_ID]: 'test-id',
+        };
+        const url2 = 'https://example.com/api/users';
+        testInterceptor['filterOverwriteHeader'](headers, url2, urlsToVisit);
+
+        expect(urlsToVisit).toHaveLength(1);
+        expect(urlsToVisit[0]).toEqual(/\/admin\/.*/);
+        expect(headers[RECORD_ORDER]).toBe(RecordOrder.Overwrite);
+      });
+    });
+
+    describe('with RegExp sticky flag', () => {
+      test('handles RegExp with sticky flag correctly', () => {
+        const pattern = /\/api\/.*/y;
+        urlsToVisit = [pattern];
+
+        const url = 'https://example.com/api/users';
+        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+
+        // Verify lastIndex was reset
+        expect(pattern.lastIndex).toBe(0);
+      });
+    });
+
+    describe('with mixed patterns', () => {
+      beforeEach(() => {
+        urlsToVisit = [
+          'https://example.com/exact',
+          /\/api\/.*/,
+          'https://example.com/other',
+        ];
+      });
+
+      test('removes first matching pattern only', () => {
+        const url = 'https://example.com/exact';
+        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+
+        expect(urlsToVisit).toHaveLength(2);
+        expect(urlsToVisit[0]).toEqual(/\/api\/.*/);
+        expect(urlsToVisit[1]).toBe('https://example.com/other');
+        expect(headers[RECORD_ORDER]).toBe(RecordOrder.Overwrite);
+      });
+
+      test('matches RegExp pattern when string pattern does not match', () => {
+        const url = 'https://example.com/api/users';
+        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+
+        expect(urlsToVisit).toHaveLength(2);
+        expect(urlsToVisit[0]).toBe('https://example.com/exact');
+        expect(urlsToVisit[1]).toBe('https://example.com/other');
+        expect(headers[RECORD_ORDER]).toBe(RecordOrder.Overwrite);
+      });
+    });
+
+    describe('when RECORD_ORDER is not Overwrite', () => {
+      test('does not modify headers or urlsToVisit', () => {
+        headers = {
+          [RECORD_ORDER]: RecordOrder.Append,
+          [OVERWRITE_ID]: 'test-id',
+        };
+        urlsToVisit = ['https://example.com/exact'];
+
+        const url = 'https://example.com/exact';
+        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+
+        expect(urlsToVisit).toEqual(['https://example.com/exact']);
+        expect(headers[RECORD_ORDER]).toBe(RecordOrder.Append);
+        expect(headers[OVERWRITE_ID]).toBe('test-id');
+      });
+    });
+
+    describe('edge cases', () => {
+      test('handles empty urlsToVisit array', () => {
+        urlsToVisit = [];
+        const url = 'https://example.com/any';
+        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+
+        expect(urlsToVisit).toEqual([]);
+        expect(headers[RECORD_ORDER]).toBeUndefined();
+        expect(headers[OVERWRITE_ID]).toBeUndefined();
+      });
+
+      test('handles complex RegExp patterns', () => {
+        urlsToVisit = [/^https:\/\/api\.example\.com\/v[0-9]+\/users$/];
+        const url = 'https://api.example.com/v2/users';
+        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+
+        expect(urlsToVisit).toHaveLength(0);
+        expect(headers[RECORD_ORDER]).toBe(RecordOrder.Overwrite);
+      });
+    });
+  });
 });

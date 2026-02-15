@@ -130,19 +130,21 @@ export class Playwright extends Interceptor {
     handlers: Map<string, (route: PlaywrightRoute, req: PlaywrightRequest) => Promise<void>>
   ) {
     for (const url of this.urls) {
-      const handler = handlers.get(url as string);
+      // Use the same stable string key as in decoratePlaywright
+      const mapKey = url instanceof RegExp ? url.source : url;
+      const handler = handlers.get(mapKey);
       if (!handler) {
         continue;
       }
 
       try {
-        await target.unroute(url as string, handler);
+        await target.unroute(url, handler);
       } catch (error) {
         // Ignore errors if context/page is already closed
         console.warn('Failed to unroute:', (error as Error).message);
       }
 
-      handlers.delete(url as string);
+      handlers.delete(mapKey);
     }
   }
 
@@ -161,9 +163,12 @@ export class Playwright extends Interceptor {
         await route.continue({ headers: headers });
       }
       
+      // Use a stable string key for the Map
+      const mapKey = url instanceof RegExp ? url.source : url;
+      
       try {
-        await target.route(url as string, handler);
-        handlers.set(url as string, handler);
+        await target.route(url, handler);
+        handlers.set(mapKey, handler);
       } catch (error) {
         // Ignore errors if context/page is already closed
         console.warn('Failed to route:', (error as Error).message);
