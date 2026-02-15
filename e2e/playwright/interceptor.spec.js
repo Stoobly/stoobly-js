@@ -10,6 +10,11 @@ const targetUrl = `${SERVER_URL}/headers`;
 const stoobly = new Stoobly();
 const interceptor = stoobly.playwrightInterceptor({ 
   urls: [targetUrl],
+  record: {
+    order: RecordOrder.Overwrite,
+    policy: RecordPolicy.All,
+    strategy: RecordStrategy.Full,
+  },
   scenarioKey,
 });
 
@@ -33,6 +38,9 @@ test.describe('Apply scenario with key', () => {
     expect(body[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
     expect(body[TEST_TITLE.toLowerCase()]).toEqual(testInfo.title);
     expect(body[SESSION_ID.toLowerCase()]).toBeDefined();
+    expect(body[RECORD_ORDER.toLowerCase()]).toEqual(RecordOrder.Overwrite);
+    expect(body[RECORD_POLICY.toLowerCase()]).toEqual(RecordPolicy.All);
+    expect(body[RECORD_STRATEGY.toLowerCase()]).toEqual(RecordStrategy.Full);
   });
 
   test('another test should have a different test title in the headers', async ({ page }) => {
@@ -518,3 +526,111 @@ test.describe('Context routing', () => {
   });
 })
 
+test.describe('Record order overwrite - per URL pattern tracking', () => {
+  const url1 = `${SERVER_URL}/headers`;
+  const url2 = `${SERVER_URL}/api/data`;
+  
+  const overwriteInterceptor = stoobly.playwrightInterceptor({ 
+    urls: [url1, url2],
+    record: {
+      order: RecordOrder.Overwrite,
+      policy: RecordPolicy.All,
+      strategy: RecordStrategy.Full,
+    },
+    scenarioKey: 'overwrite-test',
+  });
+
+  test('should send overwrite headers only once per URL pattern', async ({ page }) => {
+    await overwriteInterceptor.withPage(page).applyRecord();
+
+    // First request to url1 - should include RECORD_ORDER and OVERWRITE_ID
+    const response1Promise = page.waitForResponse(response => {
+      return response.url().startsWith(url1) && response.status() === 200;
+    });
+    await page.goto(url1);
+    const response1 = await response1Promise;
+    const body1 = await response1.json();
+    
+    expect(body1[RECORD_ORDER.toLowerCase()]).toEqual(RecordOrder.Overwrite);
+    expect(body1['x-stoobly-overwrite-id']).toBeDefined();
+    const overwriteId = body1['x-stoobly-overwrite-id'];
+
+    // Second request to url1 - should NOT include RECORD_ORDER or OVERWRITE_ID
+    const response2Promise = page.waitForResponse(response => {
+      return response.url().startsWith(url1) && response.status() === 200;
+    });
+    await page.goto(url1);
+    const response2 = await response2Promise;
+    const body2 = await response2.json();
+    
+    expect(body2[RECORD_ORDER.toLowerCase()]).toBeUndefined();
+    expect(body2['x-stoobly-overwrite-id']).toBeUndefined();
+
+    // First request to url2 - should include RECORD_ORDER and OVERWRITE_ID (same ID)
+    const response3Promise = page.waitForResponse(response => {
+      return response.url().startsWith(url2) && response.status() === 200;
+    });
+    await page.goto(url2);
+    const response3 = await response3Promise;
+    const body3 = await response3.json();
+    
+    expect(body3[RECORD_ORDER.toLowerCase()]).toEqual(RecordOrder.Overwrite);
+    expect(body3['x-stoobly-overwrite-id']).toEqual(overwriteId); // Same ID across patterns
+    
+    // Second request to url2 - should NOT include RECORD_ORDER or OVERWRITE_ID
+    const response4Promise = page.waitForResponse(response => {
+      return response.url().startsWith(url2) && response.status() === 200;
+    });
+    await page.goto(url2);
+    const response4 = await response4Promise;
+    const body4 = await response4.json();
+    
+    expect(body4[RECORD_ORDER.toLowerCase()]).toBeUndefined();
+    expect(body4['x-stoobly-overwrite-id']).toBeUndefined();
+
+    await overwriteInterceptor.clear();
+  });
+
+  test('should reset URL tracking when apply() is called again', async ({ page }) => {
+    // First apply
+    await overwriteInterceptor.withPage(page).applyRecord();
+
+    // First request should have overwrite headers
+    const response1Promise = page.waitForResponse(response => {
+      return response.url().startsWith(url1) && response.status() === 200;
+    });
+    await page.goto(url1);
+    const response1 = await response1Promise;
+    const body1 = await response1.json();
+    
+    expect(body1[RECORD_ORDER.toLowerCase()]).toEqual(RecordOrder.Overwrite);
+    expect(body1['x-stoobly-overwrite-id']).toBeDefined();
+
+    // Second request should NOT have overwrite headers
+    const response2Promise = page.waitForResponse(response => {
+      return response.url().startsWith(url1) && response.status() === 200;
+    });
+    await page.goto(url1);
+    const response2 = await response2Promise;
+    const body2 = await response2.json();
+    
+    expect(body2[RECORD_ORDER.toLowerCase()]).toBeUndefined();
+    expect(body2['x-stoobly-overwrite-id']).toBeUndefined();
+
+    // Apply again - should reset tracking
+    await overwriteInterceptor.withPage(page).applyRecord();
+
+    // First request after reapply should have overwrite headers again
+    const response3Promise = page.waitForResponse(response => {
+      return response.url().startsWith(url1) && response.status() === 200;
+    });
+    await page.goto(url1);
+    const response3 = await response3Promise;
+    const body3 = await response3.json();
+    
+    expect(body3[RECORD_ORDER.toLowerCase()]).toEqual(RecordOrder.Overwrite);
+    expect(body3['x-stoobly-overwrite-id']).toBeDefined();
+
+    await overwriteInterceptor.clear();
+  });
+})
