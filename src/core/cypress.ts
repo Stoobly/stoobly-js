@@ -1,6 +1,6 @@
 import {InterceptorOptions} from "../types/options";
-import {Interceptor} from "./interceptor";
 import {setTestFramework, CYPRESS_FRAMEWORK} from "../utils/test-detection";
+import {Interceptor} from "./interceptor";
 
 export class Cypress extends Interceptor {
   private appliedCypress: boolean = false;

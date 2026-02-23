@@ -14,7 +14,7 @@ export interface InterceptorOptions {
   scenarioKey?: string;
   scenarioName?: string;
   sessionId?: string;
-  urls: InterceptorUrl[];
+  urls: (string | RegExp)[] | InterceptorUrl[];
 }
 
 export interface InterceptorUrl {

@@ -27,13 +27,24 @@ export class Interceptor {
     return this.urls.map((u) => u.pattern).slice();
   }
 
+  protected normalizeUrls(
+    urls: (string | RegExp)[] | InterceptorUrl[]
+  ): InterceptorUrl[] {
+    if (!urls?.length) return [];
+    const first = urls[0];
+    if (typeof first === "string" || first instanceof RegExp) {
+      return (urls as (string | RegExp)[]).map((pattern) => ({ pattern }));
+    }
+    return urls as InterceptorUrl[];
+  }
+
   // Applies HTTP request interception to fetch and XMLHttpRequest. Clears existing
   // interceptors, sets URL filters if provided, and decorates fetch/XMLHttpRequest to inject custom headers. 
   apply(options?: Partial<InterceptorOptions>): string | Promise<string> {
     this.restore();
 
     // After clearing intercepts on old urls, apply intercepts on new urls
-    this.urls = options?.urls || this.options.urls;
+    this.urls = this.normalizeUrls(options?.urls ?? this.options.urls);
 
     this.decorate();
 

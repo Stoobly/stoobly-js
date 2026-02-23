@@ -107,6 +107,28 @@ describe('Interceptor', () => {
       });
     });
 
+    describe('when urls is (string | RegExp)[] for backward compatibility', () => {
+      beforeAll(async () => {
+        interceptor = new Interceptor({
+          scenarioKey,
+          sessionId,
+          urls: [allowedUrl, new RegExp(`${allowedOrigin}/other`)],
+        });
+        interceptor.withTestTitle(testTitle);
+        await interceptor.apply();
+
+        await fetch(allowedUrl);
+      });
+
+      test(`adds headers when url matches string pattern`, async () => {
+        expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+          headers: expect.objectContaining({
+            [SCENARIO_KEY]: scenarioKey,
+          }),
+        });
+      });
+    });
+
     describe('when not allowed', () => {
       const notAllowedUrl = `${notAllowedOrigin}/test`;
 

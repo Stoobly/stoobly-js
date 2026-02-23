@@ -1,8 +1,9 @@
-import {Page, Route as PlaywrightRoute, Request as PlaywrightRequest, BrowserContext } from "../types/playwright";
-import {InterceptorOptions} from "../types/options";
-import {Interceptor} from "./interceptor";
-import {setTestFramework, PLAYWRIGHT_FRAMEWORK} from "../utils/test-detection";
 import { InterceptMode } from "@constants/intercept";
+
+import { InterceptorOptions } from "../types/options";
+import {Page, Route as PlaywrightRoute, Request as PlaywrightRequest, BrowserContext } from "../types/playwright";
+import {setTestFramework, PLAYWRIGHT_FRAMEWORK} from "../utils/test-detection";
+import {Interceptor} from "./interceptor";
 
 export class Playwright extends Interceptor {
   private appliedPlaywright: boolean = false;
@@ -43,7 +44,7 @@ export class Playwright extends Interceptor {
     await this.restore();
 
     // After clearing intercepts on old urls, apply intercepts on new urls
-    this.urls = options?.urls || this.options.urls;
+    this.urls = this.normalizeUrls(options?.urls ?? this.options.urls);
     await this.decorate();
 
     return this.applySession(options);
