@@ -9,7 +9,7 @@ const targetUrl = `${SERVER_URL}/headers`;
 
 const stoobly = new Stoobly();
 const interceptor = stoobly.playwrightInterceptor({ 
-  urls: [targetUrl],
+  urls: [{ pattern: targetUrl }],
   record: {
     order: RecordOrder.Overwrite,
     policy: RecordPolicy.All,
@@ -364,7 +364,7 @@ test.describe('urls', () => {
     const body = await response.json();
     expect(body[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
 
-    await interceptor.apply({ urls: [`${SERVER_URL}/different`] });
+    await interceptor.apply({ urls: [{ pattern: `${SERVER_URL}/different` }] });
 
     page.goto(targetUrl);
 
@@ -378,7 +378,7 @@ test.describe('urls', () => {
 
 test.describe('Context routing', () => {
   const contextInterceptor = stoobly.playwrightInterceptor({ 
-    urls: [targetUrl],
+    urls: [{ pattern: targetUrl }],
     scenarioKey,
   });
 
@@ -531,7 +531,7 @@ test.describe('Record order overwrite - per URL pattern tracking', () => {
   const url2 = `${SERVER_URL}/api/data`;
   
   const overwriteInterceptor = stoobly.playwrightInterceptor({ 
-    urls: [url1, url2],
+    urls: [{ pattern: url1 }, { pattern: url2 }],
     record: {
       order: RecordOrder.Overwrite,
       policy: RecordPolicy.All,

@@ -1,7 +1,7 @@
 import { OVERWRITE_ID, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
 import { InterceptMode, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/intercept";
 
-import { InterceptorOptions } from "../types/options";
+import { InterceptorOptions, InterceptorUrl } from "../types/options";
 import { getTestTitle } from "../utils/test-detection";
 
 export class Interceptor {
@@ -11,7 +11,7 @@ export class Interceptor {
   private id: string;
   protected headers: Record<string, string> = {};
   protected options: InterceptorOptions;
-  protected urls: (RegExp | string)[] = [];
+  protected urls: InterceptorUrl[] = [];
 
   private started: boolean = false;
   private appliedFetch: boolean = false;
@@ -23,7 +23,7 @@ export class Interceptor {
   }
 
   get urlsToVisit() {
-    return this.urls.slice();
+    return this.urls.map((u) => u.pattern).slice();
   }
 
   // Applies HTTP request interception to fetch and XMLHttpRequest. Clears existing
@@ -219,20 +219,12 @@ export class Interceptor {
    *   and restore() cleans up old interceptors.
    * 
    * Example:
-   *   this.urls = [/\/api\/.*\/], 'https://example.com/exact']
-   *   
-   *   Request 1: 'https://example.com/api/users'
-   *     → Matches /\/api\/.*, removes from urlsToVisit 
-   *     → Includes RECORD_ORDER and OVERWRITE_ID
-   *   Request 2: 'https://example.com/api/posts'
-   *     → Pattern already removed 
-   *     → Omits RECORD_ORDER and OVERWRITE_ID
-   *   Request 3: 'https://example.com/exact'
-   *     → Matches 'https://example.com/exact', removes from urlsToVisit 
-   *     → Includes RECORD_ORDER and OVERWRITE_ID
-   *   Request 4: 'https://example.com/exact'
-   *     → Pattern already removed 
-   *     → Omits RECORD_ORDER and OVERWRITE_ID
+   *   this.urls = [{ pattern: /\/api\/.+/ }, { pattern: 'https://example.com/exact' }]
+   *
+   *   Request 1 to /api/users - matches first pattern, removes from urlsToVisit, includes headers
+   *   Request 2 to /api/posts - pattern already removed, omits overwrite headers
+   *   Request 3 to exact URL - matches second pattern, removes from urlsToVisit, includes headers
+   *   Request 4 to exact URL - pattern already removed, omits overwrite headers
    * 
    * @param headers - The headers object to potentially modify
    * @param url - The URL or URL pattern being requested (actual URL for fetch/XHR, pattern for Playwright/Cypress)
@@ -313,15 +305,15 @@ export class Interceptor {
 
   private allowedUrl(url: string) {
     for (let i = 0; i < this.urls.length; ++i) {
-      const urlAllowed = this.urls[i];
+      const pattern = this.urls[i].pattern;
 
-      if (urlAllowed instanceof RegExp) {
-        if (urlAllowed.test(url)) {
+      if (pattern instanceof RegExp) {
+        if (pattern.test(url)) {
           return true;
         }
       }
 
-      if (urlAllowed === url) {
+      if (pattern === url) {
         return true;
       }
     }

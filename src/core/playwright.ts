@@ -129,16 +129,17 @@ export class Playwright extends Interceptor {
     target: Page | BrowserContext,
     handlers: Map<string, (route: PlaywrightRoute, req: PlaywrightRequest) => Promise<void>>
   ) {
-    for (const url of this.urls) {
+    for (const interceptorUrl of this.urls) {
+      const pattern = interceptorUrl.pattern;
       // Use the same stable string key as in decoratePlaywright
-      const mapKey = url instanceof RegExp ? url.source : url;
+      const mapKey = pattern instanceof RegExp ? pattern.source : pattern;
       const handler = handlers.get(mapKey);
       if (!handler) {
         continue;
       }
 
       try {
-        await target.unroute(url, handler);
+        await target.unroute(pattern, handler);
       } catch (error) {
         // Ignore errors if context/page is already closed
         console.warn('Failed to unroute:', (error as Error).message);
@@ -155,19 +156,20 @@ export class Playwright extends Interceptor {
     const urlsToVisit = this.urlsToVisit;
 
     // Register routes on the current page or context
-    for (const url of this.urls) {
+    for (const interceptorUrl of this.urls) {
+      const pattern = interceptorUrl.pattern;
       const handler = async (route: PlaywrightRoute, req: PlaywrightRequest) => {
         const headers = this.decorateHeaders(req.headers());
-        this.filterOverwriteHeader(headers, url, urlsToVisit);
+        this.filterOverwriteHeader(headers, pattern, urlsToVisit);
 
         await route.continue({ headers: headers });
       }
       
       // Use a stable string key for the Map
-      const mapKey = url instanceof RegExp ? url.source : url;
+      const mapKey = pattern instanceof RegExp ? pattern.source : pattern;
       
       try {
-        await target.route(url, handler);
+        await target.route(pattern, handler);
         handlers.set(mapKey, handler);
       } catch (error) {
         // Ignore errors if context/page is already closed

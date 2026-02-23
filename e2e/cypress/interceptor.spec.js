@@ -7,7 +7,7 @@ const targetUrl = `${SERVER_URL}/headers`;
 
 const stoobly = new Stoobly();
 const interceptor = stoobly.cypressInterceptor({ 
-  urls: [targetUrl],
+  urls: [{ pattern: targetUrl }],
   scenarioKey,
 });
 
@@ -251,7 +251,7 @@ describe('Record order overwrite - per URL pattern tracking', () => {
   const url2 = `${SERVER_URL}/api/data`;
   
   const overwriteInterceptor = stoobly.cypressInterceptor({ 
-    urls: [url1, url2],
+    urls: [{ pattern: url1 }, { pattern: url2 }],
     record: {
       order: RecordOrder.Overwrite,
       policy: RecordPolicy.All,

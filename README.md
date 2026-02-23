@@ -70,7 +70,7 @@ const stoobly = new Stoobly();
 const interceptor = stoobly.interceptor({
     scenarioKey: '<SCENARIO-KEY>',
     scenarioName: '<SCENARIO-NAME>', // If scenario name is used instead of key, it should be unique
-    urls: [new RegExp('https://docs.stoobly.com/.*')]
+    urls: [{ pattern: new RegExp('https://docs.stoobly.com/.*') }]
 });
 
 const sessionId = interceptor.apply();
@@ -85,7 +85,7 @@ const stoobly = new Stoobly();
 const interceptor = stoobly.interceptor({
     scenarioKey: '<SCENARIO-KEY>',
     sessionId: '<SESSION-ID>',
-    urls: [new RegExp('https://docs.stoobly.com/.*')]
+    urls: [{ pattern: new RegExp('https://docs.stoobly.com/.*') }]
 });
 
 const sessionId = interceptor.apply();
@@ -101,8 +101,8 @@ const stoobly = new Stoobly();
 const interceptor = stoobly.interceptor({
     scenarioKey: '<SCENARIO-KEY>',
     urls: [
-        'https://docs.stoobly.com/use-cases',
-        'https://docs.stoobly.com/getting-started'
+        { pattern: 'https://docs.stoobly.com/use-cases' },
+        { pattern: 'https://docs.stoobly.com/getting-started' }
     ]
 });
 
@@ -133,7 +133,7 @@ import {
 
 const stoobly = new Stoobly();
 const interceptor = stoobly.interceptor({
-    urls: ['https://docs.stoobly.com/use-cases'],
+    urls: [{ pattern: 'https://docs.stoobly.com/use-cases' }],
     record: {
         policy: RecordPolicy.All,
         order: RecordOrder.Overwrite, // Defaults to RecordOrder.Append
@@ -177,7 +177,7 @@ const stooblyInterceptor = stoobly.cypressInterceptor({
         strategy: RecordStrategy.Full,
     },
     scenarioKey: '<SCENARIO-KEY>',
-    urls: ['<URLS>'],
+    urls: [{ pattern: '<URLS>' }],
 });
 
 describe('Scenario', () => {
@@ -213,7 +213,7 @@ const stooblyInterceptor = stoobly.playwrightInterceptor({
         strategy: RecordStrategy.Full,
     },
     scenarioKey: '<SCENARIO-KEY>',
-    urls: ['<URLS>'],
+    urls: [{ pattern: '<URLS>' }],
 });
 
 test.describe('Scenario', () => {

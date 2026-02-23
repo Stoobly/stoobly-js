@@ -20,8 +20,8 @@ export class Cypress extends Interceptor {
       return;
     }
 
-    this.urls.forEach((url) => {
-      (window as any).cy?.intercept(url, (req: { continue: () => void }) => {
+    this.urls.forEach((interceptorUrl) => {
+      (window as any).cy?.intercept(interceptorUrl.pattern, (req: { continue: () => void }) => {
         req.continue();
       });
     });
@@ -36,10 +36,10 @@ export class Cypress extends Interceptor {
 
     const urlsToVisit = this.urlsToVisit;
 
-    this.urls.forEach((url) => {
-      (window as any).cy?.intercept(url, (req: { continue: () => void, headers: any }) => {
+    this.urls.forEach((interceptorUrl) => {
+      (window as any).cy?.intercept(interceptorUrl.pattern, (req: { continue: () => void, headers: any }) => {
         const headers = this.decorateHeaders(req.headers);
-        this.filterOverwriteHeader(headers, url, urlsToVisit);
+        this.filterOverwriteHeader(headers, interceptorUrl.pattern, urlsToVisit);
         req.headers = headers;
 
         req.continue();

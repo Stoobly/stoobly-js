@@ -29,7 +29,7 @@ describe('Interceptor', () => {
       interceptor = new Interceptor({
         scenarioKey,
         sessionId,
-        urls: [allowedUrl],
+        urls: [{ pattern: allowedUrl }],
       });
       interceptor.withTestTitle(testTitle);
       await interceptor.apply();
@@ -74,7 +74,7 @@ describe('Interceptor', () => {
         interceptor = new Interceptor({
           scenarioKey,
           sessionId,
-          urls: [new RegExp(`${allowedOrigin}/.*`)],
+          urls: [{ pattern: new RegExp(`${allowedOrigin}/.*`) }],
         });
         interceptor.withTestTitle(testTitle);
         await interceptor.apply();
@@ -114,7 +114,7 @@ describe('Interceptor', () => {
         interceptor = new Interceptor({
           scenarioKey,
           sessionId,
-          urls: [allowedUrl], // Only allow the original URL, not the notAllowedUrl
+          urls: [{ pattern: allowedUrl }], // Only allow the original URL, not the notAllowedUrl
         });
         interceptor.withTestTitle(testTitle);
         await interceptor.apply();
@@ -162,7 +162,7 @@ describe('Interceptor', () => {
       interceptor = new Interceptor({
         scenarioName,
         sessionId,
-        urls: [allowedUrl],
+        urls: [{ pattern: allowedUrl }],
       });
       interceptor.withTestTitle(testTitle);
       await interceptor.apply();
@@ -225,7 +225,7 @@ describe('Interceptor', () => {
       xhrInterceptor = new Interceptor({
         scenarioKey,
         sessionId,
-        urls: [allowedUrl],
+        urls: [{ pattern: allowedUrl }],
       });
       xhrInterceptor.withTestTitle(testTitle);
     });
@@ -270,7 +270,7 @@ describe('Interceptor', () => {
         xhrInterceptor = new Interceptor({
           scenarioKey,
           sessionId,
-          urls: [new RegExp(`${allowedOrigin}/.*`)],
+          urls: [{ pattern: new RegExp(`${allowedOrigin}/.*`) }],
         });
         xhrInterceptor.withTestTitle(testTitle);
         await xhrInterceptor.apply();
@@ -309,7 +309,7 @@ describe('Interceptor', () => {
         xhrInterceptor = new Interceptor({
           scenarioKey,
           sessionId,
-          urls: [allowedUrl], // Only allow the original URL, not the notAllowedUrl
+          urls: [{ pattern: allowedUrl }], // Only allow the original URL, not the notAllowedUrl
         });
         xhrInterceptor.withTestTitle(testTitle);
         await xhrInterceptor.apply();
@@ -365,7 +365,7 @@ describe('Interceptor', () => {
       xhrInterceptor = new Interceptor({
         scenarioName,
         sessionId,
-        urls: [allowedUrl],
+        urls: [{ pattern: allowedUrl }],
       });
       xhrInterceptor.withTestTitle(testTitle);
       await xhrInterceptor.apply();
@@ -431,7 +431,7 @@ describe('Interceptor', () => {
         scenarioKey,
         scenarioName,
         sessionId,
-        urls: [allowedUrl],
+        urls: [{ pattern: allowedUrl }],
         record: {
           order: RecordOrder.Overwrite,
           policy: RecordPolicy.All,
@@ -489,7 +489,7 @@ describe('Interceptor', () => {
         scenarioKey,
         scenarioName,
         sessionId,
-        urls: [allowedUrl],
+        urls: [{ pattern: allowedUrl }],
         record: {
           order: RecordOrder.Overwrite,
           policy: RecordPolicy.All,
@@ -563,7 +563,7 @@ describe('Interceptor', () => {
         scenarioKey,
         scenarioName,
         sessionId,
-        urls: [urlPattern],
+        urls: [{ pattern: urlPattern }],
         record: {
           order: RecordOrder.Overwrite,
           policy: RecordPolicy.All,
@@ -636,7 +636,7 @@ describe('Interceptor', () => {
         scenarioKey,
         scenarioName,
         sessionId,
-        urls: [allowedUrl1, allowedUrl2],
+        urls: [{ pattern: allowedUrl1 }, { pattern: allowedUrl2 }],
         record: {
           order: RecordOrder.Overwrite,
           policy: RecordPolicy.All,
@@ -733,7 +733,7 @@ describe('Interceptor', () => {
         scenarioKey,
         scenarioName,
         sessionId,
-        urls: [allowedUrl],
+        urls: [{ pattern: allowedUrl }],
         record: {
           order: RecordOrder.Overwrite,
           policy: RecordPolicy.All,
@@ -844,7 +844,7 @@ describe('Interceptor', () => {
           scenarioKey,
           scenarioName,
           sessionId,
-          urls: [allowedUrl],
+          urls: [{ pattern: allowedUrl }],
           record: {
             order: RecordOrder.Append,
             policy: RecordPolicy.All,
@@ -916,7 +916,7 @@ describe('Interceptor', () => {
 
       test('removes pattern on exact string match', () => {
         const url = 'https://example.com/exact';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toEqual(['https://example.com/other']);
         expect(headers[RECORD_ORDER]).toBe(RecordOrder.Overwrite);
@@ -925,7 +925,7 @@ describe('Interceptor', () => {
 
       test('removes overwrite headers when no match found', () => {
         const url = 'https://example.com/notfound';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toEqual(['https://example.com/exact', 'https://example.com/other']);
         expect(headers[RECORD_ORDER]).toBeUndefined();
@@ -940,7 +940,7 @@ describe('Interceptor', () => {
 
       test('removes pattern when actual URL matches RegExp', () => {
         const url = 'https://example.com/api/users';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toHaveLength(1);
         expect(urlsToVisit[0]).toEqual(/\/admin\/.*/);
@@ -950,7 +950,7 @@ describe('Interceptor', () => {
 
       test('removes pattern when RegExp pattern matches another RegExp pattern', () => {
         const url = /\/api\/.*/;
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toHaveLength(1);
         expect(urlsToVisit[0]).toEqual(/\/admin\/.*/);
@@ -960,7 +960,7 @@ describe('Interceptor', () => {
 
       test('removes overwrite headers when URL does not match any pattern', () => {
         const url = 'https://example.com/other/path';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toHaveLength(2);
         expect(headers[RECORD_ORDER]).toBeUndefined();
@@ -975,7 +975,7 @@ describe('Interceptor', () => {
 
         // First test
         const url1 = 'https://example.com/api/users';
-        testInterceptor['filterOverwriteHeader'](headers, url1, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url1, urlsToVisit);
 
         expect(urlsToVisit).toHaveLength(0);
         expect(headers[RECORD_ORDER]).toBe(RecordOrder.Overwrite);
@@ -990,7 +990,7 @@ describe('Interceptor', () => {
 
         // Test URL that doesn't match
         const url = 'https://example.com/other/path';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toHaveLength(1);
         expect(headers[RECORD_ORDER]).toBeUndefined();
@@ -1010,7 +1010,7 @@ describe('Interceptor', () => {
           [OVERWRITE_ID]: 'test-id',
         };
         const url1 = 'https://example.com/other/path';
-        testInterceptor['filterOverwriteHeader'](headers, url1, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url1, urlsToVisit);
 
         expect(pattern.lastIndex).toBe(0);
         expect(urlsToVisit).toHaveLength(2);
@@ -1021,7 +1021,7 @@ describe('Interceptor', () => {
           [OVERWRITE_ID]: 'test-id',
         };
         const url2 = 'https://example.com/api/users';
-        testInterceptor['filterOverwriteHeader'](headers, url2, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url2, urlsToVisit);
 
         expect(urlsToVisit).toHaveLength(1);
         expect(urlsToVisit[0]).toEqual(/\/admin\/.*/);
@@ -1035,7 +1035,7 @@ describe('Interceptor', () => {
         urlsToVisit = [pattern];
 
         const url = 'https://example.com/api/users';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         // Verify lastIndex was reset
         expect(pattern.lastIndex).toBe(0);
@@ -1053,7 +1053,7 @@ describe('Interceptor', () => {
 
       test('removes first matching pattern only', () => {
         const url = 'https://example.com/exact';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toHaveLength(2);
         expect(urlsToVisit[0]).toEqual(/\/api\/.*/);
@@ -1063,7 +1063,7 @@ describe('Interceptor', () => {
 
       test('matches RegExp pattern when string pattern does not match', () => {
         const url = 'https://example.com/api/users';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toHaveLength(2);
         expect(urlsToVisit[0]).toBe('https://example.com/exact');
@@ -1081,7 +1081,7 @@ describe('Interceptor', () => {
         urlsToVisit = ['https://example.com/exact'];
 
         const url = 'https://example.com/exact';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toEqual(['https://example.com/exact']);
         expect(headers[RECORD_ORDER]).toBe(RecordOrder.Append);
@@ -1093,7 +1093,7 @@ describe('Interceptor', () => {
       test('handles empty urlsToVisit array', () => {
         urlsToVisit = [];
         const url = 'https://example.com/any';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toEqual([]);
         expect(headers[RECORD_ORDER]).toBeUndefined();
@@ -1103,7 +1103,7 @@ describe('Interceptor', () => {
       test('handles complex RegExp patterns', () => {
         urlsToVisit = [/^https:\/\/api\.example\.com\/v[0-9]+\/users$/];
         const url = 'https://api.example.com/v2/users';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toHaveLength(0);
         expect(headers[RECORD_ORDER]).toBe(RecordOrder.Overwrite);

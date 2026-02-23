@@ -37,6 +37,11 @@ export interface AgentProxySettings {
   url: string;
 }
 
+export interface MatchRule {
+  modes: InterceptMode[];
+  components: RequestParameter;
+}
+
 export interface ProxyDataRules {
   mock_policy: MockPolicy;
   record_policy: RecordPolicy;
@@ -60,22 +65,9 @@ export interface ProxyMatchRule {
   pattern: string;
 }
 
-export interface ProxyRewriteRules {
+export interface ProxyRewriteRules extends RewriteRule {
   methods: HTTP_METHOD[];
   pattern: string;
-  parameters: ParameterRule;
-}
-
-export interface RewriteRule {
-  methods: string[];
-  pattern: string;
-  parameter_rules: Array<ParameterRule>;
-}
-
-export interface Rewrite {
-  type: RequestParameter;
-  name: string;
-  value: string;
 }
 
 export interface ParameterRule {
@@ -101,4 +93,16 @@ export interface AgentRemoteSettings {
 export interface AgentUISettings {
   active: boolean;
   url: string;
+}
+
+export interface RewriteRule {
+  urlRules?: UrlRule[];
+  parameterRules?: ParameterRule[];
+}
+
+export interface UrlRule {
+  modes?: InterceptMode[];
+  path?: string;
+  port?: string;
+  scheme?: string;
 }
