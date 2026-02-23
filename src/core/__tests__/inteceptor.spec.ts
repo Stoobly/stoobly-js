@@ -1,8 +1,8 @@
 import {jest} from '@jest/globals';
 import {SpiedFunction} from 'jest-mock';
 
-import {OVERWRITE_ID, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE} from '@constants/custom_headers';
-import {InterceptMode, RecordOrder, RecordPolicy, RecordStrategy} from '@constants/intercept';
+import {MATCH_RULES, OVERWRITE_ID, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, REWRITE_RULES, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE} from '@constants/custom_headers';
+import {InterceptMode, RecordOrder, RecordPolicy, RecordStrategy, RequestParameter} from '@constants/intercept';
 import {Interceptor} from '@core/interceptor';
 
 describe('Interceptor', () => {
@@ -211,6 +211,192 @@ describe('Interceptor', () => {
     });
   });
 
+  describe('fetch with matchRules', () => {
+    const allowedUrl = `${allowedOrigin}/test`;
+    const matchRules = [
+      {modes: [InterceptMode.replay], components: RequestParameter.Header},
+    ];
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    beforeAll(async () => {
+      Interceptor.originalFetch = fetchMock;
+
+      interceptor = new Interceptor({
+        scenarioKey,
+        sessionId,
+        urls: [{pattern: allowedUrl, matchRules}],
+      });
+      interceptor.withTestTitle(testTitle);
+      await interceptor.apply();
+    });
+
+    afterAll(() => {
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    describe('when strict matching', () => {
+      beforeAll(async () => {
+        await fetch(allowedUrl);
+      });
+
+      test(`adds '${MATCH_RULES}' header with base64-encoded JSON to fetch requests`, () => {
+        expect(fetchMock).toHaveBeenCalledWith(
+          allowedUrl,
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              [MATCH_RULES]: expect.any(String),
+            }),
+          })
+        );
+        const call = fetchMock.mock.calls.find(
+          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === allowedUrl
+        );
+        const headers = (call as unknown as [string, RequestInit?])[1] as {headers?: Record<string, string>};
+        const encoded = headers?.headers?.[MATCH_RULES];
+        const decoded = JSON.parse(
+          Buffer.from(encoded!, 'base64').toString('utf-8')
+        );
+        expect(decoded).toEqual(matchRules);
+      });
+    });
+  });
+
+  describe('fetch with rewriteRules', () => {
+    const allowedUrl = `${allowedOrigin}/test`;
+    const rewriteRules = [{urlRules: [{path: '/new-path'}]}];
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    beforeAll(async () => {
+      Interceptor.originalFetch = fetchMock;
+
+      interceptor = new Interceptor({
+        scenarioKey,
+        sessionId,
+        urls: [{pattern: allowedUrl, rewriteRules}],
+      });
+      interceptor.withTestTitle(testTitle);
+      await interceptor.apply();
+    });
+
+    afterAll(() => {
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    describe('when strict matching', () => {
+      beforeAll(async () => {
+        await fetch(allowedUrl);
+      });
+
+      test(`adds '${REWRITE_RULES}' header with base64-encoded JSON to fetch requests`, () => {
+        expect(fetchMock).toHaveBeenCalledWith(
+          allowedUrl,
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              [REWRITE_RULES]: expect.any(String),
+            }),
+          })
+        );
+        const call = fetchMock.mock.calls.find(
+          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === allowedUrl
+        );
+        const headers = (call as unknown as [string, RequestInit?])[1] as {headers?: Record<string, string>};
+        const encoded = headers?.headers?.[REWRITE_RULES];
+        const decoded = JSON.parse(
+          Buffer.from(encoded!, 'base64').toString('utf-8')
+        );
+        expect(decoded).toEqual(rewriteRules);
+      });
+    });
+  });
+
+  describe('fetch without matchRules', () => {
+    const allowedUrl = `${allowedOrigin}/test`;
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    beforeAll(async () => {
+      Interceptor.originalFetch = fetchMock;
+
+      interceptor = new Interceptor({
+        scenarioKey,
+        sessionId,
+        urls: [{pattern: allowedUrl}],
+      });
+      interceptor.withTestTitle(testTitle);
+      await interceptor.apply();
+    });
+
+    afterAll(() => {
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    describe('when strict matching', () => {
+      beforeAll(async () => {
+        await fetch(allowedUrl);
+      });
+
+      test(`does not add '${MATCH_RULES}' header when urls have no matchRules`, () => {
+        const call = fetchMock.mock.calls.find(
+          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === allowedUrl
+        );
+        expect(call).toBeDefined();
+        const headers = (call as unknown as [string, RequestInit?])[1] as {headers?: Record<string, string>};
+        expect(headers?.headers?.[MATCH_RULES]).toBeUndefined();
+      });
+    });
+  });
+
+  describe('fetch without rewriteRules', () => {
+    const allowedUrl = `${allowedOrigin}/test`;
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    beforeAll(async () => {
+      Interceptor.originalFetch = fetchMock;
+
+      interceptor = new Interceptor({
+        scenarioKey,
+        sessionId,
+        urls: [{pattern: allowedUrl}],
+      });
+      interceptor.withTestTitle(testTitle);
+      await interceptor.apply();
+    });
+
+    afterAll(() => {
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    describe('when strict matching', () => {
+      beforeAll(async () => {
+        await fetch(allowedUrl);
+      });
+
+      test(`does not add '${REWRITE_RULES}' header when urls have no rewriteRules`, () => {
+        const call = fetchMock.mock.calls.find(
+          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === allowedUrl
+        );
+        expect(call).toBeDefined();
+        const headers = (call as unknown as [string, RequestInit?])[1] as {headers?: Record<string, string>};
+        expect(headers?.headers?.[REWRITE_RULES]).toBeUndefined();
+      });
+    });
+  });
+
   describe('XMLHttpRequest.prototype.open', () => {
     const allowedUrl = `${allowedOrigin}/test`;
 
@@ -347,6 +533,117 @@ describe('Interceptor', () => {
           SESSION_ID,
           expect.any(String)
         );
+      });
+    });
+  });
+
+  describe('XMLHttpRequest.prototype.open with matchRules', () => {
+    const allowedUrl = `${allowedOrigin}/test`;
+    const matchRules = [
+      {
+        modes: [InterceptMode.replay],
+        components: RequestParameter.QueryParam,
+      },
+    ];
+
+    const originalXMLHttpRequestOpen: typeof XMLHttpRequest.prototype.open =
+      XMLHttpRequest.prototype.open;
+    let setRequestHeaderMock: SpiedFunction<
+      (name: string, value: string) => void
+    >;
+    let xhrInterceptor: Interceptor;
+
+    beforeAll(async () => {
+      xhrInterceptor = new Interceptor({
+        scenarioKey,
+        sessionId,
+        urls: [{pattern: allowedUrl, matchRules}],
+      });
+      xhrInterceptor.withTestTitle(testTitle);
+      await xhrInterceptor.apply();
+    });
+
+    afterAll(() => {
+      XMLHttpRequest.prototype.open = originalXMLHttpRequestOpen;
+    });
+
+    describe('when strict matching', () => {
+      beforeAll(async () => {
+        const xhr = new XMLHttpRequest();
+        setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
+        xhr.open('GET', allowedUrl);
+        Object.defineProperty(xhr, 'readyState', {value: 1, writable: true});
+        xhr.dispatchEvent(new Event('readystatechange'));
+      });
+
+      test(`adds '${MATCH_RULES}' header with base64-encoded JSON to XMLHttpRequest`, () => {
+        const matchRulesCall = setRequestHeaderMock.mock.calls.find(
+          (c) => c[0] === MATCH_RULES
+        );
+        expect(matchRulesCall).toBeDefined();
+        const encoded = matchRulesCall![1];
+        const decoded = JSON.parse(
+          Buffer.from(encoded, 'base64').toString('utf-8')
+        );
+        expect(decoded).toEqual(matchRules);
+      });
+    });
+  });
+
+  describe('XMLHttpRequest.prototype.open with rewriteRules', () => {
+    const allowedUrl = `${allowedOrigin}/test`;
+    const rewriteRules = [
+      {
+        parameterRules: [
+          {
+            type: RequestParameter.Header,
+            name: 'foo',
+            value: 'bar',
+          },
+        ],
+      },
+    ];
+
+    const originalXMLHttpRequestOpen: typeof XMLHttpRequest.prototype.open =
+      XMLHttpRequest.prototype.open;
+    let setRequestHeaderMock: SpiedFunction<
+      (name: string, value: string) => void
+    >;
+    let xhrInterceptor: Interceptor;
+
+    beforeAll(async () => {
+      xhrInterceptor = new Interceptor({
+        scenarioKey,
+        sessionId,
+        urls: [{pattern: allowedUrl, rewriteRules}],
+      });
+      xhrInterceptor.withTestTitle(testTitle);
+      await xhrInterceptor.apply();
+    });
+
+    afterAll(() => {
+      XMLHttpRequest.prototype.open = originalXMLHttpRequestOpen;
+    });
+
+    describe('when strict matching', () => {
+      beforeAll(async () => {
+        const xhr = new XMLHttpRequest();
+        setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
+        xhr.open('GET', allowedUrl);
+        Object.defineProperty(xhr, 'readyState', {value: 1, writable: true});
+        xhr.dispatchEvent(new Event('readystatechange'));
+      });
+
+      test(`adds '${REWRITE_RULES}' header with base64-encoded JSON to XMLHttpRequest`, () => {
+        const rewriteRulesCall = setRequestHeaderMock.mock.calls.find(
+          (c) => c[0] === REWRITE_RULES
+        );
+        expect(rewriteRulesCall).toBeDefined();
+        const encoded = rewriteRulesCall![1];
+        const decoded = JSON.parse(
+          Buffer.from(encoded, 'base64').toString('utf-8')
+        );
+        expect(decoded).toEqual(rewriteRules);
       });
     });
   });

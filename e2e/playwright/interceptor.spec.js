@@ -1,15 +1,17 @@
 import { test, expect } from '@playwright/test';
 
-import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE, RecordOrder, RecordPolicy, RecordStrategy } from "../../dist/esm/constants.js";
+import { MATCH_RULES, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, REWRITE_RULES, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE, RecordOrder, RecordPolicy, RecordStrategy } from "../../dist/esm/constants.js";
 import Stoobly from '../../dist/esm/stoobly.js';
 import { SERVER_URL } from '../server-config';
 
 const scenarioKey = 'test';
 const targetUrl = `${SERVER_URL}/headers`;
+const matchRules = [{ modes: ['replay'], components: 'Header' }];
+const rewriteRules = [{ urlRules: [{ path: '/new-path' }] }];
 
 const stoobly = new Stoobly();
-const interceptor = stoobly.playwrightInterceptor({ 
-  urls: [{ pattern: targetUrl }],
+const interceptor = stoobly.playwrightInterceptor({
+  urls: [{ pattern: targetUrl, matchRules, rewriteRules }],
   record: {
     order: RecordOrder.Overwrite,
     policy: RecordPolicy.All,
@@ -18,14 +20,14 @@ const interceptor = stoobly.playwrightInterceptor({
   scenarioKey,
 });
 
-test.describe('Apply scenario with key', () => {
+test.describe('initial interceptor options', () => {
 
   test.beforeEach(async ({ page }, testInfo) => {
     await interceptor.withPage(page).apply();
     interceptor.withTestTitle(testInfo.title);
   });
 
-  test('should send default intercept headers', async ({ page }, testInfo) => {
+  test('should send headers', async ({ page }, testInfo) => {
     page.goto(targetUrl);
 
     // Wait for the specific response by URL or predicate
@@ -41,6 +43,16 @@ test.describe('Apply scenario with key', () => {
     expect(body[RECORD_ORDER.toLowerCase()]).toEqual(RecordOrder.Overwrite);
     expect(body[RECORD_POLICY.toLowerCase()]).toEqual(RecordPolicy.All);
     expect(body[RECORD_STRATEGY.toLowerCase()]).toEqual(RecordStrategy.Full);
+
+    // matchRules: base64-encoded JSON
+    const matchRulesEncoded = body[MATCH_RULES.toLowerCase()];
+    expect(matchRulesEncoded).toBeDefined();
+    expect(JSON.parse(Buffer.from(matchRulesEncoded, 'base64').toString('utf-8'))).toEqual(matchRules);
+
+    // rewriteRules: base64-encoded JSON
+    const rewriteRulesEncoded = body[REWRITE_RULES.toLowerCase()];
+    expect(rewriteRulesEncoded).toBeDefined();
+    expect(JSON.parse(Buffer.from(rewriteRulesEncoded, 'base64').toString('utf-8'))).toEqual(rewriteRules);
   });
 
   test('another test should have a different test title in the headers', async ({ page }) => {

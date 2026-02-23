@@ -1,17 +1,19 @@
-import { PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE, RecordOrder, RecordPolicy, RecordStrategy } from "../../dist/esm/constants.js";
+import { MATCH_RULES, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, REWRITE_RULES, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE, RecordOrder, RecordPolicy, RecordStrategy } from "../../dist/esm/constants.js";
 import Stoobly from '../../dist/esm/stoobly.js';
 import { SERVER_URL } from '../server-config';
 
 const scenarioKey = 'test';
 const targetUrl = `${SERVER_URL}/headers`;
+const matchRules = [{ modes: ['replay'], components: 'Header' }];
+const rewriteRules = [{ urlRules: [{ path: '/new-path' }] }];
 
 const stoobly = new Stoobly();
-const interceptor = stoobly.cypressInterceptor({ 
-  urls: [{ pattern: targetUrl }],
+const interceptor = stoobly.cypressInterceptor({
+  urls: [{ pattern: targetUrl, matchRules, rewriteRules }],
   scenarioKey,
 });
 
-describe('apply scenario with key', () => {
+describe('initial interceptor options', () => {
   const sessionId = 'id';
 
   beforeEach(() => {
@@ -23,7 +25,7 @@ describe('apply scenario with key', () => {
     interceptor.clear();
   });
 
-  it('should send default intercept headers', () => {
+  it('should send headers', () => {
     // Intercept the request to inspect headers or body
     cy.intercept('GET', `${targetUrl}`).as('getHeaders');
 
@@ -34,7 +36,17 @@ describe('apply scenario with key', () => {
 
       expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.equal(scenarioKey);
       expect(responseBody[SESSION_ID.toLowerCase()]).to.equal(sessionId);
-      expect(responseBody[TEST_TITLE.toLowerCase()]).to.equal(Cypress.currentTest.title)
+      expect(responseBody[TEST_TITLE.toLowerCase()]).to.equal(Cypress.currentTest.title);
+
+      // matchRules: base64-encoded JSON
+      const matchRulesEncoded = responseBody[MATCH_RULES.toLowerCase()];
+      expect(matchRulesEncoded).to.exist;
+      expect(JSON.parse(atob(matchRulesEncoded))).to.deep.equal(matchRules);
+
+      // rewriteRules: base64-encoded JSON
+      const rewriteRulesEncoded = responseBody[REWRITE_RULES.toLowerCase()];
+      expect(rewriteRulesEncoded).to.exist;
+      expect(JSON.parse(atob(rewriteRulesEncoded))).to.deep.equal(rewriteRules);
     });
   });
 

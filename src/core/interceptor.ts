@@ -1,5 +1,6 @@
-import { OVERWRITE_ID, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
+import { MATCH_RULES, OVERWRITE_ID, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, REWRITE_RULES, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
 import { InterceptMode, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/intercept";
+import { MatchRule, RewriteRule } from "@models/config/types";
 
 import { InterceptorOptions, InterceptorUrl } from "../types/options";
 import { getTestTitle } from "../utils/test-detection";
@@ -78,6 +79,19 @@ export class Interceptor {
     return this;
   }
 
+  withMatchRules(matchRules?: MatchRule[]) {
+    if (!matchRules?.length) {
+      delete this.headers[MATCH_RULES];
+    } else {
+      const json = JSON.stringify(matchRules);
+      this.headers[MATCH_RULES] = typeof Buffer !== 'undefined'
+        ? Buffer.from(json, 'utf-8').toString('base64')
+        : btoa(unescape(encodeURIComponent(json)));
+    }
+
+    return this;
+  }
+
   withRecordOrder(order?: RecordOrder) {
     if (!order) {
       delete this.headers[RECORD_ORDER];
@@ -128,6 +142,19 @@ export class Interceptor {
       delete this.headers[RECORD_STRATEGY];
     } else {
       this.headers[RECORD_STRATEGY] = strategy;
+    }
+
+    return this;
+  }
+
+  withRewriteRules(rewriteRules?: RewriteRule[]) {
+    if (!rewriteRules?.length) {
+      delete this.headers[REWRITE_RULES];
+    } else {
+      const json = JSON.stringify(rewriteRules);
+      this.headers[REWRITE_RULES] = typeof Buffer !== 'undefined'
+        ? Buffer.from(json, 'utf-8').toString('base64')
+        : btoa(unescape(encodeURIComponent(json)));
     }
 
     return this;
@@ -292,6 +319,13 @@ export class Interceptor {
     this.withRecordStrategy(options.record?.strategy);
     this.withScenarioKey(options.scenarioKey);
     this.withScenarioName(options.scenarioName);
+
+    if (this.urls.length) {
+      const matchRules = this.urls.flatMap((u) => u.matchRules ?? []);
+      const rewriteRules = this.urls.flatMap((u) => u.rewriteRules ?? []);
+      this.withMatchRules(matchRules.length ? matchRules : undefined);
+      this.withRewriteRules(rewriteRules.length ? rewriteRules : undefined);
+    }
 
     const sessionId = options.sessionId || (new Date()).getTime().toString();
     this.withSessionId(sessionId);

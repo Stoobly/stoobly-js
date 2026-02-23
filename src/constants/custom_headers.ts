@@ -1,8 +1,10 @@
+export const MATCH_RULES = 'X-Stoobly-Request-Match-Rules';
 export const OVERWRITE_ID = 'X-Stoobly-Overwrite-Id';
 export const PROXY_MODE = 'X-Stoobly-Proxy-Mode';
 export const RECORD_ORDER = 'X-Stoobly-Record-Order';
 export const RECORD_POLICY = 'X-Stoobly-Record-Policy';
 export const RECORD_STRATEGY = 'X-Stoobly-Record-Strategy';
+export const REWRITE_RULES = 'X-Stoobly-Request-Rewrite-Rules';
 export const SCENARIO_KEY = 'X-Stoobly-Scenario-Key';
 export const SCENARIO_NAME = 'X-Stoobly-Scenario-Name';
 export const SESSION_ID = 'X-Stoobly-Session-Id';
