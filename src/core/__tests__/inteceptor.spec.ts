@@ -1,7 +1,7 @@
 import {jest} from '@jest/globals';
 import {SpiedFunction} from 'jest-mock';
 
-import {MATCH_RULES, OVERWRITE_ID, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, REWRITE_RULES, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE} from '@constants/custom_headers';
+import {MATCH_RULES, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE} from '@constants/custom_headers';
 import {InterceptMode, RecordOrder, RecordPolicy, RecordStrategy, RequestParameter} from '@constants/intercept';
 import {Interceptor} from '@core/interceptor';
 
@@ -233,7 +233,7 @@ describe('Interceptor', () => {
     });
   });
 
-  describe('fetch with matchRules', () => {
+  describe('fetch with matchRules and InterceptorUrl options', () => {
     const allowedUrl = `${allowedOrigin}/test`;
     const matchRules = [
       {modes: [InterceptMode.replay], components: RequestParameter.Header},
@@ -285,6 +285,75 @@ describe('Interceptor', () => {
         expect(decoded).toEqual(matchRules);
       });
     });
+
+    describe('when multiple URLs with different InterceptorUrl options', () => {
+      const usersUrl = `${allowedOrigin}/api/users`;
+      const postsUrl = `${allowedOrigin}/api/posts`;
+      const usersMatchRules = [
+        {modes: [InterceptMode.replay], components: RequestParameter.Header},
+      ];
+      const postsRewriteRules = [{urlRules: [{path: '/posts-rewritten'}]}];
+
+      beforeAll(async () => {
+        await interceptor.apply({
+          urls: [
+            {
+              pattern: new RegExp(`${allowedOrigin}/api/users`),
+              matchRules: usersMatchRules,
+              publicDirectoryPath: '/users-public',
+              responseFixturesPath: '/users-fixtures',
+            },
+            {
+              pattern: new RegExp(`${allowedOrigin}/api/posts`),
+              rewriteRules: postsRewriteRules,
+              publicDirectoryPath: '/posts-public',
+            },
+          ],
+        });
+      });
+
+      test('request to /api/users receives headers from matching InterceptorUrl only', async () => {
+        await fetch(usersUrl);
+
+        const call = fetchMock.mock.calls.find(
+          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === usersUrl
+        );
+        expect(call).toBeDefined();
+        const headers = (call as unknown as [string, RequestInit?])[1] as {
+          headers?: Record<string, string>;
+        };
+        const reqHeaders = headers?.headers ?? {};
+
+        expect(reqHeaders[MATCH_RULES]).toBeDefined();
+        expect(JSON.parse(Buffer.from(reqHeaders[MATCH_RULES], 'base64').toString('utf-8'))).toEqual(
+          usersMatchRules
+        );
+        expect(reqHeaders[PUBLIC_DIRECTORY_PATH]).toBe('/users-public');
+        expect(reqHeaders[RESPONSE_FIXTURES_PATH]).toBe('/users-fixtures');
+        expect(reqHeaders[REWRITE_RULES]).toBeUndefined();
+      });
+
+      test('request to /api/posts receives headers from matching InterceptorUrl only', async () => {
+        await fetch(postsUrl);
+
+        const call = fetchMock.mock.calls.find(
+          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === postsUrl
+        );
+        expect(call).toBeDefined();
+        const headers = (call as unknown as [string, RequestInit?])[1] as {
+          headers?: Record<string, string>;
+        };
+        const reqHeaders = headers?.headers ?? {};
+
+        expect(reqHeaders[REWRITE_RULES]).toBeDefined();
+        expect(JSON.parse(Buffer.from(reqHeaders[REWRITE_RULES], 'base64').toString('utf-8'))).toEqual([
+          {url_rules: [{path: '/posts-rewritten'}]},
+        ]);
+        expect(reqHeaders[PUBLIC_DIRECTORY_PATH]).toBe('/posts-public');
+        expect(reqHeaders[MATCH_RULES]).toBeUndefined();
+        expect(reqHeaders[RESPONSE_FIXTURES_PATH]).toBeUndefined();
+      });
+    });
   });
 
   describe('fetch with rewriteRules', () => {
@@ -334,7 +403,7 @@ describe('Interceptor', () => {
         const decoded = JSON.parse(
           Buffer.from(encoded!, 'base64').toString('utf-8')
         );
-        expect(decoded).toEqual(rewriteRules);
+        expect(decoded).toEqual([{url_rules: [{path: '/new-path'}]}]);
       });
     });
   });
@@ -665,7 +734,13 @@ describe('Interceptor', () => {
         const decoded = JSON.parse(
           Buffer.from(encoded, 'base64').toString('utf-8')
         );
-        expect(decoded).toEqual(rewriteRules);
+        expect(decoded).toEqual([
+          {
+            parameter_rules: [
+              {type: RequestParameter.Header, name: 'foo', value: 'bar'},
+            ],
+          },
+        ]);
       });
     });
   });

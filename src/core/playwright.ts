@@ -161,6 +161,7 @@ export class Playwright extends Interceptor {
       const pattern = interceptorUrl.pattern;
       const handler = async (route: PlaywrightRoute, req: PlaywrightRequest) => {
         const headers = this.decorateHeaders(req.headers());
+        this.applyUrlSpecificHeaders(headers, interceptorUrl);
         this.filterOverwriteHeader(headers, pattern, urlsToVisit);
 
         await route.continue({ headers: headers });

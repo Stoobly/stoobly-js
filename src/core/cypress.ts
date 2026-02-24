@@ -39,6 +39,7 @@ export class Cypress extends Interceptor {
     this.urls.forEach((interceptorUrl) => {
       (window as any).cy?.intercept(interceptorUrl.pattern, (req: { continue: () => void, headers: any }) => {
         const headers = this.decorateHeaders(req.headers);
+        this.applyUrlSpecificHeaders(headers, interceptorUrl);
         this.filterOverwriteHeader(headers, interceptorUrl.pattern, urlsToVisit);
         req.headers = headers;
 

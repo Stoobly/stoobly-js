@@ -1,6 +1,5 @@
-import { MATCH_RULES, OVERWRITE_ID, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, REWRITE_RULES, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
+import { MATCH_RULES, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
 import { InterceptMode, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/intercept";
-import { MatchRule, RewriteRule } from "@models/config/types";
 
 import { InterceptorOptions, InterceptorUrl } from "../types/options";
 import { getTestTitle } from "../utils/test-detection";
@@ -90,19 +89,6 @@ export class Interceptor {
     return this;
   }
 
-  withMatchRules(matchRules?: MatchRule[]) {
-    if (!matchRules?.length) {
-      delete this.headers[MATCH_RULES];
-    } else {
-      const json = JSON.stringify(matchRules);
-      this.headers[MATCH_RULES] = typeof Buffer !== 'undefined'
-        ? Buffer.from(json, 'utf-8').toString('base64')
-        : btoa(unescape(encodeURIComponent(json)));
-    }
-
-    return this;
-  }
-
   withRecordOrder(order?: RecordOrder) {
     if (!order) {
       delete this.headers[RECORD_ORDER];
@@ -153,19 +139,6 @@ export class Interceptor {
       delete this.headers[RECORD_STRATEGY];
     } else {
       this.headers[RECORD_STRATEGY] = strategy;
-    }
-
-    return this;
-  }
-
-  withRewriteRules(rewriteRules?: RewriteRule[]) {
-    if (!rewriteRules?.length) {
-      delete this.headers[REWRITE_RULES];
-    } else {
-      const json = JSON.stringify(rewriteRules);
-      this.headers[REWRITE_RULES] = typeof Buffer !== 'undefined'
-        ? Buffer.from(json, 'utf-8').toString('base64')
-        : btoa(unescape(encodeURIComponent(json)));
     }
 
     return this;
@@ -331,13 +304,6 @@ export class Interceptor {
     this.withScenarioKey(options.scenarioKey);
     this.withScenarioName(options.scenarioName);
 
-    if (this.urls.length) {
-      const matchRules = this.urls.flatMap((u) => u.matchRules ?? []);
-      const rewriteRules = this.urls.flatMap((u) => u.rewriteRules ?? []);
-      this.withMatchRules(matchRules.length ? matchRules : undefined);
-      this.withRewriteRules(rewriteRules.length ? rewriteRules : undefined);
-    }
-
     const sessionId = options.sessionId || (new Date()).getTime().toString();
     this.withSessionId(sessionId);
     return sessionId;
@@ -349,21 +315,66 @@ export class Interceptor {
   }
 
   private allowedUrl(url: string) {
+    return !!this.findMatchingUrl(url);
+  }
+
+  private findMatchingUrl(url: string): InterceptorUrl | undefined {
     for (let i = 0; i < this.urls.length; ++i) {
-      const pattern = this.urls[i].pattern;
+      const interceptorUrl = this.urls[i];
+      const pattern = interceptorUrl.pattern;
 
       if (pattern instanceof RegExp) {
-        if (pattern.test(url)) {
-          return true;
+        const match = pattern.test(url);
+        if (pattern.global || pattern.sticky) {
+          pattern.lastIndex = 0;
+        }
+        if (match) {
+          return interceptorUrl;
         }
       }
 
       if (pattern === url) {
-        return true;
+        return interceptorUrl;
       }
     }
 
-    return false;
+    return undefined;
+  }
+
+  private encodeBase64(json: string): string {
+    return typeof Buffer !== 'undefined'
+      ? Buffer.from(json, 'utf-8').toString('base64')
+      : btoa(unescape(encodeURIComponent(json)));
+  }
+
+  /**
+   * Conditionally applies matchRules, rewriteRules, publicDirectoryPath, and responseFixturesPath
+   * headers from the matching InterceptorUrl when the request URL matches a pattern with these options set.
+   */
+  protected applyUrlSpecificHeaders(
+    headers: Record<string, string>,
+    interceptorUrl?: InterceptorUrl
+  ) {
+    if (!interceptorUrl) return;
+
+    if (interceptorUrl.matchRules?.length) {
+      headers[MATCH_RULES] = this.encodeBase64(JSON.stringify(interceptorUrl.matchRules));
+    }
+    if (interceptorUrl.rewriteRules?.length) {
+      const serialized = interceptorUrl.rewriteRules.map((rule) => {
+        const out: Record<string, unknown> = {};
+        if (rule.urlRules) out.url_rules = rule.urlRules;
+        if (rule.parameterRules) out.parameter_rules = rule.parameterRules;
+        return out;
+      });
+      headers[REWRITE_RULES] = this.encodeBase64(JSON.stringify(serialized));
+    }
+    if (interceptorUrl.publicDirectoryPath) {
+      headers[PUBLIC_DIRECTORY_PATH] = interceptorUrl.publicDirectoryPath;
+    }
+    if (interceptorUrl.responseFixturesPath) {
+      headers[RESPONSE_FIXTURES_PATH] = interceptorUrl.responseFixturesPath;
+    }
   }
 
   private restoreFetch() {
@@ -404,6 +415,7 @@ export class Interceptor {
         }
         
         const headers = self.decorateHeaders(init.headers as Record<string, string>);
+        self.applyUrlSpecificHeaders(headers, self.findMatchingUrl(url));
         self.filterOverwriteHeader(headers, url, urlsToVisit);
         init.headers = headers;
       }
@@ -440,6 +452,7 @@ export class Interceptor {
         }
 
         const headers = self.decorateHeaders({});
+        self.applyUrlSpecificHeaders(headers, self.findMatchingUrl(url));
         self.filterOverwriteHeader(headers, url, urlsToVisit);
 
         Object.entries(headers).forEach(([key, value]) => {

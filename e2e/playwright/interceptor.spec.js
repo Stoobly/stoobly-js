@@ -49,10 +49,10 @@ test.describe('initial interceptor options', () => {
     expect(matchRulesEncoded).toBeDefined();
     expect(JSON.parse(Buffer.from(matchRulesEncoded, 'base64').toString('utf-8'))).toEqual(matchRules);
 
-    // rewriteRules: base64-encoded JSON
+    // rewriteRules: base64-encoded JSON (serialized with url_rules, parameter_rules in snake_case)
     const rewriteRulesEncoded = body[REWRITE_RULES.toLowerCase()];
     expect(rewriteRulesEncoded).toBeDefined();
-    expect(JSON.parse(Buffer.from(rewriteRulesEncoded, 'base64').toString('utf-8'))).toEqual(rewriteRules);
+    expect(JSON.parse(Buffer.from(rewriteRulesEncoded, 'base64').toString('utf-8'))).toEqual([{ url_rules: [{ path: '/new-path' }] }]);
   });
 
   test('another test should have a different test title in the headers', async ({ page }) => {

@@ -1,9 +1,11 @@
 export const MATCH_RULES = 'X-Stoobly-Request-Match-Rules';
 export const OVERWRITE_ID = 'X-Stoobly-Overwrite-Id';
 export const PROXY_MODE = 'X-Stoobly-Proxy-Mode';
+export const PUBLIC_DIRECTORY_PATH = 'X-Stoobly-Public-Directory-Path';
 export const RECORD_ORDER = 'X-Stoobly-Record-Order';
 export const RECORD_POLICY = 'X-Stoobly-Record-Policy';
 export const RECORD_STRATEGY = 'X-Stoobly-Record-Strategy';
+export const RESPONSE_FIXTURES_PATH = 'X-Stoobly-Response-Fixtures-Path';
 export const REWRITE_RULES = 'X-Stoobly-Request-Rewrite-Rules';
 export const SCENARIO_KEY = 'X-Stoobly-Scenario-Key';
 export const SCENARIO_NAME = 'X-Stoobly-Scenario-Name';

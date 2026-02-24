@@ -43,10 +43,10 @@ describe('initial interceptor options', () => {
       expect(matchRulesEncoded).to.exist;
       expect(JSON.parse(atob(matchRulesEncoded))).to.deep.equal(matchRules);
 
-      // rewriteRules: base64-encoded JSON
+      // rewriteRules: base64-encoded JSON (serialized with url_rules, parameter_rules in snake_case)
       const rewriteRulesEncoded = responseBody[REWRITE_RULES.toLowerCase()];
       expect(rewriteRulesEncoded).to.exist;
-      expect(JSON.parse(atob(rewriteRulesEncoded))).to.deep.equal(rewriteRules);
+      expect(JSON.parse(atob(rewriteRulesEncoded))).to.deep.equal([{ url_rules: [{ path: '/new-path' }] }]);
     });
   });
 

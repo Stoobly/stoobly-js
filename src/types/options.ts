@@ -20,5 +20,7 @@ export interface InterceptorOptions {
 export interface InterceptorUrl {
   matchRules?: MatchRule[];
   pattern: RegExp | string;
+  publicDirectoryPath?: string;
+  responseFixturesPath?: string;
   rewriteRules?: RewriteRule[];
 }
