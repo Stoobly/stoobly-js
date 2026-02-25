@@ -30,11 +30,25 @@ export class Interceptor {
     urls: (string | RegExp | InterceptorUrl)[]
   ): InterceptorUrl[] {
     if (!urls?.length) return [];
-    return urls.map((url) => {
+
+    return urls.map((url, index) => {
       if (typeof url === "string" || url instanceof RegExp) {
         return { pattern: url };
       }
-      return url as InterceptorUrl;
+
+      const interceptorUrl = url as InterceptorUrl;
+      const pattern = interceptorUrl.pattern;
+
+      const isValidPattern =
+        typeof pattern === "string" || pattern instanceof RegExp;
+
+      if (!isValidPattern) {
+        throw new Error(
+          `Invalid InterceptorUrl at index ${index}: 'pattern' must be a string or RegExp`
+        );
+      }
+
+      return interceptorUrl;
     });
   }
 
