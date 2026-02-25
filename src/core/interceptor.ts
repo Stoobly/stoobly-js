@@ -27,7 +27,7 @@ export class Interceptor {
   }
 
   protected normalizeUrls(
-    urls: (string | RegExp)[] | InterceptorUrl[]
+    urls: (string | RegExp | InterceptorUrl)[]
   ): InterceptorUrl[] {
     if (!urls?.length) return [];
     return urls.map((url) => {
