@@ -30,11 +30,12 @@ export class Interceptor {
     urls: (string | RegExp)[] | InterceptorUrl[]
   ): InterceptorUrl[] {
     if (!urls?.length) return [];
-    const first = urls[0];
-    if (typeof first === "string" || first instanceof RegExp) {
-      return (urls as (string | RegExp)[]).map((pattern) => ({ pattern }));
-    }
-    return urls as InterceptorUrl[];
+    return urls.map((url) => {
+      if (typeof url === "string" || url instanceof RegExp) {
+        return { pattern: url };
+      }
+      return url as InterceptorUrl;
+    });
   }
 
   // Applies HTTP request interception to fetch and XMLHttpRequest. Clears existing
@@ -344,7 +345,7 @@ export class Interceptor {
   private encodeBase64(json: string): string {
     return typeof Buffer !== 'undefined'
       ? Buffer.from(json, 'utf-8').toString('base64')
-      : btoa(unescape(encodeURIComponent(json)));
+      : btoa(new TextEncoder().encode(json).reduce((data, byte) => data + String.fromCharCode(byte), ''));
   }
 
   /**

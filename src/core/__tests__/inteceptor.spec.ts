@@ -129,6 +129,50 @@ describe('Interceptor', () => {
       });
     });
 
+    describe('when urls is a mixed array of strings/RegExp and InterceptorUrl objects', () => {
+      const otherUrl = `${allowedOrigin}/other`;
+      const matchRules = [{modes: [InterceptMode.replay], components: RequestParameter.Header}];
+
+      beforeAll(async () => {
+        interceptor = new Interceptor({
+          scenarioKey,
+          sessionId,
+          urls: [
+            allowedUrl, // string
+            new RegExp(`${allowedOrigin}/regexp`), // RegExp
+            {pattern: otherUrl, matchRules}, // InterceptorUrl
+          ],
+        });
+        interceptor.withTestTitle(testTitle);
+        await interceptor.apply();
+
+        await fetch(allowedUrl);
+        await fetch(otherUrl);
+      });
+
+      test(`adds headers when url matches string pattern`, async () => {
+        expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+          headers: expect.objectContaining({
+            [SCENARIO_KEY]: scenarioKey,
+          }),
+        });
+      });
+
+      test(`adds matchRules header when url matches InterceptorUrl pattern`, async () => {
+        const call = fetchMock.mock.calls.find(
+          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === otherUrl
+        );
+        expect(call).toBeDefined();
+        const headers = (call as unknown as [string, RequestInit?])[1] as {headers?: Record<string, string>};
+        const encoded = headers?.headers?.[MATCH_RULES];
+        expect(encoded).toBeDefined();
+        const decoded = JSON.parse(
+          Buffer.from(encoded!, 'base64').toString('utf-8')
+        );
+        expect(decoded).toEqual(matchRules);
+      });
+    });
+
     describe('when not allowed', () => {
       const notAllowedUrl = `${notAllowedOrigin}/test`;
 
