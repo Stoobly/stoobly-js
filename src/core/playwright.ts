@@ -1,8 +1,9 @@
-import {Page, Route as PlaywrightRoute, Request as PlaywrightRequest, BrowserContext } from "../types/playwright";
-import {InterceptorOptions} from "../types/options";
-import {Interceptor} from "./interceptor";
-import {setTestFramework, PLAYWRIGHT_FRAMEWORK} from "../utils/test-detection";
 import { InterceptMode } from "@constants/intercept";
+
+import { InterceptorOptions } from "../types/options";
+import {Page, Route as PlaywrightRoute, Request as PlaywrightRequest, BrowserContext } from "../types/playwright";
+import {setTestFramework, PLAYWRIGHT_FRAMEWORK} from "../utils/test-detection";
+import {Interceptor} from "./interceptor";
 
 export class Playwright extends Interceptor {
   private appliedPlaywright: boolean = false;
@@ -43,7 +44,7 @@ export class Playwright extends Interceptor {
     await this.restore();
 
     // After clearing intercepts on old urls, apply intercepts on new urls
-    this.urls = options?.urls || this.options.urls;
+    this.urls = this.normalizeUrls(options?.urls ?? this.options.urls);
     await this.decorate();
 
     return this.applySession(options);
@@ -129,16 +130,17 @@ export class Playwright extends Interceptor {
     target: Page | BrowserContext,
     handlers: Map<string, (route: PlaywrightRoute, req: PlaywrightRequest) => Promise<void>>
   ) {
-    for (const url of this.urls) {
+    for (const interceptorUrl of this.urls) {
+      const pattern = interceptorUrl.pattern;
       // Use the same stable string key as in decoratePlaywright
-      const mapKey = url instanceof RegExp ? url.source : url;
+      const mapKey = pattern instanceof RegExp ? pattern.source : pattern;
       const handler = handlers.get(mapKey);
       if (!handler) {
         continue;
       }
 
       try {
-        await target.unroute(url, handler);
+        await target.unroute(pattern, handler);
       } catch (error) {
         // Ignore errors if context/page is already closed
         console.warn('Failed to unroute:', (error as Error).message);
@@ -155,19 +157,21 @@ export class Playwright extends Interceptor {
     const urlsToVisit = this.urlsToVisit;
 
     // Register routes on the current page or context
-    for (const url of this.urls) {
+    for (const interceptorUrl of this.urls) {
+      const pattern = interceptorUrl.pattern;
       const handler = async (route: PlaywrightRoute, req: PlaywrightRequest) => {
         const headers = this.decorateHeaders(req.headers());
-        this.filterOverwriteHeader(headers, url, urlsToVisit);
+        this.applyUrlSpecificHeaders(headers, interceptorUrl);
+        this.filterOverwriteHeader(headers, pattern, urlsToVisit);
 
         await route.continue({ headers: headers });
       }
       
       // Use a stable string key for the Map
-      const mapKey = url instanceof RegExp ? url.source : url;
+      const mapKey = pattern instanceof RegExp ? pattern.source : pattern;
       
       try {
-        await target.route(url, handler);
+        await target.route(pattern, handler);
         handlers.set(mapKey, handler);
       } catch (error) {
         // Ignore errors if context/page is already closed

@@ -1,5 +1,6 @@
 import { RecordOrder, RecordPolicy, RecordStrategy } from "@constants/intercept";
 import { TestFramework } from "../utils/test-detection";
+import { MatchRule, RewriteRule } from "@models/config/types";
 
 export interface RecordOptions {
   order?: RecordOrder;
@@ -13,5 +14,13 @@ export interface InterceptorOptions {
   scenarioKey?: string;
   scenarioName?: string;
   sessionId?: string;
-  urls: (RegExp | string)[];
+  urls: (string | RegExp | InterceptorUrl)[];
+}
+
+export interface InterceptorUrl {
+  matchRules?: MatchRule[];
+  pattern: RegExp | string;
+  publicDirectoryPath?: string;
+  responseFixturesPath?: string;
+  rewriteRules?: RewriteRule[];
 }

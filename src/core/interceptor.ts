@@ -1,7 +1,7 @@
-import { OVERWRITE_ID, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
+import { MATCH_RULES, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
 import { InterceptMode, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/intercept";
 
-import { InterceptorOptions } from "../types/options";
+import { InterceptorOptions, InterceptorUrl } from "../types/options";
 import { getTestTitle } from "../utils/test-detection";
 
 export class Interceptor {
@@ -11,7 +11,7 @@ export class Interceptor {
   private id: string;
   protected headers: Record<string, string> = {};
   protected options: InterceptorOptions;
-  protected urls: (RegExp | string)[] = [];
+  protected urls: InterceptorUrl[] = [];
 
   private started: boolean = false;
   private appliedFetch: boolean = false;
@@ -23,7 +23,33 @@ export class Interceptor {
   }
 
   get urlsToVisit() {
-    return this.urls.slice();
+    return this.urls.map((u) => u.pattern).slice();
+  }
+
+  protected normalizeUrls(
+    urls: (string | RegExp | InterceptorUrl)[]
+  ): InterceptorUrl[] {
+    if (!urls?.length) return [];
+
+    return urls.map((url, index) => {
+      if (typeof url === "string" || url instanceof RegExp) {
+        return { pattern: url };
+      }
+
+      const interceptorUrl = url as InterceptorUrl;
+      const pattern = interceptorUrl.pattern;
+
+      const isValidPattern =
+        typeof pattern === "string" || pattern instanceof RegExp;
+
+      if (!isValidPattern) {
+        throw new Error(
+          `Invalid InterceptorUrl at index ${index}: 'pattern' must be a string or RegExp`
+        );
+      }
+
+      return interceptorUrl;
+    });
   }
 
   // Applies HTTP request interception to fetch and XMLHttpRequest. Clears existing
@@ -32,7 +58,7 @@ export class Interceptor {
     this.restore();
 
     // After clearing intercepts on old urls, apply intercepts on new urls
-    this.urls = options?.urls || this.options.urls;
+    this.urls = this.normalizeUrls(options?.urls ?? this.options.urls);
 
     this.decorate();
 
@@ -219,20 +245,12 @@ export class Interceptor {
    *   and restore() cleans up old interceptors.
    * 
    * Example:
-   *   this.urls = [/\/api\/.*\/], 'https://example.com/exact']
-   *   
-   *   Request 1: 'https://example.com/api/users'
-   *     → Matches /\/api\/.*, removes from urlsToVisit 
-   *     → Includes RECORD_ORDER and OVERWRITE_ID
-   *   Request 2: 'https://example.com/api/posts'
-   *     → Pattern already removed 
-   *     → Omits RECORD_ORDER and OVERWRITE_ID
-   *   Request 3: 'https://example.com/exact'
-   *     → Matches 'https://example.com/exact', removes from urlsToVisit 
-   *     → Includes RECORD_ORDER and OVERWRITE_ID
-   *   Request 4: 'https://example.com/exact'
-   *     → Pattern already removed 
-   *     → Omits RECORD_ORDER and OVERWRITE_ID
+   *   this.urls = [{ pattern: /\/api\/.+/ }, { pattern: 'https://example.com/exact' }]
+   *
+   *   Request 1 to /api/users - matches first pattern, removes from urlsToVisit, includes headers
+   *   Request 2 to /api/posts - pattern already removed, omits overwrite headers
+   *   Request 3 to exact URL - matches second pattern, removes from urlsToVisit, includes headers
+   *   Request 4 to exact URL - pattern already removed, omits overwrite headers
    * 
    * @param headers - The headers object to potentially modify
    * @param url - The URL or URL pattern being requested (actual URL for fetch/XHR, pattern for Playwright/Cypress)
@@ -312,21 +330,66 @@ export class Interceptor {
   }
 
   private allowedUrl(url: string) {
-    for (let i = 0; i < this.urls.length; ++i) {
-      const urlAllowed = this.urls[i];
+    return !!this.findMatchingUrl(url);
+  }
 
-      if (urlAllowed instanceof RegExp) {
-        if (urlAllowed.test(url)) {
-          return true;
+  private findMatchingUrl(url: string): InterceptorUrl | undefined {
+    for (let i = 0; i < this.urls.length; ++i) {
+      const interceptorUrl = this.urls[i];
+      const pattern = interceptorUrl.pattern;
+
+      if (pattern instanceof RegExp) {
+        const match = pattern.test(url);
+        if (pattern.global || pattern.sticky) {
+          pattern.lastIndex = 0;
+        }
+        if (match) {
+          return interceptorUrl;
         }
       }
 
-      if (urlAllowed === url) {
-        return true;
+      if (pattern === url) {
+        return interceptorUrl;
       }
     }
 
-    return false;
+    return undefined;
+  }
+
+  private encodeBase64(json: string): string {
+    return typeof Buffer !== 'undefined'
+      ? Buffer.from(json, 'utf-8').toString('base64')
+      : btoa(new TextEncoder().encode(json).reduce((data, byte) => data + String.fromCharCode(byte), ''));
+  }
+
+  /**
+   * Conditionally applies matchRules, rewriteRules, publicDirectoryPath, and responseFixturesPath
+   * headers from the matching InterceptorUrl when the request URL matches a pattern with these options set.
+   */
+  protected applyUrlSpecificHeaders(
+    headers: Record<string, string>,
+    interceptorUrl?: InterceptorUrl
+  ) {
+    if (!interceptorUrl) return;
+
+    if (interceptorUrl.matchRules?.length) {
+      headers[MATCH_RULES] = this.encodeBase64(JSON.stringify(interceptorUrl.matchRules));
+    }
+    if (interceptorUrl.rewriteRules?.length) {
+      const serialized = interceptorUrl.rewriteRules.map((rule) => {
+        const out: Record<string, unknown> = {};
+        if (rule.urlRules) out.url_rules = rule.urlRules;
+        if (rule.parameterRules) out.parameter_rules = rule.parameterRules;
+        return out;
+      });
+      headers[REWRITE_RULES] = this.encodeBase64(JSON.stringify(serialized));
+    }
+    if (interceptorUrl.publicDirectoryPath) {
+      headers[PUBLIC_DIRECTORY_PATH] = interceptorUrl.publicDirectoryPath;
+    }
+    if (interceptorUrl.responseFixturesPath) {
+      headers[RESPONSE_FIXTURES_PATH] = interceptorUrl.responseFixturesPath;
+    }
   }
 
   private restoreFetch() {
@@ -367,6 +430,7 @@ export class Interceptor {
         }
         
         const headers = self.decorateHeaders(init.headers as Record<string, string>);
+        self.applyUrlSpecificHeaders(headers, self.findMatchingUrl(url));
         self.filterOverwriteHeader(headers, url, urlsToVisit);
         init.headers = headers;
       }
@@ -403,6 +467,7 @@ export class Interceptor {
         }
 
         const headers = self.decorateHeaders({});
+        self.applyUrlSpecificHeaders(headers, self.findMatchingUrl(url));
         self.filterOverwriteHeader(headers, url, urlsToVisit);
 
         Object.entries(headers).forEach(([key, value]) => {

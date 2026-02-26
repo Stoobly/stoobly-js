@@ -1,8 +1,8 @@
 import {jest} from '@jest/globals';
 import {SpiedFunction} from 'jest-mock';
 
-import {OVERWRITE_ID, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE} from '@constants/custom_headers';
-import {InterceptMode, RecordOrder, RecordPolicy, RecordStrategy} from '@constants/intercept';
+import {MATCH_RULES, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE} from '@constants/custom_headers';
+import {InterceptMode, RecordOrder, RecordPolicy, RecordStrategy, RequestParameter} from '@constants/intercept';
 import {Interceptor} from '@core/interceptor';
 
 describe('Interceptor', () => {
@@ -29,7 +29,7 @@ describe('Interceptor', () => {
       interceptor = new Interceptor({
         scenarioKey,
         sessionId,
-        urls: [allowedUrl],
+        urls: [{ pattern: allowedUrl }],
       });
       interceptor.withTestTitle(testTitle);
       await interceptor.apply();
@@ -74,7 +74,7 @@ describe('Interceptor', () => {
         interceptor = new Interceptor({
           scenarioKey,
           sessionId,
-          urls: [new RegExp(`${allowedOrigin}/.*`)],
+          urls: [{ pattern: new RegExp(`${allowedOrigin}/.*`) }],
         });
         interceptor.withTestTitle(testTitle);
         await interceptor.apply();
@@ -107,6 +107,72 @@ describe('Interceptor', () => {
       });
     });
 
+    describe('when urls is (string | RegExp)[] for backward compatibility', () => {
+      beforeAll(async () => {
+        interceptor = new Interceptor({
+          scenarioKey,
+          sessionId,
+          urls: [allowedUrl, new RegExp(`${allowedOrigin}/other`)],
+        });
+        interceptor.withTestTitle(testTitle);
+        await interceptor.apply();
+
+        await fetch(allowedUrl);
+      });
+
+      test(`adds headers when url matches string pattern`, async () => {
+        expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+          headers: expect.objectContaining({
+            [SCENARIO_KEY]: scenarioKey,
+          }),
+        });
+      });
+    });
+
+    describe('when urls is a mixed array of strings/RegExp and InterceptorUrl objects', () => {
+      const otherUrl = `${allowedOrigin}/other`;
+      const matchRules = [{modes: [InterceptMode.replay], components: RequestParameter.Header}];
+
+      beforeAll(async () => {
+        interceptor = new Interceptor({
+          scenarioKey,
+          sessionId,
+          urls: [
+            allowedUrl, // string
+            new RegExp(`${allowedOrigin}/regexp`), // RegExp
+            {pattern: otherUrl, matchRules}, // InterceptorUrl
+          ],
+        });
+        interceptor.withTestTitle(testTitle);
+        await interceptor.apply();
+
+        await fetch(allowedUrl);
+        await fetch(otherUrl);
+      });
+
+      test(`adds headers when url matches string pattern`, async () => {
+        expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+          headers: expect.objectContaining({
+            [SCENARIO_KEY]: scenarioKey,
+          }),
+        });
+      });
+
+      test(`adds matchRules header when url matches InterceptorUrl pattern`, async () => {
+        const call = fetchMock.mock.calls.find(
+          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === otherUrl
+        );
+        expect(call).toBeDefined();
+        const headers = (call as unknown as [string, RequestInit?])[1] as {headers?: Record<string, string>};
+        const encoded = headers?.headers?.[MATCH_RULES];
+        expect(encoded).toBeDefined();
+        const decoded = JSON.parse(
+          Buffer.from(encoded!, 'base64').toString('utf-8')
+        );
+        expect(decoded).toEqual(matchRules);
+      });
+    });
+
     describe('when not allowed', () => {
       const notAllowedUrl = `${notAllowedOrigin}/test`;
 
@@ -114,7 +180,7 @@ describe('Interceptor', () => {
         interceptor = new Interceptor({
           scenarioKey,
           sessionId,
-          urls: [allowedUrl], // Only allow the original URL, not the notAllowedUrl
+          urls: [{ pattern: allowedUrl }], // Only allow the original URL, not the notAllowedUrl
         });
         interceptor.withTestTitle(testTitle);
         await interceptor.apply();
@@ -162,7 +228,7 @@ describe('Interceptor', () => {
       interceptor = new Interceptor({
         scenarioName,
         sessionId,
-        urls: [allowedUrl],
+        urls: [{ pattern: allowedUrl }],
       });
       interceptor.withTestTitle(testTitle);
       await interceptor.apply();
@@ -211,6 +277,261 @@ describe('Interceptor', () => {
     });
   });
 
+  describe('fetch with matchRules and InterceptorUrl options', () => {
+    const allowedUrl = `${allowedOrigin}/test`;
+    const matchRules = [
+      {modes: [InterceptMode.replay], components: RequestParameter.Header},
+    ];
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    beforeAll(async () => {
+      Interceptor.originalFetch = fetchMock;
+
+      interceptor = new Interceptor({
+        scenarioKey,
+        sessionId,
+        urls: [{pattern: allowedUrl, matchRules}],
+      });
+      interceptor.withTestTitle(testTitle);
+      await interceptor.apply();
+    });
+
+    afterAll(() => {
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    describe('when strict matching', () => {
+      beforeAll(async () => {
+        await fetch(allowedUrl);
+      });
+
+      test(`adds '${MATCH_RULES}' header with base64-encoded JSON to fetch requests`, () => {
+        expect(fetchMock).toHaveBeenCalledWith(
+          allowedUrl,
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              [MATCH_RULES]: expect.any(String),
+            }),
+          })
+        );
+        const call = fetchMock.mock.calls.find(
+          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === allowedUrl
+        );
+        const headers = (call as unknown as [string, RequestInit?])[1] as {headers?: Record<string, string>};
+        const encoded = headers?.headers?.[MATCH_RULES];
+        const decoded = JSON.parse(
+          Buffer.from(encoded!, 'base64').toString('utf-8')
+        );
+        expect(decoded).toEqual(matchRules);
+      });
+    });
+
+    describe('when multiple URLs with different InterceptorUrl options', () => {
+      const usersUrl = `${allowedOrigin}/api/users`;
+      const postsUrl = `${allowedOrigin}/api/posts`;
+      const usersMatchRules = [
+        {modes: [InterceptMode.replay], components: RequestParameter.Header},
+      ];
+      const postsRewriteRules = [{urlRules: [{path: '/posts-rewritten'}]}];
+
+      beforeAll(async () => {
+        await interceptor.apply({
+          urls: [
+            {
+              pattern: new RegExp(`${allowedOrigin}/api/users`),
+              matchRules: usersMatchRules,
+              publicDirectoryPath: '/users-public',
+              responseFixturesPath: '/users-fixtures',
+            },
+            {
+              pattern: new RegExp(`${allowedOrigin}/api/posts`),
+              rewriteRules: postsRewriteRules,
+              publicDirectoryPath: '/posts-public',
+            },
+          ],
+        });
+      });
+
+      test('request to /api/users receives headers from matching InterceptorUrl only', async () => {
+        await fetch(usersUrl);
+
+        const call = fetchMock.mock.calls.find(
+          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === usersUrl
+        );
+        expect(call).toBeDefined();
+        const headers = (call as unknown as [string, RequestInit?])[1] as {
+          headers?: Record<string, string>;
+        };
+        const reqHeaders = headers?.headers ?? {};
+
+        expect(reqHeaders[MATCH_RULES]).toBeDefined();
+        expect(JSON.parse(Buffer.from(reqHeaders[MATCH_RULES], 'base64').toString('utf-8'))).toEqual(
+          usersMatchRules
+        );
+        expect(reqHeaders[PUBLIC_DIRECTORY_PATH]).toBe('/users-public');
+        expect(reqHeaders[RESPONSE_FIXTURES_PATH]).toBe('/users-fixtures');
+        expect(reqHeaders[REWRITE_RULES]).toBeUndefined();
+      });
+
+      test('request to /api/posts receives headers from matching InterceptorUrl only', async () => {
+        await fetch(postsUrl);
+
+        const call = fetchMock.mock.calls.find(
+          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === postsUrl
+        );
+        expect(call).toBeDefined();
+        const headers = (call as unknown as [string, RequestInit?])[1] as {
+          headers?: Record<string, string>;
+        };
+        const reqHeaders = headers?.headers ?? {};
+
+        expect(reqHeaders[REWRITE_RULES]).toBeDefined();
+        expect(JSON.parse(Buffer.from(reqHeaders[REWRITE_RULES], 'base64').toString('utf-8'))).toEqual([
+          {url_rules: [{path: '/posts-rewritten'}]},
+        ]);
+        expect(reqHeaders[PUBLIC_DIRECTORY_PATH]).toBe('/posts-public');
+        expect(reqHeaders[MATCH_RULES]).toBeUndefined();
+        expect(reqHeaders[RESPONSE_FIXTURES_PATH]).toBeUndefined();
+      });
+    });
+  });
+
+  describe('fetch with rewriteRules', () => {
+    const allowedUrl = `${allowedOrigin}/test`;
+    const rewriteRules = [{urlRules: [{path: '/new-path'}]}];
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    beforeAll(async () => {
+      Interceptor.originalFetch = fetchMock;
+
+      interceptor = new Interceptor({
+        scenarioKey,
+        sessionId,
+        urls: [{pattern: allowedUrl, rewriteRules}],
+      });
+      interceptor.withTestTitle(testTitle);
+      await interceptor.apply();
+    });
+
+    afterAll(() => {
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    describe('when strict matching', () => {
+      beforeAll(async () => {
+        await fetch(allowedUrl);
+      });
+
+      test(`adds '${REWRITE_RULES}' header with base64-encoded JSON to fetch requests`, () => {
+        expect(fetchMock).toHaveBeenCalledWith(
+          allowedUrl,
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              [REWRITE_RULES]: expect.any(String),
+            }),
+          })
+        );
+        const call = fetchMock.mock.calls.find(
+          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === allowedUrl
+        );
+        const headers = (call as unknown as [string, RequestInit?])[1] as {headers?: Record<string, string>};
+        const encoded = headers?.headers?.[REWRITE_RULES];
+        const decoded = JSON.parse(
+          Buffer.from(encoded!, 'base64').toString('utf-8')
+        );
+        expect(decoded).toEqual([{url_rules: [{path: '/new-path'}]}]);
+      });
+    });
+  });
+
+  describe('fetch without matchRules', () => {
+    const allowedUrl = `${allowedOrigin}/test`;
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    beforeAll(async () => {
+      Interceptor.originalFetch = fetchMock;
+
+      interceptor = new Interceptor({
+        scenarioKey,
+        sessionId,
+        urls: [{pattern: allowedUrl}],
+      });
+      interceptor.withTestTitle(testTitle);
+      await interceptor.apply();
+    });
+
+    afterAll(() => {
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    describe('when strict matching', () => {
+      beforeAll(async () => {
+        await fetch(allowedUrl);
+      });
+
+      test(`does not add '${MATCH_RULES}' header when urls have no matchRules`, () => {
+        const call = fetchMock.mock.calls.find(
+          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === allowedUrl
+        );
+        expect(call).toBeDefined();
+        const headers = (call as unknown as [string, RequestInit?])[1] as {headers?: Record<string, string>};
+        expect(headers?.headers?.[MATCH_RULES]).toBeUndefined();
+      });
+    });
+  });
+
+  describe('fetch without rewriteRules', () => {
+    const allowedUrl = `${allowedOrigin}/test`;
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    beforeAll(async () => {
+      Interceptor.originalFetch = fetchMock;
+
+      interceptor = new Interceptor({
+        scenarioKey,
+        sessionId,
+        urls: [{pattern: allowedUrl}],
+      });
+      interceptor.withTestTitle(testTitle);
+      await interceptor.apply();
+    });
+
+    afterAll(() => {
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    describe('when strict matching', () => {
+      beforeAll(async () => {
+        await fetch(allowedUrl);
+      });
+
+      test(`does not add '${REWRITE_RULES}' header when urls have no rewriteRules`, () => {
+        const call = fetchMock.mock.calls.find(
+          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === allowedUrl
+        );
+        expect(call).toBeDefined();
+        const headers = (call as unknown as [string, RequestInit?])[1] as {headers?: Record<string, string>};
+        expect(headers?.headers?.[REWRITE_RULES]).toBeUndefined();
+      });
+    });
+  });
+
   describe('XMLHttpRequest.prototype.open', () => {
     const allowedUrl = `${allowedOrigin}/test`;
 
@@ -225,7 +546,7 @@ describe('Interceptor', () => {
       xhrInterceptor = new Interceptor({
         scenarioKey,
         sessionId,
-        urls: [allowedUrl],
+        urls: [{ pattern: allowedUrl }],
       });
       xhrInterceptor.withTestTitle(testTitle);
     });
@@ -270,7 +591,7 @@ describe('Interceptor', () => {
         xhrInterceptor = new Interceptor({
           scenarioKey,
           sessionId,
-          urls: [new RegExp(`${allowedOrigin}/.*`)],
+          urls: [{ pattern: new RegExp(`${allowedOrigin}/.*`) }],
         });
         xhrInterceptor.withTestTitle(testTitle);
         await xhrInterceptor.apply();
@@ -309,7 +630,7 @@ describe('Interceptor', () => {
         xhrInterceptor = new Interceptor({
           scenarioKey,
           sessionId,
-          urls: [allowedUrl], // Only allow the original URL, not the notAllowedUrl
+          urls: [{ pattern: allowedUrl }], // Only allow the original URL, not the notAllowedUrl
         });
         xhrInterceptor.withTestTitle(testTitle);
         await xhrInterceptor.apply();
@@ -351,6 +672,123 @@ describe('Interceptor', () => {
     });
   });
 
+  describe('XMLHttpRequest.prototype.open with matchRules', () => {
+    const allowedUrl = `${allowedOrigin}/test`;
+    const matchRules = [
+      {
+        modes: [InterceptMode.replay],
+        components: RequestParameter.QueryParam,
+      },
+    ];
+
+    const originalXMLHttpRequestOpen: typeof XMLHttpRequest.prototype.open =
+      XMLHttpRequest.prototype.open;
+    let setRequestHeaderMock: SpiedFunction<
+      (name: string, value: string) => void
+    >;
+    let xhrInterceptor: Interceptor;
+
+    beforeAll(async () => {
+      xhrInterceptor = new Interceptor({
+        scenarioKey,
+        sessionId,
+        urls: [{pattern: allowedUrl, matchRules}],
+      });
+      xhrInterceptor.withTestTitle(testTitle);
+      await xhrInterceptor.apply();
+    });
+
+    afterAll(() => {
+      XMLHttpRequest.prototype.open = originalXMLHttpRequestOpen;
+    });
+
+    describe('when strict matching', () => {
+      beforeAll(async () => {
+        const xhr = new XMLHttpRequest();
+        setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
+        xhr.open('GET', allowedUrl);
+        Object.defineProperty(xhr, 'readyState', {value: 1, writable: true});
+        xhr.dispatchEvent(new Event('readystatechange'));
+      });
+
+      test(`adds '${MATCH_RULES}' header with base64-encoded JSON to XMLHttpRequest`, () => {
+        const matchRulesCall = setRequestHeaderMock.mock.calls.find(
+          (c) => c[0] === MATCH_RULES
+        );
+        expect(matchRulesCall).toBeDefined();
+        const encoded = matchRulesCall![1];
+        const decoded = JSON.parse(
+          Buffer.from(encoded, 'base64').toString('utf-8')
+        );
+        expect(decoded).toEqual(matchRules);
+      });
+    });
+  });
+
+  describe('XMLHttpRequest.prototype.open with rewriteRules', () => {
+    const allowedUrl = `${allowedOrigin}/test`;
+    const rewriteRules = [
+      {
+        parameterRules: [
+          {
+            type: RequestParameter.Header,
+            name: 'foo',
+            value: 'bar',
+          },
+        ],
+      },
+    ];
+
+    const originalXMLHttpRequestOpen: typeof XMLHttpRequest.prototype.open =
+      XMLHttpRequest.prototype.open;
+    let setRequestHeaderMock: SpiedFunction<
+      (name: string, value: string) => void
+    >;
+    let xhrInterceptor: Interceptor;
+
+    beforeAll(async () => {
+      xhrInterceptor = new Interceptor({
+        scenarioKey,
+        sessionId,
+        urls: [{pattern: allowedUrl, rewriteRules}],
+      });
+      xhrInterceptor.withTestTitle(testTitle);
+      await xhrInterceptor.apply();
+    });
+
+    afterAll(() => {
+      XMLHttpRequest.prototype.open = originalXMLHttpRequestOpen;
+    });
+
+    describe('when strict matching', () => {
+      beforeAll(async () => {
+        const xhr = new XMLHttpRequest();
+        setRequestHeaderMock = jest.spyOn(xhr, 'setRequestHeader');
+        xhr.open('GET', allowedUrl);
+        Object.defineProperty(xhr, 'readyState', {value: 1, writable: true});
+        xhr.dispatchEvent(new Event('readystatechange'));
+      });
+
+      test(`adds '${REWRITE_RULES}' header with base64-encoded JSON to XMLHttpRequest`, () => {
+        const rewriteRulesCall = setRequestHeaderMock.mock.calls.find(
+          (c) => c[0] === REWRITE_RULES
+        );
+        expect(rewriteRulesCall).toBeDefined();
+        const encoded = rewriteRulesCall![1];
+        const decoded = JSON.parse(
+          Buffer.from(encoded, 'base64').toString('utf-8')
+        );
+        expect(decoded).toEqual([
+          {
+            parameter_rules: [
+              {type: RequestParameter.Header, name: 'foo', value: 'bar'},
+            ],
+          },
+        ]);
+      });
+    });
+  });
+
   describe('XMLHttpRequest.prototype.open with scenarioName', () => {
     const allowedUrl = `${allowedOrigin}/test`;
 
@@ -365,7 +803,7 @@ describe('Interceptor', () => {
       xhrInterceptor = new Interceptor({
         scenarioName,
         sessionId,
-        urls: [allowedUrl],
+        urls: [{ pattern: allowedUrl }],
       });
       xhrInterceptor.withTestTitle(testTitle);
       await xhrInterceptor.apply();
@@ -431,7 +869,7 @@ describe('Interceptor', () => {
         scenarioKey,
         scenarioName,
         sessionId,
-        urls: [allowedUrl],
+        urls: [{ pattern: allowedUrl }],
         record: {
           order: RecordOrder.Overwrite,
           policy: RecordPolicy.All,
@@ -489,7 +927,7 @@ describe('Interceptor', () => {
         scenarioKey,
         scenarioName,
         sessionId,
-        urls: [allowedUrl],
+        urls: [{ pattern: allowedUrl }],
         record: {
           order: RecordOrder.Overwrite,
           policy: RecordPolicy.All,
@@ -563,7 +1001,7 @@ describe('Interceptor', () => {
         scenarioKey,
         scenarioName,
         sessionId,
-        urls: [urlPattern],
+        urls: [{ pattern: urlPattern }],
         record: {
           order: RecordOrder.Overwrite,
           policy: RecordPolicy.All,
@@ -636,7 +1074,7 @@ describe('Interceptor', () => {
         scenarioKey,
         scenarioName,
         sessionId,
-        urls: [allowedUrl1, allowedUrl2],
+        urls: [{ pattern: allowedUrl1 }, { pattern: allowedUrl2 }],
         record: {
           order: RecordOrder.Overwrite,
           policy: RecordPolicy.All,
@@ -733,7 +1171,7 @@ describe('Interceptor', () => {
         scenarioKey,
         scenarioName,
         sessionId,
-        urls: [allowedUrl],
+        urls: [{ pattern: allowedUrl }],
         record: {
           order: RecordOrder.Overwrite,
           policy: RecordPolicy.All,
@@ -844,7 +1282,7 @@ describe('Interceptor', () => {
           scenarioKey,
           scenarioName,
           sessionId,
-          urls: [allowedUrl],
+          urls: [{ pattern: allowedUrl }],
           record: {
             order: RecordOrder.Append,
             policy: RecordPolicy.All,
@@ -916,7 +1354,7 @@ describe('Interceptor', () => {
 
       test('removes pattern on exact string match', () => {
         const url = 'https://example.com/exact';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toEqual(['https://example.com/other']);
         expect(headers[RECORD_ORDER]).toBe(RecordOrder.Overwrite);
@@ -925,7 +1363,7 @@ describe('Interceptor', () => {
 
       test('removes overwrite headers when no match found', () => {
         const url = 'https://example.com/notfound';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toEqual(['https://example.com/exact', 'https://example.com/other']);
         expect(headers[RECORD_ORDER]).toBeUndefined();
@@ -940,7 +1378,7 @@ describe('Interceptor', () => {
 
       test('removes pattern when actual URL matches RegExp', () => {
         const url = 'https://example.com/api/users';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toHaveLength(1);
         expect(urlsToVisit[0]).toEqual(/\/admin\/.*/);
@@ -950,7 +1388,7 @@ describe('Interceptor', () => {
 
       test('removes pattern when RegExp pattern matches another RegExp pattern', () => {
         const url = /\/api\/.*/;
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toHaveLength(1);
         expect(urlsToVisit[0]).toEqual(/\/admin\/.*/);
@@ -960,7 +1398,7 @@ describe('Interceptor', () => {
 
       test('removes overwrite headers when URL does not match any pattern', () => {
         const url = 'https://example.com/other/path';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toHaveLength(2);
         expect(headers[RECORD_ORDER]).toBeUndefined();
@@ -975,7 +1413,7 @@ describe('Interceptor', () => {
 
         // First test
         const url1 = 'https://example.com/api/users';
-        testInterceptor['filterOverwriteHeader'](headers, url1, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url1, urlsToVisit);
 
         expect(urlsToVisit).toHaveLength(0);
         expect(headers[RECORD_ORDER]).toBe(RecordOrder.Overwrite);
@@ -990,7 +1428,7 @@ describe('Interceptor', () => {
 
         // Test URL that doesn't match
         const url = 'https://example.com/other/path';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toHaveLength(1);
         expect(headers[RECORD_ORDER]).toBeUndefined();
@@ -1010,7 +1448,7 @@ describe('Interceptor', () => {
           [OVERWRITE_ID]: 'test-id',
         };
         const url1 = 'https://example.com/other/path';
-        testInterceptor['filterOverwriteHeader'](headers, url1, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url1, urlsToVisit);
 
         expect(pattern.lastIndex).toBe(0);
         expect(urlsToVisit).toHaveLength(2);
@@ -1021,7 +1459,7 @@ describe('Interceptor', () => {
           [OVERWRITE_ID]: 'test-id',
         };
         const url2 = 'https://example.com/api/users';
-        testInterceptor['filterOverwriteHeader'](headers, url2, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url2, urlsToVisit);
 
         expect(urlsToVisit).toHaveLength(1);
         expect(urlsToVisit[0]).toEqual(/\/admin\/.*/);
@@ -1035,7 +1473,7 @@ describe('Interceptor', () => {
         urlsToVisit = [pattern];
 
         const url = 'https://example.com/api/users';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         // Verify lastIndex was reset
         expect(pattern.lastIndex).toBe(0);
@@ -1053,7 +1491,7 @@ describe('Interceptor', () => {
 
       test('removes first matching pattern only', () => {
         const url = 'https://example.com/exact';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toHaveLength(2);
         expect(urlsToVisit[0]).toEqual(/\/api\/.*/);
@@ -1063,7 +1501,7 @@ describe('Interceptor', () => {
 
       test('matches RegExp pattern when string pattern does not match', () => {
         const url = 'https://example.com/api/users';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toHaveLength(2);
         expect(urlsToVisit[0]).toBe('https://example.com/exact');
@@ -1081,7 +1519,7 @@ describe('Interceptor', () => {
         urlsToVisit = ['https://example.com/exact'];
 
         const url = 'https://example.com/exact';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toEqual(['https://example.com/exact']);
         expect(headers[RECORD_ORDER]).toBe(RecordOrder.Append);
@@ -1093,7 +1531,7 @@ describe('Interceptor', () => {
       test('handles empty urlsToVisit array', () => {
         urlsToVisit = [];
         const url = 'https://example.com/any';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toEqual([]);
         expect(headers[RECORD_ORDER]).toBeUndefined();
@@ -1103,7 +1541,7 @@ describe('Interceptor', () => {
       test('handles complex RegExp patterns', () => {
         urlsToVisit = [/^https:\/\/api\.example\.com\/v[0-9]+\/users$/];
         const url = 'https://api.example.com/v2/users';
-        testInterceptor['filterOverwriteHeader'](headers, url, urlsToVisit);
+        (testInterceptor as any).filterOverwriteHeader(headers, url, urlsToVisit);
 
         expect(urlsToVisit).toHaveLength(0);
         expect(headers[RECORD_ORDER]).toBe(RecordOrder.Overwrite);
