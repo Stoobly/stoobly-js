@@ -1548,4 +1548,352 @@ describe('Interceptor', () => {
       });
     });
   });
+
+  describe('fluent API methods preserve values when apply() is called', () => {
+    const allowedUrl = `${allowedOrigin}/test`;
+    const fluentScenarioKey = 'fluent-api-key';
+    const fluentScenarioName = 'fluent-api-name';
+    const fluentRecordOrder = RecordOrder.Overwrite;
+    const fluentRecordPolicy = RecordPolicy.All;
+    const fluentRecordStrategy = RecordStrategy.Full;
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    test('preserves scenarioKey set via withScenarioKey() when apply() is called without scenarioKey in options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        // Note: scenarioKey is NOT set in constructor options
+      });
+      
+      // Set scenarioKey via fluent API
+      interceptor.withScenarioKey(fluentScenarioKey);
+      await interceptor.apply();
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [SCENARIO_KEY]: fluentScenarioKey,
+        }),
+      });
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('preserves scenarioName set via withScenarioName() when apply() is called without scenarioName in options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        // Note: scenarioName is NOT set in constructor options
+      });
+      
+      // Set scenarioName via fluent API
+      interceptor.withScenarioName(fluentScenarioName);
+      await interceptor.apply();
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [SCENARIO_NAME]: fluentScenarioName,
+        }),
+      });
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('preserves record order set via withRecordOrder() when apply() is called without record.order in options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        // Note: record.order is NOT set in constructor options
+      });
+      
+      // Set record order via fluent API
+      interceptor.withRecordOrder(fluentRecordOrder);
+      await interceptor.apply();
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [RECORD_ORDER]: fluentRecordOrder,
+          [OVERWRITE_ID]: expect.any(String),
+        }),
+      });
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('preserves record policy set via withRecordPolicy() when apply() is called without record.policy in options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        // Note: record.policy is NOT set in constructor options
+      });
+      
+      // Set record policy via fluent API
+      interceptor.withRecordPolicy(fluentRecordPolicy);
+      await interceptor.apply();
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [RECORD_POLICY]: fluentRecordPolicy,
+        }),
+      });
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('preserves record strategy set via withRecordStrategy() when apply() is called without record.strategy in options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        // Note: record.strategy is NOT set in constructor options
+      });
+      
+      // Set record strategy via fluent API
+      interceptor.withRecordStrategy(fluentRecordStrategy);
+      await interceptor.apply();
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [RECORD_STRATEGY]: fluentRecordStrategy,
+        }),
+      });
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('allows explicit override when scenarioKey is provided in apply() options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      const overrideScenarioKey = 'override-key';
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+      });
+      
+      // Set scenarioKey via fluent API
+      interceptor.withScenarioKey(fluentScenarioKey);
+      // Override via apply() options
+      await interceptor.apply({ scenarioKey: overrideScenarioKey });
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [SCENARIO_KEY]: overrideScenarioKey,
+        }),
+      });
+
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        allowedUrl,
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            [SCENARIO_KEY]: fluentScenarioKey,
+          }),
+        })
+      );
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('prefers fluent scenarioKey over constructor scenarioKey when apply() is called without scenarioKey in options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      const ctorScenarioKey = 'ctor-scenario-key';
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        scenarioKey: ctorScenarioKey,
+      });
+
+      // Override constructor scenarioKey via fluent API
+      interceptor.withScenarioKey(fluentScenarioKey);
+      await interceptor.apply();
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [SCENARIO_KEY]: fluentScenarioKey,
+        }),
+      });
+
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        allowedUrl,
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            [SCENARIO_KEY]: ctorScenarioKey,
+          }),
+        }),
+      );
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('preserves scenarioKey when apply() is called with only urls option', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+      });
+      
+      // Set scenarioKey via fluent API
+      interceptor.withScenarioKey(fluentScenarioKey);
+      // Call apply() with only urls, no scenarioKey
+      await interceptor.apply({ urls: [{ pattern: `${allowedOrigin}/other` }] });
+
+      await fetch(`${allowedOrigin}/other`);
+
+      expect(fetchMock).toHaveBeenCalledWith(`${allowedOrigin}/other`, {
+        headers: expect.objectContaining({
+          [SCENARIO_KEY]: fluentScenarioKey,
+        }),
+      });
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('preserves sessionId set via withSessionId() when apply() is called without sessionId in options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      const fluentSessionId = 'fluent-session';
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        // Note: sessionId is NOT set in constructor options
+      });
+
+      // Set sessionId via fluent API
+      interceptor.withSessionId(fluentSessionId);
+      await interceptor.apply();
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [SESSION_ID]: fluentSessionId,
+        }),
+      });
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('allows explicit override when sessionId is provided in apply() options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      const fluentSessionId = 'fluent-session';
+      const overrideSessionId = 'override-session';
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+      });
+
+      interceptor.withSessionId(fluentSessionId);
+      await interceptor.apply({ sessionId: overrideSessionId });
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [SESSION_ID]: overrideSessionId,
+        }),
+      });
+
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        allowedUrl,
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            [SESSION_ID]: fluentSessionId,
+          }),
+        }),
+      );
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('prefers fluent sessionId over constructor sessionId when apply() is called without sessionId in options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      const ctorSessionId = 'ctor-session';
+      const fluentSessionId = 'fluent-session';
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        sessionId: ctorSessionId,
+      });
+
+      // Override constructor sessionId via fluent API
+      interceptor.withSessionId(fluentSessionId);
+      await interceptor.apply();
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [SESSION_ID]: fluentSessionId,
+        }),
+      });
+
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        allowedUrl,
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            [SESSION_ID]: ctorSessionId,
+          }),
+        }),
+      );
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('uses constructor sessionId when no fluent or apply() sessionId is provided', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      const ctorSessionId = 'ctor-session-only';
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        sessionId: ctorSessionId,
+      });
+
+      await interceptor.apply();
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [SESSION_ID]: ctorSessionId,
+        }),
+      });
+
+      Interceptor.originalFetch = originalFetch;
+    });
+  });
 });

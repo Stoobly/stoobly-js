@@ -312,15 +312,71 @@ export class Interceptor {
       ...this.options,
       ..._options,
     }
-    
-    this.withRecordOrder(options.record?.order);
-    this.withRecordPolicy(options.record?.policy);
-    this.withRecordStrategy(options.record?.strategy);
-    this.withScenarioKey(options.scenarioKey);
-    this.withScenarioName(options.scenarioName);
 
-    const sessionId = options.sessionId || (new Date()).getTime().toString();
+    const applyOption = <T>(
+      headerKey: string,
+      fromApply: T | undefined,
+      fromCtor: T | undefined,
+      setter: (value: T) => this,
+    ) => {
+      if (fromApply !== undefined) {
+        setter.call(this, fromApply);
+      } else if (fromCtor !== undefined && !this.headers[headerKey]) {
+        setter.call(this, fromCtor);
+      }
+    };
+
+    // Only override headers if explicitly provided in _options, otherwise preserve
+    // values set via fluent API (e.g., .withScenarioKey()). For initial setup,
+    // use values from this.options if they exist and weren't set via fluent API.
+    applyOption(
+      RECORD_ORDER,
+      _options?.record?.order,
+      this.options.record?.order,
+      this.withRecordOrder.bind(this),
+    );
+
+    applyOption(
+      RECORD_POLICY,
+      _options?.record?.policy,
+      this.options.record?.policy,
+      this.withRecordPolicy.bind(this),
+    );
+
+    applyOption(
+      RECORD_STRATEGY,
+      _options?.record?.strategy,
+      this.options.record?.strategy,
+      this.withRecordStrategy.bind(this),
+    );
+
+    applyOption(
+      SCENARIO_KEY,
+      _options?.scenarioKey,
+      this.options.scenarioKey,
+      this.withScenarioKey.bind(this),
+    );
+
+    applyOption(
+      SCENARIO_NAME,
+      _options?.scenarioName,
+      this.options.scenarioName,
+      this.withScenarioName.bind(this),
+    );
+
+    // Session ID precedence:
+    // 1. Explicit _options.sessionId passed to apply()
+    // 2. sessionId from constructor options
+    // 3. Existing header set via fluent .withSessionId()
+    // 4. Auto-generated timestamp
+    const sessionId =
+      _options?.sessionId ??
+      this.options.sessionId ??
+      this.headers[SESSION_ID] ??
+      (new Date()).getTime().toString();
+
     this.withSessionId(sessionId);
+
     return sessionId;
   }
 

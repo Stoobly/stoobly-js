@@ -17,13 +17,12 @@ const interceptor = stoobly.playwrightInterceptor({
     policy: RecordPolicy.All,
     strategy: RecordStrategy.Full,
   },
-  scenarioKey,
 });
 
 test.describe('initial interceptor options', () => {
 
   test.beforeEach(async ({ page }, testInfo) => {
-    await interceptor.withPage(page).apply();
+    await interceptor.withPage(page).apply({ scenarioKey });
     interceptor.withTestTitle(testInfo.title);
   });
 
@@ -93,7 +92,7 @@ test.describe('Apply scenario with name', () => {
   const sessionId = 'id';
 
   test.beforeEach(async ({ page }, testInfo) => {
-    await interceptor.withPage(page).apply();
+    await interceptor.withPage(page).apply({ scenarioKey });
     interceptor.withTestTitle(testInfo.title);
   });
 
@@ -121,7 +120,7 @@ test.describe('Apply scenario with name', () => {
 
 test.describe('applyRecord', () => {
   test.beforeEach(async ({ page }, testInfo) => {
-    await interceptor.withPage(page).applyRecord();
+    await interceptor.withPage(page).applyRecord({ scenarioKey });
     interceptor.withTestTitle(testInfo.title);
   });
 
@@ -140,7 +139,7 @@ test.describe('applyRecord', () => {
 
   test.describe('clearRecord', () => {
     test.beforeEach(async ({ page }, testInfo) => {
-      await interceptor.withPage(page).applyRecord();
+      await interceptor.withPage(page).applyRecord({ scenarioKey });
       interceptor.withTestTitle(testInfo.title);
     });
 
@@ -168,7 +167,7 @@ test.describe('applyRecord', () => {
 
   test.describe('record options', () => {
     test.beforeEach(async ({ page }, testInfo) => {
-      await interceptor.withPage(page).applyRecord();
+      await interceptor.withPage(page).applyRecord({ scenarioKey });
       interceptor.withTestTitle(testInfo.title);
     });
 
@@ -301,7 +300,7 @@ test.describe('applyRecord', () => {
 
 test.describe('stop', () => {
   test.beforeEach(async ({ page }, testInfo) => {
-    await interceptor.withPage(page).apply();
+    await interceptor.withPage(page).apply({ scenarioKey });
     interceptor.withTestTitle(testInfo.title);
   });
 
@@ -339,7 +338,7 @@ test.describe('stop', () => {
   test('should handle multiple stops without error', async ({ page }) => {
     await interceptor.clear();
     interceptor.withScenarioKey('test-multi-clear');
-    await interceptor.apply();
+    await interceptor.apply({ scenarioKey });
 
     // First stop
     await interceptor.clear();
@@ -355,11 +354,10 @@ test.describe('stop', () => {
   });
 });
 
-
 test.describe('urls', () => {
   test.beforeEach(async ({ page }) => {
     interceptor.withPage(page);
-    await interceptor.apply();
+    await interceptor.apply({ scenarioKey });
   });
   
   test('should apply new urls when changing urls', async ({ page }) => {
@@ -396,7 +394,7 @@ test.describe('Context routing', () => {
 
   test.beforeEach(async ({}, testInfo) => {
     await contextInterceptor.clear();
-    contextInterceptor.withTestTitle(testInfo.title);
+    contextInterceptor.withScenarioKey(scenarioKey).withTestTitle(testInfo.title);
   });
 
   test('should intercept with context-only routing', async ({ context }, testInfo) => {
@@ -552,9 +550,15 @@ test.describe('Record order overwrite - per URL pattern tracking', () => {
     scenarioKey: 'overwrite-test',
   });
 
-  test('should send overwrite headers only once per URL pattern', async ({ page }) => {
-    await overwriteInterceptor.withPage(page).applyRecord();
+  test.beforeEach(async ({ page }) => {
+    await overwriteInterceptor.withPage(page).applyRecord({ scenarioKey });
+  });
 
+  test.afterEach(async () => {
+    await overwriteInterceptor.clear();
+  });
+
+  test('should send overwrite headers only once per URL pattern', async ({ page }) => {
     // First request to url1 - should include RECORD_ORDER and OVERWRITE_ID
     const response1Promise = page.waitForResponse(response => {
       return response.url().startsWith(url1) && response.status() === 200;
@@ -596,17 +600,11 @@ test.describe('Record order overwrite - per URL pattern tracking', () => {
     await page.goto(url2);
     const response4 = await response4Promise;
     const body4 = await response4.json();
-    
     expect(body4[RECORD_ORDER.toLowerCase()]).toBeUndefined();
     expect(body4['x-stoobly-overwrite-id']).toBeUndefined();
-
-    await overwriteInterceptor.clear();
   });
 
   test('should reset URL tracking when apply() is called again', async ({ page }) => {
-    // First apply
-    await overwriteInterceptor.withPage(page).applyRecord();
-
     // First request should have overwrite headers
     const response1Promise = page.waitForResponse(response => {
       return response.url().startsWith(url1) && response.status() === 200;
@@ -630,7 +628,7 @@ test.describe('Record order overwrite - per URL pattern tracking', () => {
     expect(body2['x-stoobly-overwrite-id']).toBeUndefined();
 
     // Apply again - should reset tracking
-    await overwriteInterceptor.withPage(page).applyRecord();
+    await overwriteInterceptor.withPage(page).applyRecord({ scenarioKey });
 
     // First request after reapply should have overwrite headers again
     const response3Promise = page.waitForResponse(response => {

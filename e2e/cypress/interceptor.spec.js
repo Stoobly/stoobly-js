@@ -10,7 +10,6 @@ const rewriteRules = [{ urlRules: [{ path: '/new-path' }] }];
 const stoobly = new Stoobly();
 const interceptor = stoobly.cypressInterceptor({
   urls: [{ pattern: targetUrl, matchRules, rewriteRules }],
-  scenarioKey,
 });
 
 describe('initial interceptor options', () => {
@@ -18,7 +17,7 @@ describe('initial interceptor options', () => {
 
   beforeEach(() => {
     // Test title is automatically detected in the Cypress integration
-    interceptor.apply({ sessionId });
+    interceptor.apply({ scenarioKey, sessionId });
   });
 
   after(() => {
@@ -95,7 +94,7 @@ describe('apply scenario with name', () => {
 
 describe('applyRecord', () => {
   beforeEach(() => {
-    interceptor.applyRecord();
+    interceptor.applyRecord({ scenarioKey });
   });
 
   it('should send request with intercept and record headers', () => {
@@ -269,7 +268,10 @@ describe('Record order overwrite - per URL pattern tracking', () => {
       policy: RecordPolicy.All,
       strategy: RecordStrategy.Full,
     },
-    scenarioKey: 'overwrite-test',
+  });
+
+  beforeEach(() => {
+    overwriteInterceptor.applyRecord({ scenarioKey });
   });
 
   afterEach(() => {
@@ -277,8 +279,6 @@ describe('Record order overwrite - per URL pattern tracking', () => {
   });
 
   it('should send overwrite headers only once per URL pattern', () => {
-    overwriteInterceptor.applyRecord();
-    
     let overwriteId;
 
     // First request to url1 - should include RECORD_ORDER and OVERWRITE_ID
@@ -324,9 +324,6 @@ describe('Record order overwrite - per URL pattern tracking', () => {
   });
 
   it('should reset URL tracking when apply() is called again', () => {
-    // First apply
-    overwriteInterceptor.applyRecord();
-
     // First request should have overwrite headers
     cy.intercept('GET', url1).as('request1');
     cy.visit(SERVER_URL);
@@ -347,7 +344,7 @@ describe('Record order overwrite - per URL pattern tracking', () => {
 
     // Apply again - should reset tracking
     cy.then(() => {
-      overwriteInterceptor.applyRecord();
+      overwriteInterceptor.applyRecord({ scenarioKey });
     });
 
     // First request after reapply should have overwrite headers again
