@@ -308,19 +308,79 @@ export class Interceptor {
       this.started = true;
     }
 
-    const options = {
-      ...this.options,
-      ..._options,
-    }
-    
-    this.withRecordOrder(options.record?.order);
-    this.withRecordPolicy(options.record?.policy);
-    this.withRecordStrategy(options.record?.strategy);
-    this.withScenarioKey(options.scenarioKey);
-    this.withScenarioName(options.scenarioName);
+    // Helper for applying header-backed options (record order, policy, strategy, scenario key/name)
+    // with a consistent precedence model:
+    //
+    //   1. Value explicitly provided to apply() via `_options` (fromApply)
+    //   2. Existing header value, typically set via fluent API (e.g. `.withScenarioKey()`)
+    //   3. Value from constructor options (fromCtor), but only if no header has been set yet
+    //
+    // This mirrors the precedence used for `sessionId`, except `sessionId` also falls back to
+    // an auto-generated value when neither apply(), fluent API, nor constructor provide one.
+    const applyOption = <T>(
+      headerKey: string,
+      fromApply: T | undefined,
+      fromCtor: T | undefined,
+      setter: (value: T) => this,
+    ) => {
+      if (fromApply !== undefined) {
+        setter.call(this, fromApply);
+      } else if (fromCtor !== undefined && !this.headers[headerKey]) {
+        setter.call(this, fromCtor);
+      }
+    };
 
-    const sessionId = options.sessionId || (new Date()).getTime().toString();
+    // Only override headers if explicitly provided in _options, otherwise preserve
+    // values set via fluent API (e.g., .withScenarioKey()). For initial setup,
+    // use values from this.options if they exist and weren't set via fluent API.
+    applyOption(
+      RECORD_ORDER,
+      _options?.record?.order,
+      this.options.record?.order,
+      this.withRecordOrder.bind(this),
+    );
+
+    applyOption(
+      RECORD_POLICY,
+      _options?.record?.policy,
+      this.options.record?.policy,
+      this.withRecordPolicy.bind(this),
+    );
+
+    applyOption(
+      RECORD_STRATEGY,
+      _options?.record?.strategy,
+      this.options.record?.strategy,
+      this.withRecordStrategy.bind(this),
+    );
+
+    applyOption(
+      SCENARIO_KEY,
+      _options?.scenarioKey,
+      this.options.scenarioKey,
+      this.withScenarioKey.bind(this),
+    );
+
+    applyOption(
+      SCENARIO_NAME,
+      _options?.scenarioName,
+      this.options.scenarioName,
+      this.withScenarioName.bind(this),
+    );
+
+    // Session ID precedence:
+    // 1. Explicit _options.sessionId passed to apply()
+    // 2. Existing header set via fluent .withSessionId()
+    // 3. sessionId from constructor options
+    // 4. Auto-generated timestamp
+    const sessionId =
+      _options?.sessionId ??
+      this.headers[SESSION_ID] ??
+      this.options.sessionId ??
+      (new Date()).getTime().toString();
+
     this.withSessionId(sessionId);
+
     return sessionId;
   }
 
