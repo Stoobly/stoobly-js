@@ -308,11 +308,15 @@ export class Interceptor {
       this.started = true;
     }
 
-    const options = {
-      ...this.options,
-      ..._options,
-    }
-
+    // Helper for applying header-backed options (record order, policy, strategy, scenario key/name)
+    // with a consistent precedence model:
+    //
+    //   1. Value explicitly provided to apply() via `_options` (fromApply)
+    //   2. Existing header value, typically set via fluent API (e.g. `.withScenarioKey()`)
+    //   3. Value from constructor options (fromCtor), but only if no header has been set yet
+    //
+    // This mirrors the precedence used for `sessionId`, except `sessionId` also falls back to
+    // an auto-generated value when neither apply(), fluent API, nor constructor provide one.
     const applyOption = <T>(
       headerKey: string,
       fromApply: T | undefined,
@@ -366,13 +370,13 @@ export class Interceptor {
 
     // Session ID precedence:
     // 1. Explicit _options.sessionId passed to apply()
-    // 2. sessionId from constructor options
-    // 3. Existing header set via fluent .withSessionId()
+    // 2. Existing header set via fluent .withSessionId()
+    // 3. sessionId from constructor options
     // 4. Auto-generated timestamp
     const sessionId =
       _options?.sessionId ??
-      this.options.sessionId ??
       this.headers[SESSION_ID] ??
+      this.options.sessionId ??
       (new Date()).getTime().toString();
 
     this.withSessionId(sessionId);
