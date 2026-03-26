@@ -9,5 +9,6 @@ export const RESPONSE_FIXTURES_PATH = 'X-Stoobly-Response-Fixtures-Path';
 export const REWRITE_RULES = 'X-Stoobly-Request-Rewrite-Rules';
 export const SCENARIO_KEY = 'X-Stoobly-Scenario-Key';
 export const SCENARIO_NAME = 'X-Stoobly-Scenario-Name';
+export const SCENARIO_CREATE_IF_MISSING = 'X-Stoobly-Scenario-Create-If-Missing';
 export const SESSION_ID = 'X-Stoobly-Session-Id';
 export const TEST_TITLE = 'X-Stoobly-Test-Title';
