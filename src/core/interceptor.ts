@@ -1,4 +1,4 @@
-import { MATCH_RULES, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
+import { MATCH_RULES, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
 import { InterceptMode, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/intercept";
 
 import { InterceptorOptions, InterceptorUrl } from "../types/options";
@@ -204,6 +204,11 @@ export class Interceptor {
       ...initialHeaders,
       ...this.headers,
     };
+
+    // If a scenario name is requested, also ask the server to create the scenario if it's missing.
+    if (headers[SCENARIO_NAME]) {
+      headers[SCENARIO_CREATE_IF_MISSING] = '1';
+    }
 
     // Dynamically detect test title at interception time
     if (!this.headers[TEST_TITLE]) {
