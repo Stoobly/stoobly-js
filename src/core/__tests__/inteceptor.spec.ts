@@ -1,7 +1,7 @@
 import {jest} from '@jest/globals';
 import {SpiedFunction} from 'jest-mock';
 
-import {MATCH_RULES, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE} from '@constants/custom_headers';
+import {MATCH_RULES, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE} from '@constants/custom_headers';
 import {InterceptMode, RecordOrder, RecordPolicy, RecordStrategy, RequestParameter} from '@constants/intercept';
 import {Interceptor} from '@core/interceptor';
 
@@ -247,6 +247,7 @@ describe('Interceptor', () => {
         expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
           headers: expect.objectContaining({
             [SCENARIO_NAME]: scenarioName,
+            [SCENARIO_CREATE_IF_MISSING]: '1',
           }),
         });
       });
@@ -830,6 +831,13 @@ describe('Interceptor', () => {
         );
       });
 
+      test(`adds '${SCENARIO_CREATE_IF_MISSING}' header to XMLHttpRequest`, async () => {
+        expect(setRequestHeaderMock).toHaveBeenCalledWith(
+          SCENARIO_CREATE_IF_MISSING,
+          '1'
+        );
+      });
+
       test(`does not add '${SCENARIO_KEY}' header when using scenarioName`, async () => {
         expect(setRequestHeaderMock).not.toHaveBeenCalledWith(
           SCENARIO_KEY,
@@ -903,6 +911,7 @@ describe('Interceptor', () => {
           [RECORD_STRATEGY]: RecordStrategy.Full,
           [SCENARIO_KEY]: scenarioKey,
           [SCENARIO_NAME]: scenarioName,
+          [SCENARIO_CREATE_IF_MISSING]: '1',
           [SESSION_ID]: expect.any(String),
           [TEST_TITLE]: testTitle,
         }),
@@ -1315,6 +1324,7 @@ describe('Interceptor', () => {
             [RECORD_STRATEGY]: RecordStrategy.Full,
             [SCENARIO_KEY]: scenarioKey,
             [SCENARIO_NAME]: scenarioName,
+            [SCENARIO_CREATE_IF_MISSING]: '1',
             [SESSION_ID]: expect.any(String),
             [TEST_TITLE]: testTitle,
           }),
@@ -1604,6 +1614,7 @@ describe('Interceptor', () => {
       expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
         headers: expect.objectContaining({
           [SCENARIO_NAME]: fluentScenarioName,
+          [SCENARIO_CREATE_IF_MISSING]: '1',
         }),
       });
 
