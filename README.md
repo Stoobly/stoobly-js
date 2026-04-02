@@ -165,18 +165,32 @@ interceptor.clear();
 
 ### Integrating with Cypress
 
+Set the Stoobly interception mode in your `cypress.config.*`:
+
+```js
+import { defineConfig } from 'cypress'
+
+export default defineConfig({
+  e2e: {
+    env: {
+      STOOBLY_INTERCEPT_MODE: process.env.STOOBLY_INTERCEPT_MODE, // 'mock' | 'record' | 'replay'
+    },
+  },
+})
+```
+
 ```js
 import Stoobly from 'stoobly';
 import { RecordPolicy, RecordOrder, RecordStrategy } from 'stoobly/constants';
 
 const stoobly = new Stoobly();
-const stooblyInterceptor = stoobly.cypressInterceptor({
+const stooblyInterceptor = () => stoobly.cypressInterceptor({
+    mode: Cypress.env('STOOBLY_INTERCEPT_MODE'),
     record: {
         policy: RecordPolicy.All,
         order: RecordOrder.Overwrite, // Defaults to RecordOrder.Append
         strategy: RecordStrategy.Full,
     },
-    scenarioKey: '<SCENARIO-KEY>',
     urls: [{ pattern: '<URLS>' }],
 });
 
@@ -184,10 +198,13 @@ describe('Scenario', () => {
     beforeEach(() => {
         // WARNING: if a synchronous request is used, this will cause Cypress to hang. See: https://github.com/cypress-io/cypress/issues/29566
         // Example of a synchronous request: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest_API/Synchronous_and_Asynchronous_Requests#synchronous_request
-        stooblyInterceptor.apply();
+
+        const scenarioName = this.test.titlePath.join(' > ');
+        const interceptor = stooblyInterceptor();
+        interceptor.withScenarioName(scenarioName).apply();
 
         // Use the following instead to record requests
-        // stooblyInterceptor.applyRecord();
+        // interceptor.applyRecord();
     });
 });
 ```
@@ -199,6 +216,59 @@ describe('Scenario', () => {
 
 
 ### Integrating with Playwright
+
+Recommended: define a Playwright fixture to manage the interceptor lifecycle per test. This keeps setup/teardown consistent and avoids repeating boilerplate.
+
+```js
+// tests/fixtures/stoobly.js
+import { test as base } from '@playwright/test';
+import Stoobly from 'stoobly';
+import { RecordPolicy, RecordOrder, RecordStrategy } from 'stoobly/constants';
+
+const stoobly = new Stoobly();
+const interceptor = stoobly.playwrightInterceptor({
+    mode: process.env.STOOBLY_INTERCEPT_MODE, // 'mock' | 'record' | 'replay'
+    record: {
+        policy: RecordPolicy.All,
+        order: RecordOrder.Overwrite, // Defaults to RecordOrder.Append
+        strategy: RecordStrategy.Full,
+    },
+    urls: [{ pattern: '<URLS>' }],
+});
+
+export const test = base.extend({
+    stooblyInterceptor: async ({ page }, use, testInfo) => {
+        interceptor
+            .withPage(page)
+            .withScenarioName(testInfo.titlePath.join(' > '))
+            .withTestTitle(testInfo.title);
+
+        await interceptor.apply();
+        await use(interceptor);
+    },
+});
+export const expect = test.expect;
+```
+
+Use the fixture in tests:
+
+```js
+// tests/example.spec.js
+import { test, expect } from './fixtures/stoobly';
+
+test.beforeEach(async ({ page, stooblyInterceptor }) => {
+    // In the fixture, the scenario is set to the test path, to override:
+    // stooblyInterceptor.withScenarioName('<SCENARIO-NAME'>);
+});
+
+test('Scenario', async ({ page, stooblyInterceptor }) => {
+    await page.goto('https://docs.stoobly.com');
+    // Requests are already intercepted by the fixture
+    await expect(page).toHaveTitle(/Stoobly/);
+});
+```
+
+You can also set up interception at the `context` level inside the same fixture if you need to capture extension or service worker traffic (see the `withContext()` section below).
 
 ```js
 import { test } from '@playwright/test';
@@ -212,7 +282,6 @@ const stooblyInterceptor = stoobly.playwrightInterceptor({
         order: RecordOrder.Overwrite, // Defaults to RecordOrder.Append
         strategy: RecordStrategy.Full,
     },
-    scenarioKey: '<SCENARIO-KEY>',
     urls: [{ pattern: '<URLS>' }],
 });
 

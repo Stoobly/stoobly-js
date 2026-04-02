@@ -919,6 +919,62 @@ describe('Interceptor', () => {
     });
   });
 
+  describe('clearRecord', () => {
+    const allowedUrl = `${allowedOrigin}/clear-record-test`;
+    const recordOrder = RecordOrder.Overwrite;
+    const recordPolicy = RecordPolicy.All;
+    const recordStrategy = RecordStrategy.Full;
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    beforeAll(() => {
+      Interceptor.originalFetch = fetchMock;
+    });
+
+    afterAll(() => {
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('restores constructor mode (mock) after applyRecord() followed by clearRecord()', async () => {
+      fetchMock.mockClear();
+
+      interceptor = new Interceptor({
+        mode: InterceptMode.mock,
+        urls: [{pattern: allowedUrl}],
+        record: {
+          order: recordOrder,
+          policy: recordPolicy,
+          strategy: recordStrategy,
+        },
+      });
+      interceptor.withTestTitle(testTitle);
+
+      await interceptor.applyRecord();
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [PROXY_MODE]: InterceptMode.record,
+        }),
+      });
+
+      fetchMock.mockClear();
+      interceptor.clearRecord();
+
+      await interceptor.apply();
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [PROXY_MODE]: InterceptMode.mock,
+        }),
+      });
+    });
+  });
+
   describe('applyRecord with RecordOrder.Overwrite per URL behavior', () => {
     const allowedUrl = `${allowedOrigin}/test-per-url`;
     const initialHeaderKey = 'X-Custom-Header';
@@ -1566,6 +1622,7 @@ describe('Interceptor', () => {
     const fluentRecordOrder = RecordOrder.Overwrite;
     const fluentRecordPolicy = RecordPolicy.All;
     const fluentRecordStrategy = RecordStrategy.Full;
+    const fluentMode = InterceptMode.replay;
 
     const fetchMock = jest.fn(async (): Promise<Response> => {
       return Promise.resolve(new Response(null, {status: 200}));
@@ -1901,6 +1958,121 @@ describe('Interceptor', () => {
       expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
         headers: expect.objectContaining({
           [SESSION_ID]: ctorSessionId,
+        }),
+      });
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('preserves mode set via withInterceptMode() when apply() is called without mode in options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        // Note: mode is NOT set in constructor options
+      });
+      
+      // Set mode via fluent API
+      interceptor.withInterceptMode(fluentMode);
+      await interceptor.apply();
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [PROXY_MODE]: fluentMode,
+        }),
+      });
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('allows explicit override when mode is provided in apply() options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      const overrideMode = InterceptMode.mock;
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+      });
+      
+      interceptor.withInterceptMode(fluentMode);
+      await interceptor.apply({ mode: overrideMode });
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [PROXY_MODE]: overrideMode,
+        }),
+      });
+
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        allowedUrl,
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            [PROXY_MODE]: fluentMode,
+          }),
+        }),
+      );
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('prefers fluent mode over constructor mode when apply() is called without mode in options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      const ctorMode = InterceptMode.mock;
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        mode: ctorMode,
+      });
+
+      // Override constructor mode via fluent API
+      interceptor.withInterceptMode(fluentMode);
+      await interceptor.apply();
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [PROXY_MODE]: fluentMode,
+        }),
+      });
+
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        allowedUrl,
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            [PROXY_MODE]: ctorMode,
+          }),
+        }),
+      );
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('uses constructor mode when no fluent or apply() mode is provided', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      const ctorMode = InterceptMode.test;
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        mode: ctorMode,
+      });
+
+      await interceptor.apply();
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [PROXY_MODE]: ctorMode,
         }),
       });
 
