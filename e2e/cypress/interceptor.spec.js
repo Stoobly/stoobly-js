@@ -102,11 +102,11 @@ describe('apply scenario with name', () => {
 
 describe('mode from environment variable', () => {
   it('sets X-Stoobly-Proxy-Mode from Cypress.env("STOOBLY_INTERCEPT_MODE")', () => {
-    const envMode = 'replay';
-    Cypress.env('STOOBLY_INTERCEPT_MODE', envMode);
+    const envMode = Cypress.env('STOOBLY_INTERCEPT_MODE');
+    expect(envMode).to.equal('record');
 
     const interceptor = stoobly.cypressInterceptor({
-      mode: Cypress.env('STOOBLY_INTERCEPT_MODE'),
+      mode: envMode,
       urls: [{ pattern: targetUrl, matchRules, rewriteRules }],
     });
 

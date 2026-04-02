@@ -168,14 +168,15 @@ interceptor.clear();
 Set the Stoobly interception mode in your `cypress.config.*`:
 
 ```js
-// cypress.config.js
-module.exports = {
+import { defineConfig } from 'cypress'
+
+export default defineConfig({
   e2e: {
     env: {
       STOOBLY_INTERCEPT_MODE: process.env.STOOBLY_INTERCEPT_MODE, // 'mock' | 'record' | 'replay'
     },
   },
-};
+})
 ```
 
 ```js
