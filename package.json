@@ -1,6 +1,6 @@
 {
   "name": "stoobly",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "description": "Javacript library for stoobly-agent",
   "files": [
     "dist/**"
