@@ -1,27 +1,15 @@
 import { MATCH_RULES, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, REWRITE_RULES, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE, RecordOrder, RecordPolicy, RecordStrategy } from "../../dist/esm/constants.js";
-import Stoobly from '../../dist/esm/stoobly.js';
+import { stooblyInterceptor, targetUrl, matchRules, rewriteRules, stoobly } from './fixtures/stoobly';
+
 import { SERVER_URL } from '../server-config';
 
-const scenarioKey = 'test';
-const targetUrl = `${SERVER_URL}/headers`;
-const matchRules = [{ modes: ['replay'], components: 'Header' }];
-const rewriteRules = [{ urlRules: [{ path: '/new-path' }] }];
-
-const stoobly = new Stoobly();
-const interceptor = stoobly.cypressInterceptor({
-  urls: [{ pattern: targetUrl, matchRules, rewriteRules }],
-});
-
 describe('initial interceptor options', () => {
+  const scenarioKey = 'test';
   const sessionId = 'id';
 
   beforeEach(() => {
     // Test title is automatically detected in the Cypress integration
-    interceptor.apply({ scenarioKey, sessionId });
-  });
-
-  after(() => {
-    interceptor.clear();
+    stooblyInterceptor().apply({ scenarioKey, sessionId });
   });
 
   it('should send headers', () => {
@@ -68,11 +56,7 @@ describe('apply scenario with name', () => {
 
   beforeEach(() => {
     // Test title is automatically detected in the Cypress integration
-    interceptor.apply({ scenarioKey: undefined, scenarioName });
-  });
-
-  after(() => {
-    interceptor.clear();
+    stooblyInterceptor().apply({ scenarioKey: undefined, scenarioName });
   });
 
   it('should send request with scenario name header', () => {
@@ -90,11 +74,64 @@ describe('apply scenario with name', () => {
       expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.be.undefined;
     });
   });
+
+  describe('withScenarioName(titlePath)', () => {
+    let scenarioName;
+
+    beforeEach(() => {
+      scenarioName = Cypress.currentTest.titlePath.join(' > ');
+      stooblyInterceptor().withScenarioName(scenarioName).apply();
+    });
+
+    it('sets X-Stoobly-Scenario-Name from Cypress.currentTest.titlePath.join(" > ")', () => {
+  ;
+      cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+      cy.visit(SERVER_URL);
+
+      cy.wait('@getHeaders').then((interception) => {
+        const responseBody = interception.response?.body || {};
+
+        expect(responseBody[SCENARIO_NAME.toLowerCase()]).to.equal(scenarioName);
+        // Should not have scenario key when using scenario name
+        expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.be.undefined;
+        expect(responseBody[TEST_TITLE.toLowerCase()]).to.equal(Cypress.currentTest.title);
+      });
+    });
+  });
+});
+
+describe('mode from environment variable', () => {
+  it('sets X-Stoobly-Proxy-Mode from Cypress.env("STOOBLY_INTERCEPT_MODE")', () => {
+    const envMode = 'replay';
+    Cypress.env('STOOBLY_INTERCEPT_MODE', envMode);
+
+    const interceptor = stoobly.cypressInterceptor({
+      mode: Cypress.env('STOOBLY_INTERCEPT_MODE'),
+      urls: [{ pattern: targetUrl, matchRules, rewriteRules }],
+    });
+
+    const sessionId = 'env-session';
+    interceptor.apply({ sessionId });
+
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+    cy.visit(SERVER_URL);
+
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+
+      expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal(envMode);
+      expect(responseBody[SESSION_ID.toLowerCase()]).to.equal(sessionId);
+
+      interceptor.clear();
+    });
+  });
 });
 
 describe('applyRecord', () => {
+  const interceptor = stooblyInterceptor();
+
   beforeEach(() => {
-    interceptor.applyRecord({ scenarioKey });
+    interceptor.applyRecord();
   });
 
   it('should send request with intercept and record headers', () => {
@@ -271,7 +308,7 @@ describe('Record order overwrite - per URL pattern tracking', () => {
   });
 
   beforeEach(() => {
-    overwriteInterceptor.applyRecord({ scenarioKey });
+    overwriteInterceptor.applyRecord();
   });
 
   afterEach(() => {
@@ -344,7 +381,7 @@ describe('Record order overwrite - per URL pattern tracking', () => {
 
     // Apply again - should reset tracking
     cy.then(() => {
-      overwriteInterceptor.applyRecord({ scenarioKey });
+      overwriteInterceptor.applyRecord();
     });
 
     // First request after reapply should have overwrite headers again
