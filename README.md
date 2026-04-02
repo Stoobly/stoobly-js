@@ -199,7 +199,7 @@ describe('Scenario', () => {
         // WARNING: if a synchronous request is used, this will cause Cypress to hang. See: https://github.com/cypress-io/cypress/issues/29566
         // Example of a synchronous request: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest_API/Synchronous_and_Asynchronous_Requests#synchronous_request
 
-        const scenarioName = this.test.titlePath.join(' > ');
+        const scenarioName = Cypress.currentTest.titlePath.join(' > ');
         const interceptor = stooblyInterceptor();
         interceptor.withScenarioName(scenarioName).apply();
 
