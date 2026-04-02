@@ -339,6 +339,13 @@ export class Interceptor {
     // values set via fluent API (e.g., .withScenarioKey()). For initial setup,
     // use values from this.options if they exist and weren't set via fluent API.
     applyOption(
+      PROXY_MODE,
+      _options?.mode,
+      this.options.mode,
+      this.withInterceptMode.bind(this),
+    );
+
+    applyOption(
       RECORD_ORDER,
       _options?.record?.order,
       this.options.record?.order,
