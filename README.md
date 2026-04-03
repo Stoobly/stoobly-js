@@ -199,9 +199,8 @@ describe('Scenario', () => {
         // WARNING: if a synchronous request is used, this will cause Cypress to hang. See: https://github.com/cypress-io/cypress/issues/29566
         // Example of a synchronous request: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest_API/Synchronous_and_Asynchronous_Requests#synchronous_request
 
-        const scenarioName = this.test.titlePath.join(' > ');
         const interceptor = stooblyInterceptor();
-        interceptor.withScenarioName(scenarioName).apply();
+        interceptor.withScenarioNameFromTest().apply();
 
         // Use the following instead to record requests
         // interceptor.applyRecord();
@@ -211,7 +210,7 @@ describe('Scenario', () => {
 
 **Key Points:**
 - The Stoobly instance and interceptor are created once outside the `describe` block
-- Test titles are automatically detected at request interception time for each test
+- Test titles are automatically detected at request interception time for each test, and `withScenarioNameFromTest()` can be used to derive a scenario name from the Cypress test title path
 - `interceptor.apply()` must be called in `beforeEach` because it uses `cy.intercept`. `cy.intercept` gets reset before every test. See: https://docs.cypress.io/api/commands/intercept#:~:text=All%20intercepts%20are%20automatically%20cleared%20before%20every%20test.
 
 
@@ -240,7 +239,7 @@ export const test = base.extend({
     stooblyInterceptor: async ({ page }, use, testInfo) => {
         interceptor
             .withPage(page)
-            .withScenarioName(testInfo.titlePath.join(' > '))
+            .withScenarioNameFromTest(testInfo)
             .withTestTitle(testInfo.title);
 
         await interceptor.apply();
