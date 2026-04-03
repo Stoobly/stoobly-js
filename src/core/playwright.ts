@@ -18,6 +18,22 @@ export class Playwright extends Interceptor {
     setTestFramework(PLAYWRIGHT_FRAMEWORK);
   }
 
+  withScenarioNameFromTest(testInfo: { titlePath?: Array<string | unknown>; title?: unknown }) {
+    const titlePath = testInfo?.titlePath;
+    const title = testInfo?.title;
+
+    const scenarioName =
+      Array.isArray(titlePath) && titlePath.length
+        ? titlePath.map(String).join(' > ')
+        : typeof title === 'string' && title.length
+          ? title
+          : undefined;
+
+    this.withScenarioName(scenarioName);
+
+    return this;
+  }
+
   get page() {
     if (!this._page) {
       throw new Error("Page is required. Call withPage() to set the page.");
