@@ -122,7 +122,7 @@ import {
 
   // Additional constants available:
   //
-  // InterceptMode,   // mock, record, replay, test
+  // InterceptMode,   // mock, record, replay
   // MockPolicy,      // All, Found
   // ReplayPolicy,    // All
   // TestPolicy,      // All, Found
