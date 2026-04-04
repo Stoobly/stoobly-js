@@ -97,9 +97,8 @@ test.describe('Apply scenario with name', () => {
   });
 
   test('should send request with scenario name header', async ({ page, stooblyInterceptor }, testInfo) => {
-    const scenarioName = testInfo.titlePath.join(' > ');
     stooblyInterceptor.withScenarioKey(undefined); // Clear scenario key when using scenario name
-    stooblyInterceptor.withScenarioName(scenarioName);
+    stooblyInterceptor.withScenarioNameFromTest(testInfo);
     stooblyInterceptor.withSessionId(sessionId);
 
     page.goto(targetUrl);
@@ -111,6 +110,7 @@ test.describe('Apply scenario with name', () => {
 
     const body = await response.json();
 
+    const scenarioName = testInfo.titlePath.join(' > ');
     expect(body[SCENARIO_NAME.toLowerCase()]).toEqual(scenarioName);
     expect(body[SESSION_ID.toLowerCase()]).toEqual(sessionId);
     expect(body[TEST_TITLE.toLowerCase()]).toEqual(testInfo.title);

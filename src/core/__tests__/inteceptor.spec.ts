@@ -2222,5 +2222,44 @@ describe('Interceptor', () => {
 
       Interceptor.originalFetch = originalFetch;
     });
+
+    test('applies updated mode from withInterceptMode() after apply() without reapplying', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      const initialMode = InterceptMode.mock;
+      const updatedMode = InterceptMode.record;
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        mode: initialMode,
+      });
+
+      // Initial apply() installs the interceptor with the constructor mode
+      await interceptor.apply();
+
+      // First request should use the initial mode from constructor options
+      await fetch(allowedUrl);
+      expect(fetchMock).toHaveBeenLastCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [PROXY_MODE]: initialMode,
+        }),
+      });
+
+      fetchMock.mockClear();
+
+      // Update mode via fluent API *after* apply(), without re-calling apply()
+      interceptor.withInterceptMode(updatedMode);
+
+      // Subsequent requests should see the updated mode header
+      await fetch(allowedUrl);
+      expect(fetchMock).toHaveBeenLastCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [PROXY_MODE]: updatedMode,
+        }),
+      });
+
+      Interceptor.originalFetch = originalFetch;
+    });
   });
 });

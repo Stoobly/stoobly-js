@@ -11,6 +11,22 @@ export class Cypress extends Interceptor {
     setTestFramework(CYPRESS_FRAMEWORK);
   }
 
+  withScenarioNameFromTest() {
+    const cypress = (window as any).Cypress;
+    const titlePath = cypress?.currentTest?.titlePath;
+    const title = cypress?.currentTest?.title;
+
+    const scenarioName = Array.isArray(titlePath) && titlePath.length
+      ? titlePath.map(String).join(' > ')
+      : typeof title === 'string' && title.length
+        ? title
+        : undefined;
+
+    this.withScenarioName(scenarioName);
+
+    return this;
+  }
+
   protected async decorate() {
     this.decorateCypress();
   }

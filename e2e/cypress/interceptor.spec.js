@@ -92,11 +92,8 @@ describe('apply scenario with name', () => {
   });
 
   describe('withScenarioName(titlePath)', () => {
-    let scenarioName;
-
     beforeEach(() => {
-      scenarioName = Cypress.currentTest.titlePath.join(' > ');
-      stooblyInterceptor().withScenarioName(scenarioName).apply();
+      stooblyInterceptor().withScenarioNameFromTest().apply();
     });
 
     it('sets X-Stoobly-Scenario-Name from Cypress.currentTest.titlePath.join(" > ")', () => {
@@ -106,6 +103,7 @@ describe('apply scenario with name', () => {
 
       cy.wait('@getHeaders').then((interception) => {
         const responseBody = interception.response?.body || {};
+        const scenarioName = Cypress.currentTest.titlePath.join(' > ');
 
         expect(responseBody[SCENARIO_NAME.toLowerCase()]).to.equal(scenarioName);
         // Should not have scenario key when using scenario name
