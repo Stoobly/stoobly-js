@@ -82,12 +82,6 @@ export class Playwright extends Interceptor {
     this.withInterceptMode();
     await this.clear();
   }
-
-  withDefaults() {
-    this.headers = {};
-    this.withOptions();
-    return this;
-  }
   
   // Sets the current page for request interception. Clears any existing handlers if the page
   // changes to avoid duplicate route registrations. Returns the Interceptor instance for chaining.

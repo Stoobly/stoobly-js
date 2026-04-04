@@ -82,6 +82,12 @@ export class Interceptor {
     return this.apply();
   }
 
+  withDefaultOptions() {
+    this.headers = {};
+    this.withOptions();
+    return this;
+  }
+
   withTestTitle(title?: string) {
     if (!title) {
       delete this.headers[TEST_TITLE];
