@@ -1,6 +1,10 @@
-import { InterceptMode, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/intercept";
+import { InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/intercept";
 import { TestFramework } from "../utils/test-detection";
 import { MatchRule, RewriteRule } from "@models/config/types";
+
+export interface MockOptions {
+  policy?: MockPolicy;
+}
 
 export interface RecordOptions {
   order?: RecordOrder;
@@ -10,6 +14,7 @@ export interface RecordOptions {
 
 export interface InterceptorOptions {
   framework?: TestFramework;
+  mock?: MockOptions;
   mode?: InterceptMode;
   record?: RecordOptions;
   scenarioKey?: string;

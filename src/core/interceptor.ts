@@ -1,5 +1,5 @@
-import { MATCH_RULES, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
-import { InterceptMode, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/intercept";
+import { MATCH_RULES, MOCK_POLICY, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
+import { InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/intercept";
 
 import { InterceptorOptions, InterceptorUrl } from "../types/options";
 import { getTestTitle } from "../utils/test-detection";
@@ -99,6 +99,16 @@ export class Interceptor {
       delete this.headers[PROXY_MODE];
     } else {
       this.headers[PROXY_MODE] = mode;
+    }
+
+    return this;
+  }
+
+  withMockPolicy(policy?: MockPolicy) {
+    if (!policy) {
+      delete this.headers[MOCK_POLICY];
+    } else {
+      this.headers[MOCK_POLICY] = policy;
     }
 
     return this;
@@ -217,6 +227,24 @@ export class Interceptor {
       if (testTitle) {
         headers[TEST_TITLE] = testTitle;
       }
+    }
+
+    switch (this.headers[PROXY_MODE]) {
+      case InterceptMode.record:
+        delete headers[MOCK_POLICY];
+        break;
+      case InterceptMode.mock:
+        delete headers[RECORD_ORDER];
+        delete headers[OVERWRITE_ID];
+        delete headers[RECORD_POLICY];
+        delete headers[RECORD_STRATEGY];
+        break;
+      default:
+        delete headers[MOCK_POLICY];
+        delete headers[RECORD_ORDER];
+        delete headers[OVERWRITE_ID];
+        delete headers[RECORD_POLICY];
+        delete headers[RECORD_STRATEGY];
     }
 
     return headers;
@@ -343,6 +371,13 @@ export class Interceptor {
       _options?.mode,
       this.options.mode,
       this.withInterceptMode.bind(this),
+    );
+
+    applyOption(
+      MOCK_POLICY,
+      _options?.mock?.policy,
+      this.options.mock?.policy,
+      this.withMockPolicy.bind(this),
     );
 
     applyOption(
