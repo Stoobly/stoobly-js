@@ -5,7 +5,7 @@ import {ConfigResource, HttpService} from './core/http';
 import {Interceptor} from './core/interceptor';
 import {Playwright} from './core/playwright';
 import {Config} from './models/config';
-import { InterceptorOptions } from './types';
+import { InterceptorSettings } from './types';
 
 export default class Stoobly {
   httpService: HttpService;
@@ -23,23 +23,23 @@ export default class Stoobly {
     this.httpService = new HttpService(url);
   }
 
-  cypressInterceptor(options: InterceptorOptions) {
-    return new Cypress(options);
+  cypressInterceptor(settings: InterceptorSettings) {
+    return new Cypress(settings);
   }
 
-  interceptor(options: InterceptorOptions) {
-    if (options.framework === InterceptorFramework.CYPRESS) {
-      return new Cypress(options);
+  interceptor(settings: InterceptorSettings) {
+    if (settings.framework === InterceptorFramework.CYPRESS) {
+      return new Cypress(settings);
     }
 
-    if (options.framework === InterceptorFramework.PLAYWRIGHT) {
-      return new Playwright(options);
+    if (settings.framework === InterceptorFramework.PLAYWRIGHT) {
+      return new Playwright(settings);
     }
 
-    return new Interceptor(options);
+    return new Interceptor(settings);
   }
 
-  playwrightInterceptor(options: InterceptorOptions) {
-    return new Playwright(options);
+  playwrightInterceptor(settings: InterceptorSettings) {
+    return new Playwright(settings);
   }
 }

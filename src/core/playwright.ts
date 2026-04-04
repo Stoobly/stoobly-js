@@ -1,6 +1,6 @@
 import { InterceptMode } from "@constants/intercept";
 
-import { InterceptorOptions } from "../types/options";
+import { InterceptorSettings } from "../types/settings";
 import {Page, Route as PlaywrightRoute, Request as PlaywrightRequest, BrowserContext } from "../types/playwright";
 import {setTestFramework, PLAYWRIGHT_FRAMEWORK} from "../utils/test-detection";
 import {Interceptor} from "./interceptor";
@@ -12,8 +12,8 @@ export class Playwright extends Interceptor {
   private _page: Page | null = null;
   private _context: BrowserContext | null = null;
 
-  constructor(options: InterceptorOptions) {
-    super(options);
+  constructor(settings: InterceptorSettings) {
+    super(settings);
 
     setTestFramework(PLAYWRIGHT_FRAMEWORK);
   }
@@ -56,31 +56,31 @@ export class Playwright extends Interceptor {
 
   // Applies HTTP request interception to fetch and XMLHttpRequest. Clears existing
   // interceptors, sets URL filters if provided, and decorates fetch/XMLHttpRequest to inject custom headers. 
-  async apply(options?: Partial<InterceptorOptions>) {
+  /** @deprecated Use enable() instead. */
+  async apply(settings?: Partial<InterceptorSettings>) {
     await this.restore();
 
     // After clearing intercepts on old urls, apply intercepts on new urls
-    this.urls = this.normalizeUrls(options?.urls ?? this.options.urls);
+    this.urls = this.normalizeUrls(settings?.urls ?? this.settings.urls);
     await this.decorate();
 
-    this.withOptions(options);
+    this.withSettings(settings);
 
-    return this.applySession(options);
+    return this.applySession(settings);
   }
 
-  async applyRecord(options?: Partial<InterceptorOptions>) {
-    this.withInterceptMode(InterceptMode.record);
-    return await this.apply(options);
-  }
-
+  /** @deprecated Use disable() instead. */
   async clear() {
     await this.restore();
     this.clearSession();
   }
 
-  async clearRecord() {
-    this.withInterceptMode();
-    await this.clear();
+  async disable() {
+    return await this.clear();
+  }
+
+  async enable() {
+    return await this.apply();
   }
   
   // Sets the current page for request interception. Clears any existing handlers if the page
