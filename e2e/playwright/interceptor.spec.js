@@ -1,6 +1,21 @@
 import { test, expect } from './fixtures/stoobly';
 
-import { MATCH_RULES, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, REWRITE_RULES, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE, InterceptMode, RecordOrder, RecordPolicy, RecordStrategy } from "../../dist/esm/constants.js";
+import { 
+  MATCH_RULES,
+  PROXY_MODE,
+  RECORD_ORDER,
+  RECORD_POLICY,
+  RECORD_STRATEGY,
+  REWRITE_RULES,
+  SCENARIO_KEY,
+  SCENARIO_NAME,
+  SESSION_ID,
+  TEST_TITLE,
+  InterceptMode,
+  RecordOrder,
+  RecordPolicy,
+  RecordStrategy,
+} from "../../dist/esm/constants.js";
 import { SERVER_URL } from '../server-config';
 
 const scenarioKey = 'test';
@@ -27,10 +42,7 @@ test.describe('initial interceptor options', () => {
     expect(body[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
     expect(body[TEST_TITLE.toLowerCase()]).toEqual(testInfo.title);
     expect(body[SESSION_ID.toLowerCase()]).toBeDefined();
-    expect(body[PROXY_MODE.toLowerCase()]).toEqual(InterceptMode.replay);
-    expect(body[RECORD_ORDER.toLowerCase()]).toEqual(RecordOrder.Overwrite);
-    expect(body[RECORD_POLICY.toLowerCase()]).toEqual(RecordPolicy.All);
-    expect(body[RECORD_STRATEGY.toLowerCase()]).toEqual(RecordStrategy.Full);
+    expect(body[PROXY_MODE.toLowerCase()]).toBeUndefined();
 
     // matchRules: base64-encoded JSON
     const matchRulesEncoded = body[MATCH_RULES.toLowerCase()];
@@ -124,6 +136,9 @@ test.describe('mode=record', () => {
 
     expect(body[PROXY_MODE.toLowerCase()]).toEqual(InterceptMode.record);
     expect(body[TEST_TITLE.toLowerCase()]).toEqual('should send request with intercept and record headers');
+    expect(body[RECORD_ORDER.toLowerCase()]).toEqual(RecordOrder.Overwrite);
+    expect(body[RECORD_POLICY.toLowerCase()]).toEqual(RecordPolicy.All);
+    expect(body[RECORD_STRATEGY.toLowerCase()]).toEqual(RecordStrategy.Full);
   });
 
   test.describe('clear()', () => {

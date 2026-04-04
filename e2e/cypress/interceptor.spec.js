@@ -1,4 +1,19 @@
-import { MATCH_RULES, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, REWRITE_RULES, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE, RecordOrder, RecordPolicy, RecordStrategy } from "../../dist/esm/constants.js";
+import { 
+  MATCH_RULES,
+  PROXY_MODE,
+  RECORD_ORDER,
+  RECORD_POLICY,
+  RECORD_STRATEGY,
+  REWRITE_RULES,
+  SCENARIO_KEY,
+  SCENARIO_NAME,
+  SESSION_ID,
+  TEST_TITLE,
+  InterceptMode,
+  RecordOrder,
+  RecordPolicy,
+  RecordStrategy,
+} from "../../dist/esm/constants.js";
 import { stooblyInterceptor, targetUrl, matchRules, rewriteRules, stoobly } from './fixtures/stoobly';
 
 import { SERVER_URL } from '../server-config';
@@ -24,6 +39,7 @@ describe('initial interceptor options', () => {
       expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.equal(scenarioKey);
       expect(responseBody[SESSION_ID.toLowerCase()]).to.equal(sessionId);
       expect(responseBody[TEST_TITLE.toLowerCase()]).to.equal(Cypress.currentTest.title);
+      expect(responseBody[PROXY_MODE]).to.be.undefined;
 
       // matchRules: base64-encoded JSON
       const matchRulesEncoded = responseBody[MATCH_RULES.toLowerCase()];
@@ -103,7 +119,7 @@ describe('apply scenario with name', () => {
 describe('mode from environment variable', () => {
   it('sets X-Stoobly-Proxy-Mode from Cypress.env("STOOBLY_INTERCEPT_MODE")', () => {
     const envMode = Cypress.env('STOOBLY_INTERCEPT_MODE');
-    expect(envMode).to.equal('record');
+    expect(envMode).to.be.undefined;
 
     const interceptor = stoobly.cypressInterceptor({
       mode: envMode,
@@ -131,20 +147,21 @@ describe('applyRecord', () => {
   const interceptor = stooblyInterceptor();
 
   beforeEach(() => {
-    interceptor.applyRecord();
+    interceptor.withInterceptModeRecord().apply();
   });
 
   it('should send request with intercept and record headers', () => {
     cy.intercept('GET', `${targetUrl}`).as('getHeaders');
-
     cy.visit(SERVER_URL);
-
     cy.wait('@getHeaders').then((interception) => {
       const responseBody = interception.response?.body || {};
 
-      expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
+      expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal(InterceptMode.record);
       expect(responseBody[TEST_TITLE.toLowerCase()]).to.equal(Cypress.currentTest.title);
       expect(responseBody[TEST_TITLE.toLowerCase()]).to.equal('should send request with intercept and record headers');
+      expect(responseBody[RECORD_ORDER.toLowerCase()]).to.equal(RecordOrder.Overwrite);
+      expect(responseBody[RECORD_POLICY.toLowerCase()]).to.equal(RecordPolicy.All);
+      expect(responseBody[RECORD_STRATEGY.toLowerCase()]).to.equal(RecordStrategy.Full);
     });
   });
 
@@ -153,9 +170,7 @@ describe('applyRecord', () => {
       interceptor.withSessionId(undefined);
 
       cy.intercept('GET', `${targetUrl}`).as('getHeaders');
-
       cy.visit(SERVER_URL);
-
       cy.wait('@getHeaders').then((interception) => {
         const responseBody = interception.response?.body || {};
 
@@ -166,18 +181,20 @@ describe('applyRecord', () => {
   });
 
   describe('clearRecord', () => {
+    beforeEach(() => {
+      interceptor.withInterceptModeRecord().apply();
+    });
+
     it('should remove intercept headers', () => {
-      interceptor.clearRecord();
+      interceptor.withInterceptMode();
 
       cy.intercept('GET', `${targetUrl}`).as('getHeaders');
 
       cy.visit(SERVER_URL);
 
-      // Expect cy.intercept to be removed
-      cy.get('@getHeaders.all').then((interceptions) => {
-        // The 'interceptions' variable is an array of all requests that matched
-        // We expect this array to be empty (length of 0).
-        expect(interceptions).to.have.length(0);
+      cy.wait('@getHeaders').then((interception) => {
+        const responseBody = interception.response?.body || {};
+        expect(responseBody[PROXY_MODE.toLowerCase()]).to.be.undefined;
       });
     });
   });
@@ -308,7 +325,7 @@ describe('Record order overwrite - per URL pattern tracking', () => {
   });
 
   beforeEach(() => {
-    overwriteInterceptor.applyRecord();
+    overwriteInterceptor.withInterceptModeRecord().apply();
   });
 
   afterEach(() => {
@@ -381,7 +398,7 @@ describe('Record order overwrite - per URL pattern tracking', () => {
 
     // Apply again - should reset tracking
     cy.then(() => {
-      overwriteInterceptor.applyRecord();
+      overwriteInterceptor.withInterceptModeRecord().apply();
     });
 
     // First request after reapply should have overwrite headers again

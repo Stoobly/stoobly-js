@@ -13,7 +13,7 @@ export class Interceptor {
   protected options: InterceptorOptions;
   protected urls: InterceptorUrl[] = [];
 
-  private started: boolean = false;
+  private started: boolean = false; // Locks session creation
   private appliedFetch: boolean = false;
   private appliedXMLHttpRequestOpen: boolean = false;
 
@@ -62,14 +62,9 @@ export class Interceptor {
 
     this.decorate();
 
+    this.withOptions(options);
+
     return this.applySession(options);
-  }
-  
-  // Starts recording HTTP requests. Sets proxy mode to record, applies record policy and order
-  // if provided, and returns a promise resolving to the session ID.
-  applyRecord(options?: Partial<InterceptorOptions>) {
-    this.withInterceptMode(InterceptMode.record);
-    return this.apply(options);
   }
 
   clear() {
@@ -77,11 +72,14 @@ export class Interceptor {
     this.clearSession();
   }
 
-  // Resets proxy mode, record policy, and order headers to their default values.
-  // This effectively stops recording requests without modifying other headers.
-  clearRecord() {
-    this.withInterceptMode();
-    this.clear();
+  // Alias for clear()
+  disable() {
+    return this.clear();
+  }
+
+  // Alias for apply()
+  enable() {
+    return this.apply();
   }
 
   withTestTitle(title?: string) {
@@ -104,12 +102,107 @@ export class Interceptor {
     return this;
   }
 
+  withInterceptModeMock() {
+    this.withInterceptMode(InterceptMode.mock);
+    return this;
+  }
+
+  // Starts recording HTTP requests. Sets proxy mode to record, applies record policy and order
+  // if provided, and returns a promise resolving to the session ID.
+  withInterceptModeRecord() {
+    this.withInterceptMode(InterceptMode.record);
+    return this;
+  }
+
+  withInterceptModeReplay() {
+    this.withInterceptMode(InterceptMode.replay);
+    return this;
+  }
+
   withMockPolicy(policy?: MockPolicy) {
     if (!policy) {
       delete this.headers[MOCK_POLICY];
     } else {
       this.headers[MOCK_POLICY] = policy;
     }
+
+    return this;
+  }
+
+  withOptions(_options?: Partial<InterceptorOptions>) {
+    // Helper for applying header-backed options (record order, policy, strategy, scenario key/name)
+    // with a consistent precedence model:
+    //
+    //   1. Value explicitly provided to apply() via `_options` (fromApply)
+    //   2. Existing header value, typically set via fluent API (e.g. `.withScenarioKey()`)
+    //   3. Value from constructor options (fromCtor), but only if no header has been set yet
+    //
+    // This mirrors the precedence used for `sessionId`, except `sessionId` also falls back to
+    // an auto-generated value when neither apply(), fluent API, nor constructor provide one.
+    const applyOption = <T>(
+      headerKey: string,
+      fromApply: T | undefined,
+      fromCtor: T | undefined,
+      setter: (value: T) => this,
+    ) => {
+      if (fromApply !== undefined) {
+        setter.call(this, fromApply);
+      } else if (fromCtor !== undefined && !this.headers[headerKey]) {
+        setter.call(this, fromCtor);
+      }
+    };
+
+    // Only override headers if explicitly provided in _options, otherwise preserve
+    // values set via fluent API (e.g., .withScenarioKey()). For initial setup,
+    // use values from this.options if they exist and weren't set via fluent API.
+    applyOption(
+      PROXY_MODE,
+      _options?.mode,
+      this.options.mode,
+      this.withInterceptMode.bind(this),
+    );
+
+    applyOption(
+      MOCK_POLICY,
+      _options?.mock?.policy,
+      this.options.mock?.policy,
+      this.withMockPolicy.bind(this),
+    );
+
+    applyOption(
+      RECORD_ORDER,
+      _options?.record?.order,
+      this.options.record?.order,
+      this.withRecordOrder.bind(this),
+    );
+
+    applyOption(
+      RECORD_POLICY,
+      _options?.record?.policy,
+      this.options.record?.policy,
+      this.withRecordPolicy.bind(this),
+    );
+
+    applyOption(
+      RECORD_STRATEGY,
+      _options?.record?.strategy,
+      this.options.record?.strategy,
+      this.withRecordStrategy.bind(this),
+    );
+
+    applyOption(
+      SCENARIO_KEY,
+      _options?.scenarioKey,
+      this.options.scenarioKey,
+      this.withScenarioKey.bind(this),
+    );
+
+    applyOption(
+      SCENARIO_NAME,
+      _options?.scenarioName,
+      this.options.scenarioName,
+      this.withScenarioName.bind(this),
+    );
 
     return this;
   }
@@ -341,80 +434,6 @@ export class Interceptor {
       this.started = true;
     }
 
-    // Helper for applying header-backed options (record order, policy, strategy, scenario key/name)
-    // with a consistent precedence model:
-    //
-    //   1. Value explicitly provided to apply() via `_options` (fromApply)
-    //   2. Existing header value, typically set via fluent API (e.g. `.withScenarioKey()`)
-    //   3. Value from constructor options (fromCtor), but only if no header has been set yet
-    //
-    // This mirrors the precedence used for `sessionId`, except `sessionId` also falls back to
-    // an auto-generated value when neither apply(), fluent API, nor constructor provide one.
-    const applyOption = <T>(
-      headerKey: string,
-      fromApply: T | undefined,
-      fromCtor: T | undefined,
-      setter: (value: T) => this,
-    ) => {
-      if (fromApply !== undefined) {
-        setter.call(this, fromApply);
-      } else if (fromCtor !== undefined && !this.headers[headerKey]) {
-        setter.call(this, fromCtor);
-      }
-    };
-
-    // Only override headers if explicitly provided in _options, otherwise preserve
-    // values set via fluent API (e.g., .withScenarioKey()). For initial setup,
-    // use values from this.options if they exist and weren't set via fluent API.
-    applyOption(
-      PROXY_MODE,
-      _options?.mode,
-      this.options.mode,
-      this.withInterceptMode.bind(this),
-    );
-
-    applyOption(
-      MOCK_POLICY,
-      _options?.mock?.policy,
-      this.options.mock?.policy,
-      this.withMockPolicy.bind(this),
-    );
-
-    applyOption(
-      RECORD_ORDER,
-      _options?.record?.order,
-      this.options.record?.order,
-      this.withRecordOrder.bind(this),
-    );
-
-    applyOption(
-      RECORD_POLICY,
-      _options?.record?.policy,
-      this.options.record?.policy,
-      this.withRecordPolicy.bind(this),
-    );
-
-    applyOption(
-      RECORD_STRATEGY,
-      _options?.record?.strategy,
-      this.options.record?.strategy,
-      this.withRecordStrategy.bind(this),
-    );
-
-    applyOption(
-      SCENARIO_KEY,
-      _options?.scenarioKey,
-      this.options.scenarioKey,
-      this.withScenarioKey.bind(this),
-    );
-
-    applyOption(
-      SCENARIO_NAME,
-      _options?.scenarioName,
-      this.options.scenarioName,
-      this.withScenarioName.bind(this),
-    );
-
     // Session ID precedence:
     // 1. Explicit _options.sessionId passed to apply()
     // 2. Existing header set via fluent .withSessionId()
@@ -432,7 +451,6 @@ export class Interceptor {
   }
 
   protected clearSession() {
-    this.headers = {};
     this.started = false;
   }
 

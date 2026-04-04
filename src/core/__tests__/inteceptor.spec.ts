@@ -871,7 +871,7 @@ describe('Interceptor', () => {
         },
       });
       interceptor.withTestTitle(testTitle);
-      await interceptor.applyRecord();
+      await interceptor.withInterceptModeRecord().apply();
     });
 
     afterAll(() => {
@@ -1068,7 +1068,7 @@ describe('Interceptor', () => {
       });
       interceptor.withTestTitle(testTitle);
 
-      await interceptor.applyRecord();
+      await interceptor.withInterceptModeRecord().apply();
       await fetch(allowedUrl);
 
       expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
@@ -1078,9 +1078,8 @@ describe('Interceptor', () => {
       });
 
       fetchMock.mockClear();
-      interceptor.clearRecord();
+      interceptor.withInterceptMode().apply();
 
-      await interceptor.apply();
       await fetch(allowedUrl);
 
       expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
@@ -1116,7 +1115,7 @@ describe('Interceptor', () => {
         },
       });
       interceptor.withTestTitle(testTitle);
-      await interceptor.applyRecord();
+      await interceptor.withInterceptModeRecord().apply();
     });
 
     afterAll(() => {
@@ -1190,7 +1189,7 @@ describe('Interceptor', () => {
         },
       });
       interceptor.withTestTitle(testTitle);
-      await interceptor.applyRecord();
+      await interceptor.withInterceptModeRecord().apply();
     });
 
     afterAll(() => {
@@ -1263,7 +1262,7 @@ describe('Interceptor', () => {
         },
       });
       interceptor.withTestTitle(testTitle);
-      await interceptor.applyRecord();
+      await interceptor.withInterceptModeRecord().apply();
     });
 
     afterAll(() => {
@@ -1368,7 +1367,7 @@ describe('Interceptor', () => {
 
     test('resets URL tracking when apply() is called again', async () => {
       // First apply()
-      await interceptor.applyRecord();
+      await interceptor.withInterceptModeRecord().apply();
       fetchMock.mockClear();
 
       // First request should include RECORD_ORDER
@@ -1407,7 +1406,7 @@ describe('Interceptor', () => {
       });
 
       // Call apply() again - this should reset urlsToVisit
-      await interceptor.applyRecord();
+      await interceptor.withInterceptModeRecord().apply();
       fetchMock.mockClear();
 
       // First request after reapply should include RECORD_ORDER again
@@ -1471,7 +1470,7 @@ describe('Interceptor', () => {
           },
         });
         interceptor.withTestTitle(testTitle);
-        await interceptor.applyRecord();
+        await interceptor.withInterceptModeRecord().apply();
       });
 
       afterAll(() => {

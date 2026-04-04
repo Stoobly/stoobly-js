@@ -47,6 +47,8 @@ export class Playwright extends Interceptor {
     this.urls = this.normalizeUrls(options?.urls ?? this.options.urls);
     await this.decorate();
 
+    this.withOptions(options);
+
     return this.applySession(options);
   }
 
@@ -63,6 +65,12 @@ export class Playwright extends Interceptor {
   async clearRecord() {
     this.withInterceptMode();
     await this.clear();
+  }
+
+  withDefaults() {
+    this.headers = {};
+    this.withOptions();
+    return this;
   }
   
   // Sets the current page for request interception. Clears any existing handlers if the page

@@ -1,5 +1,11 @@
 import Stoobly from '../../../dist/esm/stoobly.js';
-import { InterceptMode, RequestParameter } from '../../../dist/esm/constants.js';
+import {
+  InterceptMode,
+  RecordOrder,
+  RecordPolicy,
+  RecordStrategy,
+  RequestParameter,
+} from '../../../dist/esm/constants.js';
 
 import { SERVER_URL } from '../../server-config.js';
 
@@ -15,6 +21,12 @@ export const rewriteRules = [{ urlRules: [{ path: '/new-path' }] }];
 // are controlled via fluent APIs + interceptor.apply()).
 export const stoobly = new Stoobly();
 export const stooblyInterceptor = () => stoobly.cypressInterceptor({
+  mode: Cypress.env('STOOBLY_INTERCEPT_MODE'),
   urls: [{ pattern: targetUrl, matchRules, rewriteRules }],
+  record: {
+    order: RecordOrder.Overwrite,
+    policy: RecordPolicy.All,
+    strategy: RecordStrategy.Full,
+  },
 });
 
