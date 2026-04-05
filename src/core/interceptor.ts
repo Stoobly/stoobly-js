@@ -1,7 +1,7 @@
-import { MATCH_RULES, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
-import { InterceptMode, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/intercept";
+import { MATCH_RULES, MOCK_POLICY, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
+import { InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/intercept";
 
-import { InterceptorOptions, InterceptorUrl } from "../types/options";
+import { InterceptorSettings, InterceptorUrl } from "../types/settings";
 import { getTestTitle } from "../utils/test-detection";
 
 export class Interceptor {
@@ -10,15 +10,15 @@ export class Interceptor {
 
   private id: string;
   protected headers: Record<string, string> = {};
-  protected options: InterceptorOptions;
+  protected settings: InterceptorSettings;
   protected urls: InterceptorUrl[] = [];
 
-  private started: boolean = false;
+  private started: boolean = false; // Locks session creation
   private appliedFetch: boolean = false;
   private appliedXMLHttpRequestOpen: boolean = false;
 
-  constructor(options: InterceptorOptions) {
-    this.options = options;
+  constructor(settings: InterceptorSettings) {
+    this.settings = settings;
     this.id = Math.random().toString(36).substring(2, 15);
   }
 
@@ -52,36 +52,86 @@ export class Interceptor {
     });
   }
 
-  // Applies HTTP request interception to fetch and XMLHttpRequest. Clears existing
-  // interceptors, sets URL filters if provided, and decorates fetch/XMLHttpRequest to inject custom headers. 
-  apply(options?: Partial<InterceptorOptions>): string | Promise<string> {
+  /**
+   * Applies HTTP request interception to `window.fetch` and `XMLHttpRequest`.
+   *
+   * Behavior:
+   * - Restores any prior decorations to avoid duplicates, then applies fresh ones.
+   * - Normalizes and stores URL patterns from `settings.urls` if provided, otherwise uses constructor `settings.urls`.
+   * - Decorates fetch and XHR to inject Stoobly headers for allowed URLs.
+   * - Applies header-backed settings (mode, record policy/order/strategy, mock policy, scenario key/name)
+   *   using a stable precedence: explicit `settings` > previously set fluent headers > constructor defaults.
+   * - Establishes/returns a session ID (explicit `settings.sessionId` > fluent `.withSessionId()` >
+   *   constructor `sessionId` > auto-generated timestamp).
+   *
+   * Parameters:
+   * - settings (optional): Partial<InterceptorSettings>
+   *   - urls?: (string | RegExp | InterceptorUrl)[] — URL filters to intercept
+   *   - mode?: InterceptMode — proxy mode (mock, record, replay)
+   *   - mock?: { policy?: MockPolicy }
+   *   - record?: { order?: RecordOrder; policy?: RecordPolicy; strategy?: RecordStrategy }
+   *   - scenarioKey?: string
+   *   - scenarioName?: string
+   *   - sessionId?: string
+   *
+   * Returns:
+   * - string — the current session ID
+   *
+   * Notes:
+   * - Use `.enable()` instead for clarity; `enable()` is an alias.
+   *
+   * @deprecated Use `enable()` instead. `enable()` is an alias provided for clarity.
+   */
+  apply(settings?: Partial<InterceptorSettings>): string | Promise<string> {
     this.restore();
 
     // After clearing intercepts on old urls, apply intercepts on new urls
-    this.urls = this.normalizeUrls(options?.urls ?? this.options.urls);
+    this.urls = this.normalizeUrls(settings?.urls ?? this.settings.urls);
 
     this.decorate();
 
-    return this.applySession(options);
-  }
-  
-  // Starts recording HTTP requests. Sets proxy mode to record, applies record policy and order
-  // if provided, and returns a promise resolving to the session ID.
-  applyRecord(options?: Partial<InterceptorOptions>) {
-    this.withInterceptMode(InterceptMode.record);
-    return this.apply(options);
+    this.withSettings(settings);
+
+    return this.applySession(settings);
   }
 
+  /**
+   * Clears all HTTP request interceptors and resets the interceptor session state.
+   *
+   * Effects:
+   * - Restores the original `window.fetch` and `XMLHttpRequest.prototype.open` implementations.
+   * - Stops injecting Stoobly headers into subsequent requests.
+   * - Resets internal session state so a new session ID will be chosen on the next `apply()`/`enable()`.
+   *
+   * Notes:
+   * - This does not mutate configured URLs or default headers you've set via the fluent API.
+   *   Those will be reused on the next `apply()`/`enable()` call.
+   *
+   * Returns:
+   * - void
+   *
+   * @deprecated Use `disable()` instead. `disable()` is an alias for clarity and consistency with `enable()`.
+   */
   clear() {
     this.restore();
     this.clearSession();
   }
 
-  // Resets proxy mode, record policy, and order headers to their default values.
-  // This effectively stops recording requests without modifying other headers.
-  clearRecord() {
-    this.withInterceptMode();
-    this.clear();
+  // Alias for clear()
+  disable() {
+    return this.clear();
+  }
+
+  // Alias for apply()
+  enable(settings?: Partial<InterceptorSettings>) {
+    return this.apply(settings);
+  }
+
+  // Settings term aligns with UI
+  withDefaultSettings() {
+    this.headers = {};
+    this.withSettings();
+    return this;
   }
 
   withTestTitle(title?: string) {
@@ -100,6 +150,111 @@ export class Interceptor {
     } else {
       this.headers[PROXY_MODE] = mode;
     }
+
+    return this;
+  }
+
+  withInterceptModeMock() {
+    this.withInterceptMode(InterceptMode.mock);
+    return this;
+  }
+
+  // Starts recording HTTP requests. Sets proxy mode to record, applies record policy and order
+  // if provided, and returns a promise resolving to the session ID.
+  withInterceptModeRecord() {
+    this.withInterceptMode(InterceptMode.record);
+    return this;
+  }
+
+  withInterceptModeReplay() {
+    this.withInterceptMode(InterceptMode.replay);
+    return this;
+  }
+
+  withMockPolicy(policy?: MockPolicy) {
+    if (!policy) {
+      delete this.headers[MOCK_POLICY];
+    } else {
+      this.headers[MOCK_POLICY] = policy;
+    }
+
+    return this;
+  }
+
+  withSettings(_settings?: Partial<InterceptorSettings>) {
+    // Helper for applying header-backed settings (record order, policy, strategy, scenario key/name)
+    // with a consistent precedence model:
+    //
+    //   1. Value explicitly provided to apply() via `_settings` (fromApply)
+    //   2. Existing header value, typically set via fluent API (e.g. `.withScenarioKey()`)
+    //   3. Value from constructor settings (fromCtor), but only if no header has been set yet
+    //
+    // This mirrors the precedence used for `sessionId`, except `sessionId` also falls back to
+    // an auto-generated value when neither apply(), fluent API, nor constructor provide one.
+    const applySetting = <T>(
+      headerKey: string,
+      fromApply: T | undefined,
+      fromCtor: T | undefined,
+      setter: (value: T) => this,
+    ) => {
+      if (fromApply !== undefined) {
+        setter.call(this, fromApply);
+      } else if (fromCtor !== undefined && !this.headers[headerKey]) {
+        setter.call(this, fromCtor);
+      }
+    };
+
+    // Only override headers if explicitly provided in _settings, otherwise preserve
+    // values set via fluent API (e.g., .withScenarioKey()). For initial setup,
+    // use values from this.settings if they exist and weren't set via fluent API.
+    applySetting(
+      PROXY_MODE,
+      _settings?.mode,
+      this.settings.mode,
+      this.withInterceptMode.bind(this),
+    );
+
+    applySetting(
+      MOCK_POLICY,
+      _settings?.mock?.policy,
+      this.settings.mock?.policy,
+      this.withMockPolicy.bind(this),
+    );
+
+    applySetting(
+      RECORD_ORDER,
+      _settings?.record?.order,
+      this.settings.record?.order,
+      this.withRecordOrder.bind(this),
+    );
+
+    applySetting(
+      RECORD_POLICY,
+      _settings?.record?.policy,
+      this.settings.record?.policy,
+      this.withRecordPolicy.bind(this),
+    );
+
+    applySetting(
+      RECORD_STRATEGY,
+      _settings?.record?.strategy,
+      this.settings.record?.strategy,
+      this.withRecordStrategy.bind(this),
+    );
+
+    applySetting(
+      SCENARIO_KEY,
+      _settings?.scenarioKey,
+      this.settings.scenarioKey,
+      this.withScenarioKey.bind(this),
+    );
+
+    applySetting(
+      SCENARIO_NAME,
+      _settings?.scenarioName,
+      this.settings.scenarioName,
+      this.withScenarioName.bind(this),
+    );
 
     return this;
   }
@@ -219,6 +374,24 @@ export class Interceptor {
       }
     }
 
+    switch (this.headers[PROXY_MODE]) {
+      case InterceptMode.record:
+        delete headers[MOCK_POLICY];
+        break;
+      case InterceptMode.mock:
+        delete headers[RECORD_ORDER];
+        delete headers[OVERWRITE_ID];
+        delete headers[RECORD_POLICY];
+        delete headers[RECORD_STRATEGY];
+        break;
+      default:
+        delete headers[MOCK_POLICY];
+        delete headers[RECORD_ORDER];
+        delete headers[OVERWRITE_ID];
+        delete headers[RECORD_POLICY];
+        delete headers[RECORD_STRATEGY];
+    }
+
     return headers;
   }
 
@@ -304,7 +477,7 @@ export class Interceptor {
     }
   }
 
-  protected applySession(_options?: Partial<InterceptorOptions>) {
+  protected applySession(_settings?: Partial<InterceptorSettings>) {
     // In the case where apply() is called multiple times, 
     // return the session ID without setting headers to default values
     if (this.started) {
@@ -313,82 +486,15 @@ export class Interceptor {
       this.started = true;
     }
 
-    // Helper for applying header-backed options (record order, policy, strategy, scenario key/name)
-    // with a consistent precedence model:
-    //
-    //   1. Value explicitly provided to apply() via `_options` (fromApply)
-    //   2. Existing header value, typically set via fluent API (e.g. `.withScenarioKey()`)
-    //   3. Value from constructor options (fromCtor), but only if no header has been set yet
-    //
-    // This mirrors the precedence used for `sessionId`, except `sessionId` also falls back to
-    // an auto-generated value when neither apply(), fluent API, nor constructor provide one.
-    const applyOption = <T>(
-      headerKey: string,
-      fromApply: T | undefined,
-      fromCtor: T | undefined,
-      setter: (value: T) => this,
-    ) => {
-      if (fromApply !== undefined) {
-        setter.call(this, fromApply);
-      } else if (fromCtor !== undefined && !this.headers[headerKey]) {
-        setter.call(this, fromCtor);
-      }
-    };
-
-    // Only override headers if explicitly provided in _options, otherwise preserve
-    // values set via fluent API (e.g., .withScenarioKey()). For initial setup,
-    // use values from this.options if they exist and weren't set via fluent API.
-    applyOption(
-      PROXY_MODE,
-      _options?.mode,
-      this.options.mode,
-      this.withInterceptMode.bind(this),
-    );
-
-    applyOption(
-      RECORD_ORDER,
-      _options?.record?.order,
-      this.options.record?.order,
-      this.withRecordOrder.bind(this),
-    );
-
-    applyOption(
-      RECORD_POLICY,
-      _options?.record?.policy,
-      this.options.record?.policy,
-      this.withRecordPolicy.bind(this),
-    );
-
-    applyOption(
-      RECORD_STRATEGY,
-      _options?.record?.strategy,
-      this.options.record?.strategy,
-      this.withRecordStrategy.bind(this),
-    );
-
-    applyOption(
-      SCENARIO_KEY,
-      _options?.scenarioKey,
-      this.options.scenarioKey,
-      this.withScenarioKey.bind(this),
-    );
-
-    applyOption(
-      SCENARIO_NAME,
-      _options?.scenarioName,
-      this.options.scenarioName,
-      this.withScenarioName.bind(this),
-    );
-
     // Session ID precedence:
-    // 1. Explicit _options.sessionId passed to apply()
+    // 1. Explicit _settings.sessionId passed to apply()
     // 2. Existing header set via fluent .withSessionId()
-    // 3. sessionId from constructor options
+    // 3. sessionId from constructor settings
     // 4. Auto-generated timestamp
     const sessionId =
-      _options?.sessionId ??
+      _settings?.sessionId ??
       this.headers[SESSION_ID] ??
-      this.options.sessionId ??
+      this.settings.sessionId ??
       (new Date()).getTime().toString();
 
     this.withSessionId(sessionId);
@@ -397,7 +503,6 @@ export class Interceptor {
   }
 
   protected clearSession() {
-    this.headers = {};
     this.started = false;
   }
 

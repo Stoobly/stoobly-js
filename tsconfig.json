@@ -11,6 +11,7 @@
     "strict": true,
     "strictFunctionTypes": true,
     "noEmit": true,
+    "baseUrl": ".",
     "paths": {
       "@constants/*": ["./src/constants/*"],
       "@core/*": ["./src/core/*"],

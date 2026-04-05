@@ -1,9 +1,27 @@
 import {jest} from '@jest/globals';
 import {SpiedFunction} from 'jest-mock';
 
-import {MATCH_RULES, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE} from '@constants/custom_headers';
-import {InterceptMode, RecordOrder, RecordPolicy, RecordStrategy, RequestParameter} from '@constants/intercept';
+import {MATCH_RULES, MOCK_POLICY, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE} from '@constants/custom_headers';
+import {InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy, RequestParameter} from '@constants/intercept';
 import {Interceptor} from '@core/interceptor';
+
+function getFetchInitForUrl(
+  fetchMock: jest.Mock,
+  url: string
+): RequestInit | undefined {
+  const call = fetchMock.mock.calls.find(
+    (c: unknown) => (c as unknown as [string, RequestInit?])[0] === url
+  );
+  return (call as unknown as [string, RequestInit?])?.[1];
+}
+
+function getFetchHeadersForUrl(
+  fetchMock: jest.Mock,
+  url: string
+): Record<string, string> {
+  const init = getFetchInitForUrl(fetchMock, url) ?? {};
+  return (init as {headers?: Record<string, string>}).headers ?? {};
+}
 
 describe('Interceptor', () => {
   const scenarioKey = 'test-key';
@@ -159,12 +177,8 @@ describe('Interceptor', () => {
       });
 
       test(`adds matchRules header when url matches InterceptorUrl pattern`, async () => {
-        const call = fetchMock.mock.calls.find(
-          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === otherUrl
-        );
-        expect(call).toBeDefined();
-        const headers = (call as unknown as [string, RequestInit?])[1] as {headers?: Record<string, string>};
-        const encoded = headers?.headers?.[MATCH_RULES];
+        const headers = getFetchHeadersForUrl(fetchMock, otherUrl);
+        const encoded = headers[MATCH_RULES];
         expect(encoded).toBeDefined();
         const decoded = JSON.parse(
           Buffer.from(encoded!, 'base64').toString('utf-8')
@@ -319,11 +333,8 @@ describe('Interceptor', () => {
             }),
           })
         );
-        const call = fetchMock.mock.calls.find(
-          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === allowedUrl
-        );
-        const headers = (call as unknown as [string, RequestInit?])[1] as {headers?: Record<string, string>};
-        const encoded = headers?.headers?.[MATCH_RULES];
+        const headers = getFetchHeadersForUrl(fetchMock, allowedUrl);
+        const encoded = headers[MATCH_RULES];
         const decoded = JSON.parse(
           Buffer.from(encoded!, 'base64').toString('utf-8')
         );
@@ -360,14 +371,7 @@ describe('Interceptor', () => {
       test('request to /api/users receives headers from matching InterceptorUrl only', async () => {
         await fetch(usersUrl);
 
-        const call = fetchMock.mock.calls.find(
-          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === usersUrl
-        );
-        expect(call).toBeDefined();
-        const headers = (call as unknown as [string, RequestInit?])[1] as {
-          headers?: Record<string, string>;
-        };
-        const reqHeaders = headers?.headers ?? {};
+        const reqHeaders = getFetchHeadersForUrl(fetchMock, usersUrl);
 
         expect(reqHeaders[MATCH_RULES]).toBeDefined();
         expect(JSON.parse(Buffer.from(reqHeaders[MATCH_RULES], 'base64').toString('utf-8'))).toEqual(
@@ -381,14 +385,7 @@ describe('Interceptor', () => {
       test('request to /api/posts receives headers from matching InterceptorUrl only', async () => {
         await fetch(postsUrl);
 
-        const call = fetchMock.mock.calls.find(
-          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === postsUrl
-        );
-        expect(call).toBeDefined();
-        const headers = (call as unknown as [string, RequestInit?])[1] as {
-          headers?: Record<string, string>;
-        };
-        const reqHeaders = headers?.headers ?? {};
+        const reqHeaders = getFetchHeadersForUrl(fetchMock, postsUrl);
 
         expect(reqHeaders[REWRITE_RULES]).toBeDefined();
         expect(JSON.parse(Buffer.from(reqHeaders[REWRITE_RULES], 'base64').toString('utf-8'))).toEqual([
@@ -440,11 +437,8 @@ describe('Interceptor', () => {
             }),
           })
         );
-        const call = fetchMock.mock.calls.find(
-          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === allowedUrl
-        );
-        const headers = (call as unknown as [string, RequestInit?])[1] as {headers?: Record<string, string>};
-        const encoded = headers?.headers?.[REWRITE_RULES];
+        const headers = getFetchHeadersForUrl(fetchMock, allowedUrl);
+        const encoded = headers[REWRITE_RULES];
         const decoded = JSON.parse(
           Buffer.from(encoded!, 'base64').toString('utf-8')
         );
@@ -483,12 +477,8 @@ describe('Interceptor', () => {
       });
 
       test(`does not add '${MATCH_RULES}' header when urls have no matchRules`, () => {
-        const call = fetchMock.mock.calls.find(
-          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === allowedUrl
-        );
-        expect(call).toBeDefined();
-        const headers = (call as unknown as [string, RequestInit?])[1] as {headers?: Record<string, string>};
-        expect(headers?.headers?.[MATCH_RULES]).toBeUndefined();
+        const headers = getFetchHeadersForUrl(fetchMock, allowedUrl);
+        expect(headers[MATCH_RULES]).toBeUndefined();
       });
     });
   });
@@ -523,12 +513,8 @@ describe('Interceptor', () => {
       });
 
       test(`does not add '${REWRITE_RULES}' header when urls have no rewriteRules`, () => {
-        const call = fetchMock.mock.calls.find(
-          (c: unknown) => (c as unknown as [string, RequestInit?])[0] === allowedUrl
-        );
-        expect(call).toBeDefined();
-        const headers = (call as unknown as [string, RequestInit?])[1] as {headers?: Record<string, string>};
-        expect(headers?.headers?.[REWRITE_RULES]).toBeUndefined();
+        const headers = getFetchHeadersForUrl(fetchMock, allowedUrl);
+        expect(headers[REWRITE_RULES]).toBeUndefined();
       });
     });
   });
@@ -885,7 +871,7 @@ describe('Interceptor', () => {
         },
       });
       interceptor.withTestTitle(testTitle);
-      await interceptor.applyRecord();
+      await interceptor.withInterceptModeRecord().apply();
     });
 
     afterAll(() => {
@@ -916,6 +902,136 @@ describe('Interceptor', () => {
           [TEST_TITLE]: testTitle,
         }),
       });
+    });
+  });
+
+  describe('record headers filtering', () => {
+    const allowedUrl = `${allowedOrigin}/record-headers-filter-test`;
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    beforeAll(async () => {
+      Interceptor.originalFetch = fetchMock;
+
+      interceptor = new Interceptor({
+        mode: InterceptMode.mock,
+        scenarioKey,
+        scenarioName,
+        urls: [{ pattern: allowedUrl }],
+        record: {
+          order: RecordOrder.Overwrite,
+          policy: RecordPolicy.All,
+          strategy: RecordStrategy.Full,
+        },
+      });
+
+      interceptor.withTestTitle(testTitle);
+      await interceptor.apply();
+    });
+
+    afterAll(() => {
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('does not include record-specific headers when interceptMode is not record', async () => {
+      fetchMock.mockClear();
+      await fetch(allowedUrl);
+
+      const call = fetchMock.mock.calls.find(
+        (c: unknown) => (c as unknown as [string, RequestInit?])[0] === allowedUrl
+      );
+      expect(call).toBeDefined();
+
+      const init = (call as unknown as [string, RequestInit?])[1] as {headers?: Record<string, string>};
+      const headers = init.headers ?? {};
+
+      expect(headers[PROXY_MODE]).toBe(InterceptMode.mock);
+      expect(headers[RECORD_ORDER]).toBeUndefined();
+      expect(headers[OVERWRITE_ID]).toBeUndefined();
+      expect(headers[RECORD_POLICY]).toBeUndefined();
+      expect(headers[RECORD_STRATEGY]).toBeUndefined();
+    });
+  });
+
+  describe('mock policy headers', () => {
+    const allowedUrl = `${allowedOrigin}/mock-policy-test`;
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    beforeAll(async () => {
+      Interceptor.originalFetch = fetchMock;
+    });
+
+    afterAll(() => {
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('includes MOCK_POLICY header when mode is mock', async () => {
+      fetchMock.mockClear();
+
+      const mockInterceptor = new Interceptor({
+        mode: InterceptMode.mock,
+        urls: [{ pattern: allowedUrl }],
+        mock: {
+          policy: MockPolicy.All,
+        },
+      });
+      mockInterceptor.withTestTitle(testTitle);
+      await mockInterceptor.apply();
+
+      await fetch(allowedUrl);
+
+      const headers = getFetchHeadersForUrl(fetchMock, allowedUrl);
+
+      expect(headers[PROXY_MODE]).toBe(InterceptMode.mock);
+      expect(headers[MOCK_POLICY]).toBe(MockPolicy.All);
+    });
+
+    test('does not include MOCK_POLICY header when mode is record or unset', async () => {
+      // Mode: record
+      fetchMock.mockClear();
+
+      const recordInterceptor = new Interceptor({
+        mode: InterceptMode.record,
+        urls: [{ pattern: allowedUrl }],
+        mock: {
+          policy: MockPolicy.All,
+        },
+      });
+      recordInterceptor.withTestTitle(testTitle);
+      await recordInterceptor.apply();
+
+      await fetch(allowedUrl);
+
+      let headers = getFetchHeadersForUrl(fetchMock, allowedUrl);
+
+      expect(headers[PROXY_MODE]).toBe(InterceptMode.record);
+      expect(headers[MOCK_POLICY]).toBeUndefined();
+
+      // Mode: unset (default)
+      fetchMock.mockClear();
+
+      const defaultInterceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        mock: {
+          policy: MockPolicy.All,
+        },
+      });
+      defaultInterceptor.withTestTitle(testTitle);
+      await defaultInterceptor.apply();
+
+      await fetch(allowedUrl);
+
+      headers = getFetchHeadersForUrl(fetchMock, allowedUrl);
+
+      expect(headers[PROXY_MODE]).toBeUndefined();
+      expect(headers[MOCK_POLICY]).toBeUndefined();
     });
   });
 
@@ -952,7 +1068,7 @@ describe('Interceptor', () => {
       });
       interceptor.withTestTitle(testTitle);
 
-      await interceptor.applyRecord();
+      await interceptor.withInterceptModeRecord().apply();
       await fetch(allowedUrl);
 
       expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
@@ -962,9 +1078,8 @@ describe('Interceptor', () => {
       });
 
       fetchMock.mockClear();
-      interceptor.clearRecord();
+      interceptor.withInterceptMode().apply();
 
-      await interceptor.apply();
       await fetch(allowedUrl);
 
       expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
@@ -1000,7 +1115,7 @@ describe('Interceptor', () => {
         },
       });
       interceptor.withTestTitle(testTitle);
-      await interceptor.applyRecord();
+      await interceptor.withInterceptModeRecord().apply();
     });
 
     afterAll(() => {
@@ -1074,7 +1189,7 @@ describe('Interceptor', () => {
         },
       });
       interceptor.withTestTitle(testTitle);
-      await interceptor.applyRecord();
+      await interceptor.withInterceptModeRecord().apply();
     });
 
     afterAll(() => {
@@ -1147,7 +1262,7 @@ describe('Interceptor', () => {
         },
       });
       interceptor.withTestTitle(testTitle);
-      await interceptor.applyRecord();
+      await interceptor.withInterceptModeRecord().apply();
     });
 
     afterAll(() => {
@@ -1252,7 +1367,7 @@ describe('Interceptor', () => {
 
     test('resets URL tracking when apply() is called again', async () => {
       // First apply()
-      await interceptor.applyRecord();
+      await interceptor.withInterceptModeRecord().apply();
       fetchMock.mockClear();
 
       // First request should include RECORD_ORDER
@@ -1291,7 +1406,7 @@ describe('Interceptor', () => {
       });
 
       // Call apply() again - this should reset urlsToVisit
-      await interceptor.applyRecord();
+      await interceptor.withInterceptModeRecord().apply();
       fetchMock.mockClear();
 
       // First request after reapply should include RECORD_ORDER again
@@ -1355,7 +1470,7 @@ describe('Interceptor', () => {
           },
         });
         interceptor.withTestTitle(testTitle);
-        await interceptor.applyRecord();
+        await interceptor.withInterceptModeRecord().apply();
       });
 
       afterAll(() => {
@@ -1623,6 +1738,7 @@ describe('Interceptor', () => {
     const fluentRecordPolicy = RecordPolicy.All;
     const fluentRecordStrategy = RecordStrategy.Full;
     const fluentMode = InterceptMode.replay;
+    const fluentMockPolicy = MockPolicy.All;
 
     const fetchMock = jest.fn(async (): Promise<Response> => {
       return Promise.resolve(new Response(null, {status: 200}));
@@ -1689,6 +1805,7 @@ describe('Interceptor', () => {
       
       // Set record order via fluent API
       interceptor.withRecordOrder(fluentRecordOrder);
+      interceptor.withInterceptMode(InterceptMode.record);
       await interceptor.apply();
 
       await fetch(allowedUrl);
@@ -1714,6 +1831,7 @@ describe('Interceptor', () => {
       
       // Set record policy via fluent API
       interceptor.withRecordPolicy(fluentRecordPolicy);
+      interceptor.withInterceptMode(InterceptMode.record);
       await interceptor.apply();
 
       await fetch(allowedUrl);
@@ -1738,6 +1856,7 @@ describe('Interceptor', () => {
       
       // Set record strategy via fluent API
       interceptor.withRecordStrategy(fluentRecordStrategy);
+      interceptor.withInterceptMode(InterceptMode.record);
       await interceptor.apply();
 
       await fetch(allowedUrl);
@@ -1745,6 +1864,31 @@ describe('Interceptor', () => {
       expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
         headers: expect.objectContaining({
           [RECORD_STRATEGY]: fluentRecordStrategy,
+        }),
+      });
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('preserves mock policy set via withMockPolicy() when apply() is called without mock.policy in options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        // Note: mock.policy is NOT set in constructor options
+      });
+      
+      // Set mock policy via fluent API
+      interceptor.withMockPolicy(fluentMockPolicy);
+      interceptor.withInterceptMode(InterceptMode.mock);
+      await interceptor.apply();
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [MOCK_POLICY]: fluentMockPolicy,
         }),
       });
 

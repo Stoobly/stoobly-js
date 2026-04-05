@@ -1,6 +1,6 @@
 import { InterceptMode } from "@constants/intercept";
 
-import { InterceptorOptions } from "../types/options";
+import { InterceptorSettings } from "../types/settings";
 import {Page, Route as PlaywrightRoute, Request as PlaywrightRequest, BrowserContext } from "../types/playwright";
 import {setTestFramework, PLAYWRIGHT_FRAMEWORK} from "../utils/test-detection";
 import {Interceptor} from "./interceptor";
@@ -12,8 +12,8 @@ export class Playwright extends Interceptor {
   private _page: Page | null = null;
   private _context: BrowserContext | null = null;
 
-  constructor(options: InterceptorOptions) {
-    super(options);
+  constructor(settings: InterceptorSettings) {
+    super(settings);
 
     setTestFramework(PLAYWRIGHT_FRAMEWORK);
   }
@@ -42,7 +42,14 @@ export class Playwright extends Interceptor {
     return this._page;
   }
 
+  // Sets the current page for request interception.
+  // Clears any existing handlers if the page changes to avoid duplicate route registrations.
   set page(page: Page) {
+    // Clear handlers if page changed (Playwright will clean up routes when page closes)
+    if (this._page && this._page !== page) {
+      this.pageHandlers.clear();
+    }
+
     this._page = page;
   }
 
@@ -50,62 +57,110 @@ export class Playwright extends Interceptor {
     return this._context;
   }
 
+  // Sets the browser context for request interception.
+  // This enables intercepting requests from browser extensions, service workers, and all pages in the context.
   set context(context: BrowserContext | null) {
-    this._context = context;
-  }
-
-  // Applies HTTP request interception to fetch and XMLHttpRequest. Clears existing
-  // interceptors, sets URL filters if provided, and decorates fetch/XMLHttpRequest to inject custom headers. 
-  async apply(options?: Partial<InterceptorOptions>) {
-    await this.restore();
-
-    // After clearing intercepts on old urls, apply intercepts on new urls
-    this.urls = this.normalizeUrls(options?.urls ?? this.options.urls);
-    await this.decorate();
-
-    return this.applySession(options);
-  }
-
-  async applyRecord(options?: Partial<InterceptorOptions>) {
-    this.withInterceptMode(InterceptMode.record);
-    return await this.apply(options);
-  }
-
-  async clear() {
-    await this.restore();
-    this.clearSession();
-  }
-
-  async clearRecord() {
-    this.withInterceptMode();
-    await this.clear();
-  }
-  
-  // Sets the current page for request interception. Clears any existing handlers if the page
-  // changes to avoid duplicate route registrations. Returns the Interceptor instance for chaining.
-  withPage(page: Page) {
-    // Clear handlers if page changed (Playwright will clean up routes when page closes)
-    if (this._page && this._page !== page) {
-      this.pageHandlers.clear();
-    }
-
-    this.page = page;
-
-    return this;
-  }
-
-  // Sets the browser context for request interception. This enables intercepting requests from
-  // browser extensions, service workers, and all pages in the context.
-  // Returns the Interceptor instance for chaining.
-  withContext(context: BrowserContext) {
     // Clear handlers if context changed
     if (this._context && this._context !== context) {
       this.contextHandlers.clear();
     }
 
-    this.context = context;
+    this._context = context;
+  }
 
-    return this;
+  /**
+   * Applies HTTP request interception to the configured Playwright `Page` and/or `BrowserContext`.
+   *
+   * Behavior:
+   * - Restores any prior routes to avoid duplicates, then registers fresh routes on the active page/context.
+   * - Normalizes and stores URL patterns from `settings.urls` if provided, otherwise uses constructor `settings.urls`.
+   * - For matching requests, injects Stoobly headers and applies URL-specific options (match/rewrite rules, fixtures).
+   * - Applies header-backed settings with stable precedence: explicit `settings` > fluent headers > constructor defaults.
+   * - Establishes/returns a session ID (explicit `settings.sessionId` > fluent `.withSessionId()` >
+   *   constructor `sessionId` > auto-generated timestamp).
+   *
+   * Requirements:
+   * - Call `.withPage(page)` and/or `.withContext(context)` before applying to define interception targets.
+   *
+   * Parameters:
+   * - settings (optional): Partial<InterceptorSettings>
+   *   - urls?: (string | RegExp | InterceptorUrl)[] — URL filters to intercept
+   *   - mode?: InterceptMode — proxy mode (mock, record, replay)
+   *   - mock?: { policy?: MockPolicy }
+   *   - record?: { order?: RecordOrder; policy?: RecordPolicy; strategy?: RecordStrategy }
+   *   - scenarioKey?: string
+   *   - scenarioName?: string
+   *   - sessionId?: string
+   *
+   * Returns:
+   * - Promise<string> — the current session ID
+   *
+   * Notes:
+   * - Use `.enable()` instead for clarity; `enable()` is an alias.
+   *
+   * @deprecated Use `enable()` instead. `enable()` is an alias provided for clarity.
+   */
+  async apply(settings?: Partial<InterceptorSettings>) {
+    await this.restore();
+
+    // After clearing intercepts on old urls, apply intercepts on new urls
+    this.urls = this.normalizeUrls(settings?.urls ?? this.settings.urls);
+    await this.decorate();
+
+    this.withSettings(settings);
+
+    return this.applySession(settings);
+  }
+
+  // @deprecated Use `enableForPage()` instead. `enableForPage()` is an alias provided for clarity.
+  async applyToPage(page: Page, settings?: Partial<InterceptorSettings>) {
+    this.withPage(page);
+    return await this.apply(settings);
+  }
+
+  // @deprecated Use `enableForContext()` instead. `enableForContext()` is an alias provided for clarity.
+  async applyToContext(context: BrowserContext, settings?: Partial<InterceptorSettings>) {
+    this.withContext(context);
+    return await this.apply(settings);
+  }
+
+  /**
+   * Clears all Playwright request interceptors and resets the interceptor session state.
+   *
+   * Effects:
+   * - Unroutes all previously registered page/context routes.
+   * - Stops injecting Stoobly headers into subsequent Playwright requests.
+   * - Resets internal session state so a new session ID will be chosen on the next `apply()`/`enable()`.
+   *
+   * Notes:
+   * - Does not clear configured URLs or fluent header settings; those persist for the next `apply()`/`enable()`.
+   *
+   * Returns:
+   * - Promise<void>
+   *
+   * @deprecated Use `disable()` instead. `disable()` is an alias for clarity and consistency with `enable()`.
+   */
+  async clear() {
+    await this.restore();
+    this.clearSession();
+  }
+
+  async disable() {
+    return await this.clear();
+  }
+
+  async enable(settings?: Partial<InterceptorSettings>) {
+    return await this.apply(settings);
+  }
+
+  async enableForPage(page: Page, settings?: Partial<InterceptorSettings>) {
+    this.withPage(page);
+    return await this.enable(settings);
+  }
+
+  async enableForContext(context: BrowserContext, settings?: Partial<InterceptorSettings>) {
+    this.withContext(context);
+    return await this.enable(settings);
   }
 
   // Applies HTTP request interception to the current page and/or context.
@@ -196,5 +251,17 @@ export class Playwright extends Interceptor {
     }
 
     this.appliedPlaywright = true;
+  }
+
+  private withPage(page: Page) {
+    this.page = page;
+
+    return this;
+  }
+
+  private withContext(context: BrowserContext) {
+    this.context = context;
+
+    return this;
   }
 }

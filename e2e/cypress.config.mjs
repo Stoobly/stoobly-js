@@ -15,7 +15,7 @@ export default defineConfig({
   e2e: {
     env: {
       // Used by Cypress e2e tests to drive interceptor mode.
-      STOOBLY_INTERCEPT_MODE: 'record',
+      STOOBLY_INTERCEPT_MODE: process.env.STOOBLY_INTERCEPT_MODE,
     },
     specPattern: 'e2e/cypress/**/*.spec.{js,ts}',
     supportFile: 'e2e/cypress/support/e2e.ts',

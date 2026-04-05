@@ -128,7 +128,7 @@ export default [
       format: 'esm',
     },
     external,
-    plugins: [dts()],
+    plugins: [dts({ tsconfig: 'tsconfig.json' })],
   },
   // Constants TypeScript declarations
   {
@@ -138,7 +138,7 @@ export default [
       format: 'esm',
     },
     external,
-    plugins: [dts()],
+    plugins: [dts({ tsconfig: 'tsconfig.json' })],
   },
   // Types TypeScript declarations
   {
@@ -148,7 +148,7 @@ export default [
       format: 'esm',
     },
     external,
-    plugins: [dts()],
+    plugins: [dts({ tsconfig: 'tsconfig.json' })],
   },
 ];
 

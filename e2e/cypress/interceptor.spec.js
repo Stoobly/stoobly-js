@@ -1,15 +1,28 @@
-import { MATCH_RULES, PROXY_MODE, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, REWRITE_RULES, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE, RecordOrder, RecordPolicy, RecordStrategy } from "../../dist/esm/constants.js";
-import { stooblyInterceptor, targetUrl, matchRules, rewriteRules, stoobly } from './fixtures/stoobly';
+import { 
+  MATCH_RULES,
+  PROXY_MODE,
+  RECORD_ORDER,
+  RECORD_POLICY,
+  RECORD_STRATEGY,
+  REWRITE_RULES,
+  SCENARIO_KEY,
+  SCENARIO_NAME,
+  SESSION_ID,
+  TEST_TITLE,
+  InterceptMode,
+  RecordOrder,
+  RecordPolicy,
+  RecordStrategy,
+} from "../../dist/esm/constants.js";
+import { buildStooblyInterceptor, targetUrl, matchRules, rewriteRules, stoobly } from './fixtures/stoobly';
 
 import { SERVER_URL } from '../server-config';
 
-describe('initial interceptor options', () => {
-  const scenarioKey = 'test';
-  const sessionId = 'id';
+describe('Options', () => {
+  const stooblyInterceptor = buildStooblyInterceptor();
 
   beforeEach(() => {
-    // Test title is automatically detected in the Cypress integration
-    stooblyInterceptor().apply({ scenarioKey, sessionId });
+    stooblyInterceptor.enable();
   });
 
   it('should send headers', () => {
@@ -21,9 +34,13 @@ describe('initial interceptor options', () => {
     cy.wait('@getHeaders').then((interception) => {
       const responseBody = interception.response?.body || {};
 
-      expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.equal(scenarioKey);
-      expect(responseBody[SESSION_ID.toLowerCase()]).to.equal(sessionId);
-      expect(responseBody[TEST_TITLE.toLowerCase()]).to.equal(Cypress.currentTest.title);
+      expect(responseBody[PROXY_MODE.toLowerCase()]).to.be.undefined;
+      expect(responseBody[RECORD_ORDER.toLowerCase()]).to.be.undefined;
+      expect(responseBody[RECORD_POLICY.toLowerCase()]).to.be.undefined;
+      expect(responseBody[RECORD_STRATEGY.toLowerCase()]).to.be.undefined;
+      expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.be.undefined;
+      expect(responseBody[SCENARIO_NAME.toLowerCase()]).to.be.undefined;
+      expect(responseBody[SESSION_ID.toLowerCase()]).not.to.be.undefined;
 
       // matchRules: base64-encoded JSON
       const matchRulesEncoded = responseBody[MATCH_RULES.toLowerCase()];
@@ -34,6 +51,65 @@ describe('initial interceptor options', () => {
       const rewriteRulesEncoded = responseBody[REWRITE_RULES.toLowerCase()];
       expect(rewriteRulesEncoded).to.exist;
       expect(JSON.parse(atob(rewriteRulesEncoded))).to.deep.equal([{ url_rules: [{ path: '/new-path' }] }]);
+    });
+  });
+
+  it('does not require enable() after changing settings', () => {
+    stooblyInterceptor.withScenarioName('test');
+
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+
+    cy.visit(SERVER_URL);
+
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+      expect(responseBody[SCENARIO_NAME.toLowerCase()]).to.equal('test');
+    });
+  });
+
+  it('preserves setting changes from previous tests', () => {
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+
+    cy.visit(SERVER_URL);
+
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+      expect(responseBody[SCENARIO_NAME.toLowerCase()]).to.equal('test');
+    });
+  });
+
+  describe('withDefaultSettings', () => {
+    it('resets settings changes', () => {
+      stooblyInterceptor.withDefaultSettings();
+
+      cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+      cy.visit(SERVER_URL);
+
+      cy.wait('@getHeaders').then((interception) => {
+        const responseBody = interception.response?.body || {};
+        expect(responseBody[SCENARIO_NAME.toLowerCase()]).to.be.undefined;
+      });
+    });
+  });
+});
+
+describe('Test title', () => {
+  const stooblyInterceptor = buildStooblyInterceptor();
+
+  beforeEach(() => {
+    // Test title is automatically detected in the Cypress integration
+    stooblyInterceptor.enable();
+  });
+
+  it('should send headers', () => {
+    // Intercept the request to inspect headers or body
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+
+    cy.visit(SERVER_URL);
+
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+      expect(responseBody[TEST_TITLE.toLowerCase()]).to.equal('should send headers');
     });
   });
 
@@ -51,33 +127,12 @@ describe('initial interceptor options', () => {
   });
 });
 
-describe('apply scenario with name', () => {
-  const scenarioName = 'test-scenario-name';
+describe('Scenario', () => {
+  describe('withScenarioNameFromTest', () => {
+    const stooblyInterceptor = buildStooblyInterceptor();
 
-  beforeEach(() => {
-    // Test title is automatically detected in the Cypress integration
-    stooblyInterceptor().apply({ scenarioKey: undefined, scenarioName });
-  });
-
-  it('should send request with scenario name header', () => {
-    // Intercept the request to inspect headers or body
-    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
-
-    cy.visit(SERVER_URL);
-
-    cy.wait('@getHeaders').then((interception) => {
-      const responseBody = interception.response?.body || {};
-
-      expect(responseBody[SCENARIO_NAME.toLowerCase()]).to.equal(scenarioName);
-      expect(responseBody[TEST_TITLE.toLowerCase()]).to.equal(Cypress.currentTest.title);
-      // Should not have scenario key when using scenario name
-      expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.be.undefined;
-    });
-  });
-
-  describe('withScenarioName(titlePath)', () => {
     beforeEach(() => {
-      stooblyInterceptor().withScenarioNameFromTest().apply();
+      stooblyInterceptor.withScenarioNameFromTest().enable();
     });
 
     it('sets X-Stoobly-Scenario-Name from Cypress.currentTest.titlePath.join(" > ")', () => {
@@ -90,66 +145,21 @@ describe('apply scenario with name', () => {
         const scenarioName = Cypress.currentTest.titlePath.join(' > ');
 
         expect(responseBody[SCENARIO_NAME.toLowerCase()]).to.equal(scenarioName);
-        // Should not have scenario key when using scenario name
-        expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.be.undefined;
-        expect(responseBody[TEST_TITLE.toLowerCase()]).to.equal(Cypress.currentTest.title);
       });
     });
   });
-});
 
-describe('mode from environment variable', () => {
-  it('sets X-Stoobly-Proxy-Mode from Cypress.env("STOOBLY_INTERCEPT_MODE")', () => {
-    const envMode = Cypress.env('STOOBLY_INTERCEPT_MODE');
-    expect(envMode).to.equal('record');
+  describe('withScenarioKey', () => {
+    const scenarioKey = 'test-scenario-key';
+    const stooblyInterceptor = buildStooblyInterceptor();
 
-    const interceptor = stoobly.cypressInterceptor({
-      mode: envMode,
-      urls: [{ pattern: targetUrl, matchRules, rewriteRules }],
+    beforeEach(() => {
+      // Test title is automatically detected in the Cypress integration
+      stooblyInterceptor.enable({ scenarioKey });
     });
 
-    const sessionId = 'env-session';
-    interceptor.apply({ sessionId });
-
-    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
-    cy.visit(SERVER_URL);
-
-    cy.wait('@getHeaders').then((interception) => {
-      const responseBody = interception.response?.body || {};
-
-      expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal(envMode);
-      expect(responseBody[SESSION_ID.toLowerCase()]).to.equal(sessionId);
-
-      interceptor.clear();
-    });
-  });
-});
-
-describe('applyRecord', () => {
-  const interceptor = stooblyInterceptor();
-
-  beforeEach(() => {
-    interceptor.applyRecord();
-  });
-
-  it('should send request with intercept and record headers', () => {
-    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
-
-    cy.visit(SERVER_URL);
-
-    cy.wait('@getHeaders').then((interception) => {
-      const responseBody = interception.response?.body || {};
-
-      expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
-      expect(responseBody[TEST_TITLE.toLowerCase()]).to.equal(Cypress.currentTest.title);
-      expect(responseBody[TEST_TITLE.toLowerCase()]).to.equal('should send request with intercept and record headers');
-    });
-  });
-
-  describe('without session id', () => {
-    it('should send record headers without session id when not provided', () => {
-      interceptor.withSessionId(undefined);
-
+    it('should send request with scenario name header', () => {
+      // Intercept the request to inspect headers or body
       cy.intercept('GET', `${targetUrl}`).as('getHeaders');
 
       cy.visit(SERVER_URL);
@@ -157,32 +167,35 @@ describe('applyRecord', () => {
       cy.wait('@getHeaders').then((interception) => {
         const responseBody = interception.response?.body || {};
 
-        expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
-        expect(responseBody[SESSION_ID.toLowerCase()]).to.not.exist;
+        expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.equal(scenarioKey);
       });
     });
   });
+});
 
-  describe('clearRecord', () => {
+describe('withInterceptModeRecord', () => {
+  const stooblyInterceptor = buildStooblyInterceptor();
+
+  beforeEach(() => {
+    stooblyInterceptor.withInterceptModeRecord().enable();
+  });
+
+  it('should send record headers', () => {
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+    cy.visit(SERVER_URL);
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+
+      expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal(InterceptMode.record);
+      expect(responseBody[RECORD_ORDER.toLowerCase()]).to.equal(RecordOrder.Overwrite);
+      expect(responseBody[RECORD_POLICY.toLowerCase()]).to.equal(RecordPolicy.All);
+      expect(responseBody[RECORD_STRATEGY.toLowerCase()]).to.equal(RecordStrategy.Full);
+    });
+  });
+
+  describe('without', () => {
     it('should remove intercept headers', () => {
-      interceptor.clearRecord();
-
-      cy.intercept('GET', `${targetUrl}`).as('getHeaders');
-
-      cy.visit(SERVER_URL);
-
-      // Expect cy.intercept to be removed
-      cy.get('@getHeaders.all').then((interceptions) => {
-        // The 'interceptions' variable is an array of all requests that matched
-        // We expect this array to be empty (length of 0).
-        expect(interceptions).to.have.length(0);
-      });
-    });
-  });
-
-  describe('record options', () => {
-    it('should send record policy header when policy is "all"', () => {
-      interceptor.withRecordPolicy(RecordPolicy.All);
+      stooblyInterceptor.withInterceptMode();
 
       cy.intercept('GET', `${targetUrl}`).as('getHeaders');
 
@@ -190,205 +203,292 @@ describe('applyRecord', () => {
 
       cy.wait('@getHeaders').then((interception) => {
         const responseBody = interception.response?.body || {};
-        expect(responseBody[RECORD_POLICY.toLowerCase()]).to.equal(RecordPolicy.All);
-        expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
-      });
-    });
-
-    it('should send record policy header when policy is "found"', () => {
-      interceptor.withRecordPolicy(RecordPolicy.Found);
-
-      cy.intercept('GET', `${targetUrl}`).as('getHeaders');
-
-      cy.visit(SERVER_URL);
-
-      cy.wait('@getHeaders').then((interception) => {
-        const responseBody = interception.response?.body || {};
-        expect(responseBody[RECORD_POLICY.toLowerCase()]).to.equal(RecordPolicy.Found);
-      });
-    });
-
-    it('should send record policy header when policy is "not_found"', () => {
-      interceptor.withRecordPolicy(RecordPolicy.NotFound);
-
-      cy.intercept('GET', `${targetUrl}`).as('getHeaders');
-
-      cy.visit(SERVER_URL);
-
-      cy.wait('@getHeaders').then((interception) => {
-        const responseBody = interception.response?.body || {};
-        expect(responseBody[RECORD_POLICY.toLowerCase()]).to.equal(RecordPolicy.NotFound);
-      });
-    });
-
-    it('should send record order header when order is "overwrite"', () => {
-      interceptor.withRecordOrder(RecordOrder.Overwrite);
-
-      cy.intercept('GET', `${targetUrl}`).as('getHeaders');
-
-      cy.visit(SERVER_URL);
-
-      cy.wait('@getHeaders').then((interception) => {
-        const responseBody = interception.response?.body || {};
-        expect(responseBody[RECORD_ORDER.toLowerCase()]).to.equal(RecordOrder.Overwrite);
-      });
-    });
-
-    it('should not send record policy header when policy is not provided', () => {
-      interceptor.withRecordPolicy(undefined);
-
-      cy.intercept('GET', `${targetUrl}`).as('getHeaders');
-
-      cy.visit(SERVER_URL);
-
-      cy.wait('@getHeaders').then((interception) => {
-        const responseBody = interception.response?.body || {};
-        expect(responseBody[RECORD_POLICY.toLowerCase()]).to.be.undefined;
-        expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
-      });
-    });
-
-    it('should send record strategy header when strategy is "full"', () => {
-      interceptor.withRecordStrategy(RecordStrategy.Full);
-
-      cy.intercept('GET', `${targetUrl}`).as('getHeaders');
-
-      cy.visit(SERVER_URL);
-
-      cy.wait('@getHeaders').then((interception) => {
-        const responseBody = interception.response?.body || {};
-        expect(responseBody[RECORD_STRATEGY.toLowerCase()]).to.equal(RecordStrategy.Full);
-        expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
-      });
-    });
-
-    it('should send record strategy header when strategy is "minimal"', () => {
-      interceptor.withRecordStrategy(RecordStrategy.Minimal);
-
-      cy.intercept('GET', `${targetUrl}`).as('getHeaders');
-
-      cy.visit(SERVER_URL);
-
-      cy.wait('@getHeaders').then((interception) => {
-        const responseBody = interception.response?.body || {};
-        expect(responseBody[RECORD_STRATEGY.toLowerCase()]).to.equal(RecordStrategy.Minimal);
-        expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
-      });
-    });
-
-    it('should not send record strategy header when strategy is not provided', () => {
-      interceptor.withRecordStrategy(undefined);
-
-      cy.intercept('GET', `${targetUrl}`).as('getHeaders');
-
-      cy.visit(SERVER_URL);
-
-      cy.wait('@getHeaders').then((interception) => {
-        const responseBody = interception.response?.body || {};
-        expect(responseBody[RECORD_STRATEGY.toLowerCase()]).to.be.undefined;
-        expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
+        expect(responseBody[PROXY_MODE.toLowerCase()]).to.be.undefined;
       });
     });
   });
 });
 
-describe('Record order overwrite - per URL pattern tracking', () => {
-  const url1 = `${SERVER_URL}/headers`;
-  const url2 = `${SERVER_URL}/api/data`;
-  
-  const overwriteInterceptor = stoobly.cypressInterceptor({ 
-    urls: [{ pattern: url1 }, { pattern: url2 }],
-    record: {
-      order: RecordOrder.Overwrite,
-      policy: RecordPolicy.All,
-      strategy: RecordStrategy.Full,
-    },
-  });
+describe('Record settings', () => {
+  const stooblyInterceptor = buildStooblyInterceptor();
 
   beforeEach(() => {
-    overwriteInterceptor.applyRecord();
+    stooblyInterceptor.withInterceptModeRecord().enable();
   });
 
-  afterEach(() => {
-    overwriteInterceptor.clear();
-  });
+  it('should send record policy header when policy is "all"', () => {
+    stooblyInterceptor.withRecordPolicy(RecordPolicy.All);
 
-  it('should send overwrite headers only once per URL pattern', () => {
-    let overwriteId;
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
 
-    // First request to url1 - should include RECORD_ORDER and OVERWRITE_ID
-    cy.intercept('GET', url1).as('request1');
     cy.visit(SERVER_URL);
-    
-    cy.wait('@request1').its('response.body').then((body) => {
-      expect(body[RECORD_ORDER.toLowerCase()]).to.equal(RecordOrder.Overwrite);
-      expect(body['x-stoobly-overwrite-id']).to.exist;
-      overwriteId = body['x-stoobly-overwrite-id'];
-    });
 
-    // Second request to url1 - should NOT include RECORD_ORDER or OVERWRITE_ID
-    cy.intercept('GET', url1).as('request2');
-    cy.visit(SERVER_URL);
-    
-    cy.wait('@request2').its('response.body').then((body) => {
-      expect(body[RECORD_ORDER.toLowerCase()]).to.be.undefined;
-      expect(body['x-stoobly-overwrite-id']).to.be.undefined;
-    });
-
-    // First request to url2 via fetch - should include RECORD_ORDER and OVERWRITE_ID (same ID)
-    cy.intercept('GET', url2).as('request3');
-    cy.window().then((win) => {
-      win.fetch(url2);
-    });
-    
-    cy.wait('@request3').its('response.body').then((body) => {
-      expect(body[RECORD_ORDER.toLowerCase()]).to.equal(RecordOrder.Overwrite);
-      expect(body['x-stoobly-overwrite-id']).to.equal(overwriteId);
-    });
-
-    // Second request to url2 - should NOT include RECORD_ORDER or OVERWRITE_ID
-    cy.intercept('GET', url2).as('request4');
-    cy.window().then((win) => {
-      win.fetch(url2);
-    });
-    
-    cy.wait('@request4').its('response.body').then((body) => {
-      expect(body[RECORD_ORDER.toLowerCase()]).to.be.undefined;
-      expect(body['x-stoobly-overwrite-id']).to.be.undefined;
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+      expect(responseBody[RECORD_POLICY.toLowerCase()]).to.equal(RecordPolicy.All);
+      expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
     });
   });
 
-  it('should reset URL tracking when apply() is called again', () => {
-    // First request should have overwrite headers
-    cy.intercept('GET', url1).as('request1');
+  it('should send record policy header when policy is "found"', () => {
+    stooblyInterceptor.withRecordPolicy(RecordPolicy.Found);
+
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+
     cy.visit(SERVER_URL);
+
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+      expect(responseBody[RECORD_POLICY.toLowerCase()]).to.equal(RecordPolicy.Found);
+    });
+  });
+
+  it('should send record policy header when policy is "not_found"', () => {
+    stooblyInterceptor.withRecordPolicy(RecordPolicy.NotFound);
+
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+
+    cy.visit(SERVER_URL);
+
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+      expect(responseBody[RECORD_POLICY.toLowerCase()]).to.equal(RecordPolicy.NotFound);
+    });
+  });
+
+  it('should send record order header when order is "overwrite"', () => {
+    stooblyInterceptor.withRecordOrder(RecordOrder.Overwrite);
+
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+
+    cy.visit(SERVER_URL);
+
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+      expect(responseBody[RECORD_ORDER.toLowerCase()]).to.equal(RecordOrder.Overwrite);
+    });
+  });
+
+  it('should not send record policy header when policy is not provided', () => {
+    stooblyInterceptor.withRecordPolicy(undefined);
+
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+
+    cy.visit(SERVER_URL);
+
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+      expect(responseBody[RECORD_POLICY.toLowerCase()]).to.be.undefined;
+      expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
+    });
+  });
+
+  it('should send record strategy header when strategy is "full"', () => {
+    stooblyInterceptor.withRecordStrategy(RecordStrategy.Full);
+
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+
+    cy.visit(SERVER_URL);
+
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+      expect(responseBody[RECORD_STRATEGY.toLowerCase()]).to.equal(RecordStrategy.Full);
+      expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
+    });
+  });
+
+  it('should send record strategy header when strategy is "minimal"', () => {
+    stooblyInterceptor.withRecordStrategy(RecordStrategy.Minimal);
+
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+
+    cy.visit(SERVER_URL);
+
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+      expect(responseBody[RECORD_STRATEGY.toLowerCase()]).to.equal(RecordStrategy.Minimal);
+      expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
+    });
+  });
+
+  it('should not send record strategy header when strategy is not provided', () => {
+    stooblyInterceptor.withRecordStrategy(undefined);
+
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+
+    cy.visit(SERVER_URL);
+
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+      expect(responseBody[RECORD_STRATEGY.toLowerCase()]).to.be.undefined;
+      expect(responseBody[PROXY_MODE.toLowerCase()]).to.equal('record');
+    });
+  });
+
+  describe('Record order overwrite', () => {
+    const url1 = `${SERVER_URL}/headers`;
+    const url2 = `${SERVER_URL}/api/data`;
     
-    cy.wait('@request1').its('response.body').then((body) => {
-      expect(body[RECORD_ORDER.toLowerCase()]).to.equal(RecordOrder.Overwrite);
-      expect(body['x-stoobly-overwrite-id']).to.exist;
+    const overwriteInterceptor = stoobly.cypressInterceptor({ 
+      urls: [{ pattern: url1 }, { pattern: url2 }],
+      record: {
+        order: RecordOrder.Overwrite,
+        policy: RecordPolicy.All,
+        strategy: RecordStrategy.Full,
+      },
     });
 
-    // Second request should NOT have overwrite headers
-    cy.intercept('GET', url1).as('request2');
-    cy.visit(SERVER_URL);
-    
-    cy.wait('@request2').its('response.body').then((body) => {
-      expect(body[RECORD_ORDER.toLowerCase()]).to.be.undefined;
-      expect(body['x-stoobly-overwrite-id']).to.be.undefined;
+    beforeEach(() => {
+      overwriteInterceptor.withInterceptModeRecord().apply();
     });
 
-    // Apply again - should reset tracking
-    cy.then(() => {
-      overwriteInterceptor.applyRecord();
+    afterEach(() => {
+      overwriteInterceptor.clear();
     });
 
-    // First request after reapply should have overwrite headers again
-    cy.intercept('GET', url1).as('request3');
+    it('should send overwrite headers only once per URL pattern', () => {
+      let overwriteId;
+
+      // First request to url1 - should include RECORD_ORDER and OVERWRITE_ID
+      cy.intercept('GET', url1).as('request1');
+      cy.visit(SERVER_URL);
+      
+      cy.wait('@request1').its('response.body').then((body) => {
+        expect(body[RECORD_ORDER.toLowerCase()]).to.equal(RecordOrder.Overwrite);
+        expect(body['x-stoobly-overwrite-id']).to.exist;
+        overwriteId = body['x-stoobly-overwrite-id'];
+      });
+
+      // Second request to url1 - should NOT include RECORD_ORDER or OVERWRITE_ID
+      cy.intercept('GET', url1).as('request2');
+      cy.visit(SERVER_URL);
+      
+      cy.wait('@request2').its('response.body').then((body) => {
+        expect(body[RECORD_ORDER.toLowerCase()]).to.be.undefined;
+        expect(body['x-stoobly-overwrite-id']).to.be.undefined;
+      });
+
+      // First request to url2 via fetch - should include RECORD_ORDER and OVERWRITE_ID (same ID)
+      cy.intercept('GET', url2).as('request3');
+      cy.window().then((win) => {
+        win.fetch(url2);
+      });
+      
+      cy.wait('@request3').its('response.body').then((body) => {
+        expect(body[RECORD_ORDER.toLowerCase()]).to.equal(RecordOrder.Overwrite);
+        expect(body['x-stoobly-overwrite-id']).to.equal(overwriteId);
+      });
+
+      // Second request to url2 - should NOT include RECORD_ORDER or OVERWRITE_ID
+      cy.intercept('GET', url2).as('request4');
+      cy.window().then((win) => {
+        win.fetch(url2);
+      });
+      
+      cy.wait('@request4').its('response.body').then((body) => {
+        expect(body[RECORD_ORDER.toLowerCase()]).to.be.undefined;
+        expect(body['x-stoobly-overwrite-id']).to.be.undefined;
+      });
+    });
+
+    it('should reset URL tracking when apply() is called again', () => {
+      // First request should have overwrite headers
+      cy.intercept('GET', url1).as('request1');
+      cy.visit(SERVER_URL);
+      
+      cy.wait('@request1').its('response.body').then((body) => {
+        expect(body[RECORD_ORDER.toLowerCase()]).to.equal(RecordOrder.Overwrite);
+        expect(body['x-stoobly-overwrite-id']).to.exist;
+      });
+
+      // Second request should NOT have overwrite headers
+      cy.intercept('GET', url1).as('request2');
+      cy.visit(SERVER_URL);
+      
+      cy.wait('@request2').its('response.body').then((body) => {
+        expect(body[RECORD_ORDER.toLowerCase()]).to.be.undefined;
+        expect(body['x-stoobly-overwrite-id']).to.be.undefined;
+      });
+
+      // Apply again - should reset tracking
+      cy.then(() => {
+        overwriteInterceptor.withInterceptModeRecord().apply();
+      });
+
+      // First request after reapply should have overwrite headers again
+      cy.intercept('GET', url1).as('request3');
+      cy.visit(SERVER_URL);
+      
+      cy.wait('@request3').its('response.body').then((body) => {
+        expect(body[RECORD_ORDER.toLowerCase()]).to.equal(RecordOrder.Overwrite);
+        expect(body['x-stoobly-overwrite-id']).to.exist;
+      });
+    });
+  });
+});
+
+describe('disable', () => {
+  const stooblyInterceptor = buildStooblyInterceptor();
+
+  beforeEach(() => {
+    stooblyInterceptor.enable();
+  });
+
+  it('should remove handlers', () => {
+    const scenarioKey = 'test-clear';
+    const sessionId = 'clear-session';
+
+    stooblyInterceptor.withScenarioKey(scenarioKey);
+    stooblyInterceptor.withSessionId(sessionId);
+
+    // First request should have headers
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
     cy.visit(SERVER_URL);
-    
-    cy.wait('@request3').its('response.body').then((body) => {
-      expect(body[RECORD_ORDER.toLowerCase()]).to.equal(RecordOrder.Overwrite);
-      expect(body['x-stoobly-overwrite-id']).to.exist;
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+      expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.equal(scenarioKey);
+      expect(responseBody[SESSION_ID.toLowerCase()]).to.equal(sessionId);
+    });
+
+    // Clear handlers
+    stooblyInterceptor.disable();
+
+    // Second request should not have headers
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+    cy.visit(SERVER_URL);
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+      expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.be.undefined;
+      expect(responseBody[SESSION_ID.toLowerCase()]).to.be.undefined;
+    });
+  });
+});
+
+describe('Urls', () => {
+  const stooblyInterceptor = buildStooblyInterceptor();
+
+  beforeEach(() => {
+    stooblyInterceptor.enable();
+  });
+  
+  it('should apply new urls when changing urls', () => {
+    const scenarioKey = 'test-url-change';
+    stooblyInterceptor.withScenarioKey(scenarioKey);
+
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+    cy.visit(SERVER_URL);
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+      expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.equal(scenarioKey);
+    });
+
+    stooblyInterceptor.enable({ urls: [{ pattern: `${SERVER_URL}/different` }] });
+
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+    cy.visit(SERVER_URL);
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+      expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.be.undefined;
     });
   });
 });

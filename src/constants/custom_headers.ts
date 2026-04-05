@@ -1,4 +1,5 @@
 export const MATCH_RULES = 'X-Stoobly-Request-Match-Rules';
+export const MOCK_POLICY = 'X-Stoobly-Mock-Policy';
 export const OVERWRITE_ID = 'X-Stoobly-Overwrite-Id';
 export const PROXY_MODE = 'X-Stoobly-Proxy-Mode';
 export const PUBLIC_DIRECTORY_PATH = 'X-Stoobly-Public-Directory-Path';
