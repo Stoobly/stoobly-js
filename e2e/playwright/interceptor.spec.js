@@ -41,11 +41,11 @@ test.describe('Options', () => {
 
     expect(responseBody[SESSION_ID.toLowerCase()]).toBeDefined();
     expect(responseBody[PROXY_MODE.toLowerCase()]).toBeUndefined();
-    expect(responseBody[RECORD_ORDER]).toBeUndefined();
-    expect(responseBody[RECORD_POLICY]).toBeUndefined();
-    expect(responseBody[RECORD_STRATEGY]).toBeUndefined();
-    expect(responseBody[SCENARIO_KEY]).toBeUndefined();
-    expect(responseBody[SCENARIO_NAME]).toBeUndefined();
+    expect(responseBody[RECORD_ORDER.toLowerCase()]).toBeUndefined();
+    expect(responseBody[RECORD_POLICY.toLowerCase()]).toBeUndefined();
+    expect(responseBody[RECORD_STRATEGY.toLowerCase()]).toBeUndefined();
+    expect(responseBody[SCENARIO_KEY.toLowerCase()]).toBeUndefined();
+    expect(responseBody[SCENARIO_NAME.toLowerCase()]).toBeUndefined();
 
     // matchRules: base64-encoded JSON
     const matchRulesEncoded = responseBody[MATCH_RULES.toLowerCase()];
