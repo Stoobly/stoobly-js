@@ -52,9 +52,36 @@ export class Interceptor {
     });
   }
 
-  // Applies HTTP request interception to fetch and XMLHttpRequest. Clears existing
-  // interceptors, sets URL filters if provided, and decorates fetch/XMLHttpRequest to inject custom headers. 
-  /** @deprecated Use enable() instead. */
+  /**
+   * Applies HTTP request interception to `window.fetch` and `XMLHttpRequest`.
+   *
+   * Behavior:
+   * - Restores any prior decorations to avoid duplicates, then applies fresh ones.
+   * - Normalizes and stores URL patterns from `settings.urls` if provided, otherwise uses constructor `settings.urls`.
+   * - Decorates fetch and XHR to inject Stoobly headers for allowed URLs.
+   * - Applies header-backed settings (mode, record policy/order/strategy, mock policy, scenario key/name)
+   *   using a stable precedence: explicit `settings` > previously set fluent headers > constructor defaults.
+   * - Establishes/returns a session ID (explicit `settings.sessionId` > fluent `.withSessionId()` >
+   *   constructor `sessionId` > auto-generated timestamp).
+   *
+   * Parameters:
+   * - settings (optional): Partial<InterceptorSettings>
+   *   - urls?: (string | RegExp | InterceptorUrl)[] — URL filters to intercept
+   *   - mode?: InterceptMode — proxy mode (mock, record, replay)
+   *   - mock?: { policy?: MockPolicy }
+   *   - record?: { order?: RecordOrder; policy?: RecordPolicy; strategy?: RecordStrategy }
+   *   - scenarioKey?: string
+   *   - scenarioName?: string
+   *   - sessionId?: string
+   *
+   * Returns:
+   * - string — the current session ID
+   *
+   * Notes:
+   * - Use `.enable()` instead for clarity; `enable()` is an alias.
+   *
+   * @deprecated Use `enable()` instead. `enable()` is an alias provided for clarity.
+   */
   apply(settings?: Partial<InterceptorSettings>): string | Promise<string> {
     this.restore();
 
@@ -68,7 +95,23 @@ export class Interceptor {
     return this.applySession(settings);
   }
 
-  /** @deprecated Use disable() instead. */
+  /**
+   * Clears all HTTP request interceptors and resets the interceptor session state.
+   *
+   * Effects:
+   * - Restores the original `window.fetch` and `XMLHttpRequest.prototype.open` implementations.
+   * - Stops injecting Stoobly headers into subsequent requests.
+   * - Resets internal session state so a new session ID will be chosen on the next `apply()`/`enable()`.
+   *
+   * Notes:
+   * - This does not mutate configured URLs or default headers you've set via the fluent API.
+   *   Those will be reused on the next `apply()`/`enable()` call.
+   *
+   * Returns:
+   * - void
+   *
+   * @deprecated Use `disable()` instead. `disable()` is an alias for clarity and consistency with `enable()`.
+   */
   clear() {
     this.restore();
     this.clearSession();
@@ -80,8 +123,8 @@ export class Interceptor {
   }
 
   // Alias for apply()
-  enable() {
-    return this.apply();
+  enable(settings?: Partial<InterceptorSettings>) {
+    return this.apply(settings);
   }
 
   // Settings term aligns with UI

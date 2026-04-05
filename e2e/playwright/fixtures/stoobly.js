@@ -29,23 +29,6 @@ export const test = base.extend({
     });
 
     await use(interceptor);
-    await interceptor.clear();
-  },
-
-  stooblyRecordInterceptor: async ({}, use) => {
-    const stoobly = new Stoobly();
-    const interceptor = stoobly.playwrightInterceptor({
-      mode: InterceptMode.record,
-      urls: [{ pattern: targetUrl, matchRules, rewriteRules }],
-      record: {
-        order: RecordOrder.Overwrite,
-        policy: RecordPolicy.All,
-        strategy: RecordStrategy.Full,
-      },
-    });
-
-    await use(interceptor);
-    await interceptor.clear();
   },
 });
 
