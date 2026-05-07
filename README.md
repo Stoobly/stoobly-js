@@ -73,7 +73,7 @@ const interceptor = stoobly.interceptor({
     urls: [{ pattern: new RegExp('https://docs.stoobly.com/.*') }]
 });
 
-const sessionId = interceptor.apply();
+const sessionId = interceptor.enable();
 ```
 
 Configures requests with origin https://docs.stoobly.com to specify a scenario. After a session has started, change sessions with `withSessionId()`.
@@ -88,7 +88,7 @@ const interceptor = stoobly.interceptor({
     urls: [{ pattern: new RegExp('https://docs.stoobly.com/.*') }]
 });
 
-const sessionId = interceptor.apply();
+const sessionId = interceptor.enable();
 interceptor.withSessionId('<NEW-SESSION-ID>');
 ```
 
@@ -106,7 +106,7 @@ const interceptor = stoobly.interceptor({
     ]
 });
 
-interceptor.apply();
+interceptor.enable();
 ```
 
 ### Recording requests
@@ -127,7 +127,7 @@ import {
   // ReplayPolicy,    // All
   // TestPolicy,      // All, Found
   // TestStrategy,    // Diff, Fuzzy, Custom
-  // FirewallAction,  // Exclude, Include
+  // FilterAction,  // Exclude, Include
   // RequestParameter // Header, BodyParam, QueryParam
 } from 'stoobly/constants';
 
@@ -141,19 +141,19 @@ const interceptor = stoobly.interceptor({
     }
 });
 
-interceptor.applyRecord();
+interceptor.withInterceptModeRecord().enable();
 ```
 
-Stop recording requests:
+Stop recording requests (switch back to another mode, e.g., mock):
 
 ```js
-interceptor.clearRecord();
+interceptor.withInterceptModeMock().enable();
 ```
 
 Stop all interception (recording, mocking, etc.):
 
 ```js
-interceptor.clear();
+interceptor.disable();
 ```
 
 ### Test Framework Integration
@@ -200,10 +200,10 @@ describe('Scenario', () => {
         // Example of a synchronous request: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest_API/Synchronous_and_Asynchronous_Requests#synchronous_request
 
         const interceptor = stooblyInterceptor();
-        interceptor.withScenarioNameFromTest().apply();
+        interceptor.withScenarioNameFromTest().enable();
 
         // Use the following instead to record requests
-        // interceptor.applyRecord();
+        // interceptor.withInterceptModeRecord().enable();
     });
 });
 ```
@@ -211,7 +211,7 @@ describe('Scenario', () => {
 **Key Points:**
 - The Stoobly instance and interceptor are created once outside the `describe` block
 - Test titles are automatically detected at request interception time for each test, and `withScenarioNameFromTest()` can be used to derive a scenario name from the Cypress test title path
-- `interceptor.apply()` must be called in `beforeEach` because it uses `cy.intercept`. `cy.intercept` gets reset before every test. See: https://docs.cypress.io/api/commands/intercept#:~:text=All%20intercepts%20are%20automatically%20cleared%20before%20every%20test.
+- `interceptor.enable()` must be called in `beforeEach` because it uses `cy.intercept`. `cy.intercept` gets reset before every test. See: https://docs.cypress.io/api/commands/intercept#:~:text=All%20intercepts%20are%20automatically%20cleared%20before%20every%20test.
 
 
 ### Integrating with Playwright
@@ -242,7 +242,7 @@ export const test = base.extend({
             .withScenarioNameFromTest(testInfo)
             .withTestTitle(testInfo.title);
 
-        await interceptor.apply();
+        await interceptor.enable();
         await use(interceptor);
     },
 });
@@ -286,10 +286,10 @@ const stooblyInterceptor = stoobly.playwrightInterceptor({
 
 test.describe('Scenario', () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await stooblyInterceptor.withPage(page).apply();
+        await stooblyInterceptor.withPage(page).enable();
 
         // Use the following instead to record requests
-        // await stooblyInterceptor.withPage(page).applyRecord();
+        // await stooblyInterceptor.withPage(page).withInterceptModeRecord().enable();
 
         stooblyInterceptor.withTestTitle(testInfo.title);
     });
@@ -309,7 +309,7 @@ By default, Playwright intercepts requests at the page level using `withPage()`.
 test.beforeEach(async ({ context, page }, testInfo) => {
     await stooblyInterceptor
         .withContext(context)  // Intercept all requests in the browser context
-        .apply();
+        .enable();
     stooblyInterceptor.withTestTitle(testInfo.title);
 });
 ```

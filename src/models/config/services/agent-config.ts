@@ -5,7 +5,7 @@ import {
   AgentRemoteSettings,
   AgentUISettings,
   ProxyDataRules,
-  ProxyFirewallRule,
+  ProxyFilterRule,
   ProxyMatchRule,
   ProxyRewriteRules,
 } from '../types/config-response';
@@ -99,14 +99,14 @@ export class AgentConfig {
     return dataSettings[projectId] || {};
   }
 
-  setProxyFirewallRules(projectId: number, data: ProxyFirewallRule[]) {
-    const firewallSettings = this.proxy.firewall;
-    return (firewallSettings[projectId] = data);
+  setProxyFilterRules(projectId: number, data: ProxyFilterRule[]) {
+    const filterSettings = this.proxy.filter;
+    return (filterSettings[projectId] = data);
   }
 
-  getProxyFirewallRules(projectId: number) {
-    const firewallSettings = this.proxy.firewall;
-    return firewallSettings[projectId];
+  getProxyFilterRules(projectId: number) {
+    const filterSettings = this.proxy.filter;
+    return filterSettings[projectId];
   }
 
   setProxyMatchRules(projectId: number, data: ProxyMatchRule[]) {
