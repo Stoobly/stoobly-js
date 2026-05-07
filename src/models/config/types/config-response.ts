@@ -1,5 +1,5 @@
 import { 
-  FirewallAction, 
+  FilterAction, 
   MockPolicy, 
   InterceptMode, 
   RecordPolicy, 
@@ -30,7 +30,7 @@ export interface AgentFeatures {
 
 export interface AgentProxySettings {
   data: {[projectId: string]: Partial<ProxyDataRules>};
-  firewall: {[projectId: string]: ProxyFirewallRule[]};
+  filter: {[projectId: string]: ProxyFilterRule[]};
   match: {[projectId: string]: ProxyMatchRule[]};
   rewrite: {[projectId: string]: ProxyRewriteRules[]};
   intercept: ProxyInterceptSettings;
@@ -51,8 +51,8 @@ export interface ProxyDataRules {
   test_strategy: TestStrategy;
 }
 
-export interface ProxyFirewallRule {
-  action: FirewallAction;
+export interface ProxyFilterRule {
+  action: FilterAction;
   methods: HTTP_METHOD[];
   modes: InterceptMode[];
   pattern: string;

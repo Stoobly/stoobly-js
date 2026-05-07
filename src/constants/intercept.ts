@@ -5,7 +5,7 @@ export enum InterceptMode {
   test = 'test',
 }
 
-export enum FirewallAction {
+export enum FilterAction {
   Exclude = 'exclude',
   Include = 'include',
 }
