@@ -253,13 +253,13 @@ export class Playwright extends Interceptor {
     this.appliedPlaywright = true;
   }
 
-  private withPage(page: Page) {
+  withPage(page: Page) {
     this.page = page;
 
     return this;
   }
 
-  private withContext(context: BrowserContext) {
+  withContext(context: BrowserContext) {
     this.context = context;
 
     return this;
