@@ -1,7 +1,7 @@
 import {jest} from '@jest/globals';
 import {SpiedFunction} from 'jest-mock';
 
-import {MATCH_RULES, MOCK_POLICY, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE} from '@constants/custom_headers';
+import {MATCH_RULES, MOCK_POLICY, OPENAPI_SPECIFICATION_PATH, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE} from '@constants/custom_headers';
 import {InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy, RequestParameter} from '@constants/intercept';
 import {Interceptor} from '@core/interceptor';
 
@@ -358,6 +358,7 @@ describe('Interceptor', () => {
               matchRules: usersMatchRules,
               publicDirectoryPath: '/users-public',
               responseFixturesPath: '/users-fixtures',
+              openApiSpecificationPath: '/users-openapi.yaml',
             },
             {
               pattern: new RegExp(`${allowedOrigin}/api/posts`),
@@ -379,6 +380,7 @@ describe('Interceptor', () => {
         );
         expect(reqHeaders[PUBLIC_DIRECTORY_PATH]).toBe('/users-public');
         expect(reqHeaders[RESPONSE_FIXTURES_PATH]).toBe('/users-fixtures');
+        expect(reqHeaders[OPENAPI_SPECIFICATION_PATH]).toBe('/users-openapi.yaml');
         expect(reqHeaders[REWRITE_RULES]).toBeUndefined();
       });
 
@@ -394,6 +396,7 @@ describe('Interceptor', () => {
         expect(reqHeaders[PUBLIC_DIRECTORY_PATH]).toBe('/posts-public');
         expect(reqHeaders[MATCH_RULES]).toBeUndefined();
         expect(reqHeaders[RESPONSE_FIXTURES_PATH]).toBeUndefined();
+        expect(reqHeaders[OPENAPI_SPECIFICATION_PATH]).toBeUndefined();
       });
     });
   });
