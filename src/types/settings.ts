@@ -25,6 +25,7 @@ export interface InterceptorSettings {
 
 export interface InterceptorUrl {
   matchRules?: MatchRule[];
+  openApiSpecificationPath?: string;
   pattern: RegExp | string;
   publicDirectoryPath?: string;
   responseFixturesPath?: string;
