@@ -34,6 +34,18 @@ export class Playwright extends Interceptor {
     return this;
   }
 
+  withPage(page: Page) {
+    this.page = page;
+
+    return this;
+  }
+
+  withContext(context: BrowserContext) {
+    this.context = context;
+
+    return this;
+  }
+
   get page() {
     if (!this._page) {
       throw new Error("Page is required. Call withPage() to set the page.");
@@ -251,17 +263,5 @@ export class Playwright extends Interceptor {
     }
 
     this.appliedPlaywright = true;
-  }
-
-  private withPage(page: Page) {
-    this.page = page;
-
-    return this;
-  }
-
-  private withContext(context: BrowserContext) {
-    this.context = context;
-
-    return this;
   }
 }
