@@ -1,4 +1,5 @@
 import { InterceptorFramework } from '@constants/options';
+
 import {DEFAULT_UI_URL} from './constants/config';
 import {Cypress} from './core/cypress';
 import {ConfigResource, HttpService} from './core/http';

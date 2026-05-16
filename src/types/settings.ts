@@ -1,6 +1,7 @@
 import { InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/intercept";
-import { TestFramework } from "../utils/test-detection";
 import { MatchRule, RewriteRule } from "@models/config/types";
+
+import { TestFramework } from "../utils/test-detection";
 
 export interface MockSettings {
   policy?: MockPolicy;
@@ -25,6 +26,7 @@ export interface InterceptorSettings {
 
 export interface InterceptorUrl {
   matchRules?: MatchRule[];
+  openApiSpecificationPath?: string;
   pattern: RegExp | string;
   publicDirectoryPath?: string;
   responseFixturesPath?: string;

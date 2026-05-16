@@ -13,6 +13,7 @@ export enum FilterAction {
 export enum MockPolicy {
   All = 'all',
   Found = 'found',
+  None = 'none',
 }
 
 export enum RecordOrder {
@@ -22,7 +23,9 @@ export enum RecordOrder {
 
 export enum RecordPolicy {
   All = 'all',
+  Api = 'api',
   Found = 'found',
+  None = 'none',
   NotFound = 'not_found',
 }
 
@@ -42,12 +45,13 @@ export enum RequestParameter {
 }
 
 export enum TestPolicy {
-  All = 'all',
   Found = 'found',
+  None = 'none',
 }
 
 export enum TestStrategy {
+  Custom = 'custom',
+  Contract = 'contract',
   Diff = 'diff',
   Fuzzy = 'fuzzy',
-  Custom = 'custom',
 }
