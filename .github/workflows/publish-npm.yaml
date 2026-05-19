@@ -9,7 +9,7 @@ on:
         description: 'Skip publishing to npm'
         required: false
         type: boolean
-        default: false
+        default: true
 
 permissions:
   id-token: write
@@ -34,6 +34,16 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Verify package.json version matches tag
+        if: github.event_name == 'push'
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG" != "$PKG_VERSION" ]; then
+            echo "::error::Tag ($TAG) does not match package.json version ($PKG_VERSION)"
+            exit 1
+          fi
 
       - name: Publish to npm
         if: ${{ !inputs.skip_publish_npm }}
