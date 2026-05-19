@@ -1,4 +1,4 @@
-import { MATCH_RULES, MOCK_POLICY, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
+import { MATCH_RULES, MOCK_POLICY, OPENAPI_SPECIFICATION_PATH, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE } from "@constants/custom_headers";
 import { InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy } from "@constants/intercept";
 
 import { InterceptorSettings, InterceptorUrl } from "../types/settings";
@@ -540,8 +540,9 @@ export class Interceptor {
   }
 
   /**
-   * Conditionally applies matchRules, rewriteRules, publicDirectoryPath, and responseFixturesPath
-   * headers from the matching InterceptorUrl when the request URL matches a pattern with these options set.
+   * Conditionally applies matchRules, rewriteRules, publicDirectoryPath, responseFixturesPath,
+   * and openApiSpecificationPath headers from the matching InterceptorUrl when the request URL
+   * matches a pattern with these options set.
    */
   protected applyUrlSpecificHeaders(
     headers: Record<string, string>,
@@ -566,6 +567,9 @@ export class Interceptor {
     }
     if (interceptorUrl.responseFixturesPath) {
       headers[RESPONSE_FIXTURES_PATH] = interceptorUrl.responseFixturesPath;
+    }
+    if (interceptorUrl.openApiSpecificationPath) {
+      headers[OPENAPI_SPECIFICATION_PATH] = interceptorUrl.openApiSpecificationPath;
     }
   }
 
