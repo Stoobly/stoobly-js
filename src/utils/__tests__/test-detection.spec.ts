@@ -77,6 +77,9 @@ describe('test-detection', () => {
     });
 
     it('detects cypress in globalThis', () => {
+      // In jsdom, globalThis === window, so this hits the window branch of
+      // getTestFramework() rather than the globalThis fallback. Both paths
+      // return 'cypress', so the observable behaviour is correct.
       (globalThis as any).Cypress = {};
 
       expect(testDetection.getTestFramework()).toBe('cypress');
