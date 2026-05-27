@@ -1,8 +1,8 @@
 import {jest} from '@jest/globals';
 import {SpiedFunction} from 'jest-mock';
 
-import {MATCH_RULES, MOCK_POLICY, OPENAPI_SPECIFICATION_PATH, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE} from '@constants/custom_headers';
-import {InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy, RequestParameter} from '@constants/intercept';
+import {MATCH_RULES, MOCK_POLICY, OPENAPI_SPECIFICATION_PATH, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_POLICY, TEST_TITLE} from '@constants/custom_headers';
+import {InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy, RequestParameter, TestPolicy} from '@constants/intercept';
 import {Interceptor} from '@core/interceptor';
 
 function getFetchInitForUrl(
@@ -292,7 +292,7 @@ describe('Interceptor', () => {
     });
   });
 
-  describe('fetch with matchRules and InterceptorUrl options', () => {
+  describe('fetch with matchRules and mock settings', () => {
     const allowedUrl = `${allowedOrigin}/test`;
     const matchRules = [
       {modes: [InterceptMode.replay], components: RequestParameter.Header},
@@ -342,28 +342,33 @@ describe('Interceptor', () => {
       });
     });
 
-    describe('when multiple URLs with different InterceptorUrl options', () => {
+    describe('when multiple URLs share mock settings', () => {
       const usersUrl = `${allowedOrigin}/api/users`;
       const postsUrl = `${allowedOrigin}/api/posts`;
       const usersMatchRules = [
         {modes: [InterceptMode.replay], components: RequestParameter.Header},
       ];
       const postsRewriteRules = [{urlRules: [{path: '/posts-rewritten'}]}];
+      const publicDirectoryPath = '/shared-public';
+      const responseFixturesPath = '/shared-fixtures';
+      const openApiSpecificationPath = '/shared-openapi.yaml';
 
       beforeAll(async () => {
         await interceptor.apply({
+          mode: InterceptMode.mock,
+          mock: {
+            publicDirectoryPath,
+            responseFixturesPath,
+            openApiSpecificationPath,
+          },
           urls: [
             {
               pattern: new RegExp(`${allowedOrigin}/api/users`),
               matchRules: usersMatchRules,
-              publicDirectoryPath: '/users-public',
-              responseFixturesPath: '/users-fixtures',
-              openApiSpecificationPath: '/users-openapi.yaml',
             },
             {
               pattern: new RegExp(`${allowedOrigin}/api/posts`),
               rewriteRules: postsRewriteRules,
-              publicDirectoryPath: '/posts-public',
             },
           ],
         });
@@ -378,9 +383,9 @@ describe('Interceptor', () => {
         expect(JSON.parse(Buffer.from(reqHeaders[MATCH_RULES], 'base64').toString('utf-8'))).toEqual(
           usersMatchRules
         );
-        expect(reqHeaders[PUBLIC_DIRECTORY_PATH]).toBe('/users-public');
-        expect(reqHeaders[RESPONSE_FIXTURES_PATH]).toBe('/users-fixtures');
-        expect(reqHeaders[OPENAPI_SPECIFICATION_PATH]).toBe('/users-openapi.yaml');
+        expect(reqHeaders[PUBLIC_DIRECTORY_PATH]).toBe(publicDirectoryPath);
+        expect(reqHeaders[RESPONSE_FIXTURES_PATH]).toBe(responseFixturesPath);
+        expect(reqHeaders[OPENAPI_SPECIFICATION_PATH]).toBe(openApiSpecificationPath);
         expect(reqHeaders[REWRITE_RULES]).toBeUndefined();
       });
 
@@ -393,10 +398,10 @@ describe('Interceptor', () => {
         expect(JSON.parse(Buffer.from(reqHeaders[REWRITE_RULES], 'base64').toString('utf-8'))).toEqual([
           {url_rules: [{path: '/posts-rewritten'}]},
         ]);
-        expect(reqHeaders[PUBLIC_DIRECTORY_PATH]).toBe('/posts-public');
+        expect(reqHeaders[PUBLIC_DIRECTORY_PATH]).toBe(publicDirectoryPath);
         expect(reqHeaders[MATCH_RULES]).toBeUndefined();
-        expect(reqHeaders[RESPONSE_FIXTURES_PATH]).toBeUndefined();
-        expect(reqHeaders[OPENAPI_SPECIFICATION_PATH]).toBeUndefined();
+        expect(reqHeaders[RESPONSE_FIXTURES_PATH]).toBe(responseFixturesPath);
+        expect(reqHeaders[OPENAPI_SPECIFICATION_PATH]).toBe(openApiSpecificationPath);
       });
     });
   });
