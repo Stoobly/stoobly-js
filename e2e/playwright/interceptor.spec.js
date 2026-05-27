@@ -528,7 +528,7 @@ test.describe('InterceptorUrl', () => {
   const headersUrl = `${SERVER_URL}/headers`;
   const apiDataUrl = `${SERVER_URL}/api/data`;
 
-  test('does not set url-specific option headers when InterceptorUrl has only a pattern', async ({
+  test('does not set match or rewrite headers when InterceptorUrl has only a pattern', async ({
     page,
     stooblyInterceptor,
   }) => {
