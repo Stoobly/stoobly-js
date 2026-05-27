@@ -11,11 +11,13 @@ import {
   SCENARIO_KEY,
   SCENARIO_NAME,
   SESSION_ID,
+  TEST_POLICY,
   TEST_TITLE,
   InterceptMode,
   RecordOrder,
   RecordPolicy,
   RecordStrategy,
+  TestPolicy,
 } from "../../dist/esm/constants.js";
 import { buildStooblyInterceptor, targetUrl, matchRules, rewriteRules, stoobly } from './fixtures/stoobly';
 
