@@ -2017,6 +2017,7 @@ describe('Interceptor', () => {
     const fluentRecordStrategy = RecordStrategy.Full;
     const fluentMode = InterceptMode.replay;
     const fluentMockPolicy = MockPolicy.All;
+    const fluentTestPolicy = TestPolicy.Found;
 
     const fetchMock = jest.fn(async (): Promise<Response> => {
       return Promise.resolve(new Response(null, {status: 200}));
@@ -2169,6 +2170,97 @@ describe('Interceptor', () => {
           [MOCK_POLICY]: fluentMockPolicy,
         }),
       });
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('preserves test policy set via withTestPolicy() when apply() is called without test.policy in options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+      });
+
+      interceptor.withTestPolicy(fluentTestPolicy);
+      interceptor.withInterceptMode(InterceptMode.test);
+      await interceptor.apply();
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [TEST_POLICY]: fluentTestPolicy,
+        }),
+      });
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('allows explicit override when test.policy is provided in apply() options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      const overrideTestPolicy = TestPolicy.None;
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+      });
+
+      interceptor.withTestPolicy(fluentTestPolicy);
+      interceptor.withInterceptMode(InterceptMode.test);
+      await interceptor.apply({ test: { policy: overrideTestPolicy } });
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [TEST_POLICY]: overrideTestPolicy,
+        }),
+      });
+
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        allowedUrl,
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            [TEST_POLICY]: fluentTestPolicy,
+          }),
+        })
+      );
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('prefers fluent test policy over constructor test policy when apply() is called without test.policy in options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      const ctorTestPolicy = TestPolicy.None;
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        test: { policy: ctorTestPolicy },
+      });
+
+      interceptor.withTestPolicy(fluentTestPolicy);
+      interceptor.withInterceptMode(InterceptMode.test);
+      await interceptor.apply();
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [TEST_POLICY]: fluentTestPolicy,
+        }),
+      });
+
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        allowedUrl,
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            [TEST_POLICY]: ctorTestPolicy,
+          }),
+        })
+      );
 
       Interceptor.originalFetch = originalFetch;
     });
