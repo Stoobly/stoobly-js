@@ -255,11 +255,6 @@ export class Interceptor {
       }
     };
 
-    const activeProxyMode =
-      _settings?.mode ??
-      (this.headers[PROXY_MODE] as InterceptMode | undefined) ??
-      this.settings.mode;
-
     // Only override headers if explicitly provided in _settings, otherwise preserve
     // values set via fluent API (e.g., .withScenarioKey()). For initial setup,
     // use values from this.settings if they exist and weren't set via fluent API.
@@ -284,6 +279,8 @@ export class Interceptor {
       this.withTestPolicy.bind(this),
     );
 
+    // Read the effective mode after we've applied PROXY_MODE precedence rules above.
+    const activeProxyMode = this.headers[PROXY_MODE];
     switch (activeProxyMode) {
       case InterceptMode.mock:
         applySetting(
