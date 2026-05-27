@@ -4,14 +4,25 @@ import {describe, expect, it, beforeEach, afterEach, jest} from '@jest/globals';
 import * as testDetection from '../test-detection';
 
 describe('test-detection', () => {
+  const originalWindow = global.window;
+  const originalProcess = global.process;
+
   beforeEach(() => {
-    delete (window as any).Cypress;
-    delete (globalThis as any).process;
+    global.window = originalWindow;
+    if (typeof window !== 'undefined') {
+      delete (window as any).Cypress;
+    }
+    delete (globalThis as any).Cypress;
+    (globalThis as any).process = originalProcess;
   });
 
   afterEach(() => {
-    delete (window as any).Cypress;
-    delete (globalThis as any).process;
+    global.window = originalWindow;
+    if (typeof window !== 'undefined') {
+      delete (window as any).Cypress;
+    }
+    delete (globalThis as any).Cypress;
+    (globalThis as any).process = originalProcess;
   });
 
   describe('getCypressTestTitle', () => {
