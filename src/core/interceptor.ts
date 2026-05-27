@@ -489,7 +489,7 @@ export class Interceptor {
       case InterceptMode.record:
         delete headers[MOCK_POLICY];
         delete headers[TEST_POLICY];
-        this.deleteProxyModePathHeaders();
+        this.deletePathHeadersFrom(headers);
         break;
       case InterceptMode.mock:
         delete headers[RECORD_ORDER];
@@ -512,16 +512,16 @@ export class Interceptor {
         delete headers[RECORD_POLICY];
         delete headers[RECORD_STRATEGY];
         delete headers[TEST_POLICY];
-        this.deleteProxyModePathHeaders();
+        this.deletePathHeadersFrom(headers);
     }
 
     return headers;
   }
 
-  private deleteProxyModePathHeaders() {
-    this.withOpenApiSpecificationPath();
-    this.withPublicDirectoryPath();
-    this.withResponseFixturesPath();
+  private deletePathHeadersFrom(headers: Record<string, string>) {
+    delete headers[OPENAPI_SPECIFICATION_PATH];
+    delete headers[PUBLIC_DIRECTORY_PATH];
+    delete headers[RESPONSE_FIXTURES_PATH];
   }
 
   /**
