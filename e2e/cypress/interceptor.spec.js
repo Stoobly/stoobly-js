@@ -474,7 +474,7 @@ describe('InterceptorUrl', () => {
   const headersUrl = `${SERVER_URL}/headers`;
   const apiDataUrl = `${SERVER_URL}/api/data`;
 
-  it('does not set url-specific option headers when InterceptorUrl has only a pattern', () => {
+  it('does not set match or rewrite headers when InterceptorUrl has only a pattern', () => {
     stooblyInterceptor.enable({ urls: [{ pattern: headersUrl }] });
 
     cy.intercept('GET', `${headersUrl}`).as('getHeaders');
