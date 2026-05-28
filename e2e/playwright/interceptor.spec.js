@@ -13,11 +13,13 @@ import {
   SCENARIO_KEY,
   SCENARIO_NAME,
   SESSION_ID,
+  TEST_POLICY,
   TEST_TITLE,
   InterceptMode,
   RecordOrder,
   RecordPolicy,
   RecordStrategy,
+  TestPolicy,
 } from "../../dist/esm/constants.js";
 import { SERVER_URL } from '../server-config';
 
@@ -526,7 +528,7 @@ test.describe('InterceptorUrl', () => {
   const headersUrl = `${SERVER_URL}/headers`;
   const apiDataUrl = `${SERVER_URL}/api/data`;
 
-  test('does not set url-specific option headers when InterceptorUrl has only a pattern', async ({
+  test('does not set match or rewrite headers when InterceptorUrl has only a pattern', async ({
     page,
     stooblyInterceptor,
   }) => {
@@ -549,19 +551,26 @@ test.describe('InterceptorUrl', () => {
     expect(body[OPENAPI_SPECIFICATION_PATH.toLowerCase()]).toBeUndefined();
   });
 
-  test('applies headers from the InterceptorUrl that matches the request URL', async ({
+  test('applies match headers from the matching InterceptorUrl and mock headers from settings', async ({
     page,
     stooblyInterceptor,
   }) => {
     const rulesForHeaders = [{ modes: [InterceptMode.replay], components: 'Header' }];
     const rulesForApi = [{ modes: [InterceptMode.replay], components: 'Body' }];
-    const publicA = '/public-a';
-    const publicB = '/public-b';
+    const publicDirectoryPath = '/shared-public';
+    const responseFixturesPath = '/shared-fixtures';
+    const openApiSpecificationPath = '/shared-openapi.yaml';
 
     await stooblyInterceptor.enableForPage(page, {
+      mode: InterceptMode.mock,
+      mock: {
+        publicDirectoryPath,
+        responseFixturesPath,
+        openApiSpecificationPath,
+      },
       urls: [
-        { pattern: headersUrl, matchRules: rulesForHeaders, publicDirectoryPath: publicA },
-        { pattern: apiDataUrl, matchRules: rulesForApi, publicDirectoryPath: publicB },
+        { pattern: headersUrl, matchRules: rulesForHeaders },
+        { pattern: apiDataUrl, matchRules: rulesForApi },
       ],
     });
 
@@ -573,7 +582,9 @@ test.describe('InterceptorUrl', () => {
     expect(JSON.parse(Buffer.from(body1[MATCH_RULES.toLowerCase()], 'base64').toString('utf-8'))).toEqual(
       rulesForHeaders
     );
-    expect(body1[PUBLIC_DIRECTORY_PATH.toLowerCase()]).toEqual(publicA);
+    expect(body1[PUBLIC_DIRECTORY_PATH.toLowerCase()]).toEqual(publicDirectoryPath);
+    expect(body1[RESPONSE_FIXTURES_PATH.toLowerCase()]).toEqual(responseFixturesPath);
+    expect(body1[OPENAPI_SPECIFICATION_PATH.toLowerCase()]).toEqual(openApiSpecificationPath);
 
     page.goto(apiDataUrl);
     const res2 = await page.waitForResponse(
@@ -583,7 +594,60 @@ test.describe('InterceptorUrl', () => {
     expect(JSON.parse(Buffer.from(body2[MATCH_RULES.toLowerCase()], 'base64').toString('utf-8'))).toEqual(
       rulesForApi
     );
-    expect(body2[PUBLIC_DIRECTORY_PATH.toLowerCase()]).toEqual(publicB);
+    expect(body2[PUBLIC_DIRECTORY_PATH.toLowerCase()]).toEqual(publicDirectoryPath);
+    expect(body2[RESPONSE_FIXTURES_PATH.toLowerCase()]).toEqual(responseFixturesPath);
+    expect(body2[OPENAPI_SPECIFICATION_PATH.toLowerCase()]).toEqual(openApiSpecificationPath);
+  });
+
+  test('applies match headers from the matching InterceptorUrl and test headers from settings', async ({
+    page,
+    stooblyInterceptor,
+  }) => {
+    const rulesForHeaders = [{ modes: [InterceptMode.replay], components: 'Header' }];
+    const rulesForApi = [{ modes: [InterceptMode.replay], components: 'Body' }];
+    const publicDirectoryPath = '/test-public';
+    const responseFixturesPath = '/test-fixtures';
+    const openApiSpecificationPath = '/test-openapi.yaml';
+
+    await stooblyInterceptor.enableForPage(page, {
+      mode: InterceptMode.test,
+      test: {
+        policy: TestPolicy.Found,
+        publicDirectoryPath,
+        responseFixturesPath,
+        openApiSpecificationPath,
+      },
+      urls: [
+        { pattern: headersUrl, matchRules: rulesForHeaders },
+        { pattern: apiDataUrl, matchRules: rulesForApi },
+      ],
+    });
+
+    page.goto(headersUrl);
+    const res1 = await page.waitForResponse(
+      (r) => r.url().startsWith(headersUrl) && r.status() === 200
+    );
+    const body1 = await res1.json();
+    expect(JSON.parse(Buffer.from(body1[MATCH_RULES.toLowerCase()], 'base64').toString('utf-8'))).toEqual(
+      rulesForHeaders
+    );
+    expect(body1[TEST_POLICY.toLowerCase()]).toEqual(TestPolicy.Found);
+    expect(body1[PUBLIC_DIRECTORY_PATH.toLowerCase()]).toEqual(publicDirectoryPath);
+    expect(body1[RESPONSE_FIXTURES_PATH.toLowerCase()]).toEqual(responseFixturesPath);
+    expect(body1[OPENAPI_SPECIFICATION_PATH.toLowerCase()]).toEqual(openApiSpecificationPath);
+
+    page.goto(apiDataUrl);
+    const res2 = await page.waitForResponse(
+      (r) => r.url().startsWith(apiDataUrl) && r.status() === 200
+    );
+    const body2 = await res2.json();
+    expect(JSON.parse(Buffer.from(body2[MATCH_RULES.toLowerCase()], 'base64').toString('utf-8'))).toEqual(
+      rulesForApi
+    );
+    expect(body2[TEST_POLICY.toLowerCase()]).toEqual(TestPolicy.Found);
+    expect(body2[PUBLIC_DIRECTORY_PATH.toLowerCase()]).toEqual(publicDirectoryPath);
+    expect(body2[RESPONSE_FIXTURES_PATH.toLowerCase()]).toEqual(responseFixturesPath);
+    expect(body2[OPENAPI_SPECIFICATION_PATH.toLowerCase()]).toEqual(openApiSpecificationPath);
   });
 });
 

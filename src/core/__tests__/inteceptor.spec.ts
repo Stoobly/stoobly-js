@@ -1,8 +1,8 @@
 import {jest} from '@jest/globals';
 import {SpiedFunction} from 'jest-mock';
 
-import {MATCH_RULES, MOCK_POLICY, OPENAPI_SPECIFICATION_PATH, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_TITLE} from '@constants/custom_headers';
-import {InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy, RequestParameter} from '@constants/intercept';
+import {MATCH_RULES, MOCK_POLICY, OPENAPI_SPECIFICATION_PATH, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_POLICY, TEST_TITLE} from '@constants/custom_headers';
+import {InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy, RequestParameter, TestPolicy} from '@constants/intercept';
 import {Interceptor} from '@core/interceptor';
 
 function getFetchInitForUrl(
@@ -292,7 +292,7 @@ describe('Interceptor', () => {
     });
   });
 
-  describe('fetch with matchRules and InterceptorUrl options', () => {
+  describe('fetch with matchRules and mock settings', () => {
     const allowedUrl = `${allowedOrigin}/test`;
     const matchRules = [
       {modes: [InterceptMode.replay], components: RequestParameter.Header},
@@ -342,28 +342,33 @@ describe('Interceptor', () => {
       });
     });
 
-    describe('when multiple URLs with different InterceptorUrl options', () => {
+    describe('when multiple URLs share mock settings', () => {
       const usersUrl = `${allowedOrigin}/api/users`;
       const postsUrl = `${allowedOrigin}/api/posts`;
       const usersMatchRules = [
         {modes: [InterceptMode.replay], components: RequestParameter.Header},
       ];
       const postsRewriteRules = [{urlRules: [{path: '/posts-rewritten'}]}];
+      const publicDirectoryPath = '/shared-public';
+      const responseFixturesPath = '/shared-fixtures';
+      const openApiSpecificationPath = '/shared-openapi.yaml';
 
       beforeAll(async () => {
         await interceptor.apply({
+          mode: InterceptMode.mock,
+          mock: {
+            publicDirectoryPath,
+            responseFixturesPath,
+            openApiSpecificationPath,
+          },
           urls: [
             {
               pattern: new RegExp(`${allowedOrigin}/api/users`),
               matchRules: usersMatchRules,
-              publicDirectoryPath: '/users-public',
-              responseFixturesPath: '/users-fixtures',
-              openApiSpecificationPath: '/users-openapi.yaml',
             },
             {
               pattern: new RegExp(`${allowedOrigin}/api/posts`),
               rewriteRules: postsRewriteRules,
-              publicDirectoryPath: '/posts-public',
             },
           ],
         });
@@ -378,9 +383,9 @@ describe('Interceptor', () => {
         expect(JSON.parse(Buffer.from(reqHeaders[MATCH_RULES], 'base64').toString('utf-8'))).toEqual(
           usersMatchRules
         );
-        expect(reqHeaders[PUBLIC_DIRECTORY_PATH]).toBe('/users-public');
-        expect(reqHeaders[RESPONSE_FIXTURES_PATH]).toBe('/users-fixtures');
-        expect(reqHeaders[OPENAPI_SPECIFICATION_PATH]).toBe('/users-openapi.yaml');
+        expect(reqHeaders[PUBLIC_DIRECTORY_PATH]).toBe(publicDirectoryPath);
+        expect(reqHeaders[RESPONSE_FIXTURES_PATH]).toBe(responseFixturesPath);
+        expect(reqHeaders[OPENAPI_SPECIFICATION_PATH]).toBe(openApiSpecificationPath);
         expect(reqHeaders[REWRITE_RULES]).toBeUndefined();
       });
 
@@ -393,10 +398,10 @@ describe('Interceptor', () => {
         expect(JSON.parse(Buffer.from(reqHeaders[REWRITE_RULES], 'base64').toString('utf-8'))).toEqual([
           {url_rules: [{path: '/posts-rewritten'}]},
         ]);
-        expect(reqHeaders[PUBLIC_DIRECTORY_PATH]).toBe('/posts-public');
+        expect(reqHeaders[PUBLIC_DIRECTORY_PATH]).toBe(publicDirectoryPath);
         expect(reqHeaders[MATCH_RULES]).toBeUndefined();
-        expect(reqHeaders[RESPONSE_FIXTURES_PATH]).toBeUndefined();
-        expect(reqHeaders[OPENAPI_SPECIFICATION_PATH]).toBeUndefined();
+        expect(reqHeaders[RESPONSE_FIXTURES_PATH]).toBe(responseFixturesPath);
+        expect(reqHeaders[OPENAPI_SPECIFICATION_PATH]).toBe(openApiSpecificationPath);
       });
     });
   });
@@ -1035,6 +1040,276 @@ describe('Interceptor', () => {
 
       expect(headers[PROXY_MODE]).toBeUndefined();
       expect(headers[MOCK_POLICY]).toBeUndefined();
+    });
+
+    test('includes mock path headers only when mode is mock', async () => {
+      const publicDirectoryPath = '/shared-public';
+      const responseFixturesPath = '/shared-fixtures';
+      const openApiSpecificationPath = '/shared-openapi.yaml';
+
+      // Mode: mock
+      fetchMock.mockClear();
+
+      const mockInterceptor = new Interceptor({
+        mode: InterceptMode.mock,
+        urls: [{ pattern: allowedUrl }],
+        mock: {
+          publicDirectoryPath,
+          responseFixturesPath,
+          openApiSpecificationPath,
+        },
+      });
+      mockInterceptor.withTestTitle(testTitle);
+      await mockInterceptor.apply();
+
+      await fetch(allowedUrl);
+
+      let headers = getFetchHeadersForUrl(fetchMock, allowedUrl);
+
+      expect(headers[PROXY_MODE]).toBe(InterceptMode.mock);
+      expect(headers[PUBLIC_DIRECTORY_PATH]).toBe(publicDirectoryPath);
+      expect(headers[RESPONSE_FIXTURES_PATH]).toBe(responseFixturesPath);
+      expect(headers[OPENAPI_SPECIFICATION_PATH]).toBe(openApiSpecificationPath);
+
+      // Mode: record
+      fetchMock.mockClear();
+
+      const recordInterceptor = new Interceptor({
+        mode: InterceptMode.record,
+        urls: [{ pattern: allowedUrl }],
+        mock: {
+          publicDirectoryPath,
+          responseFixturesPath,
+          openApiSpecificationPath,
+        },
+      });
+      recordInterceptor.withTestTitle(testTitle);
+      await recordInterceptor.apply();
+
+      await fetch(allowedUrl);
+
+      headers = getFetchHeadersForUrl(fetchMock, allowedUrl);
+
+      expect(headers[PROXY_MODE]).toBe(InterceptMode.record);
+      expect(headers[PUBLIC_DIRECTORY_PATH]).toBeUndefined();
+      expect(headers[RESPONSE_FIXTURES_PATH]).toBeUndefined();
+      expect(headers[OPENAPI_SPECIFICATION_PATH]).toBeUndefined();
+
+      // Mode: unset (default)
+      fetchMock.mockClear();
+
+      const defaultInterceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        mock: {
+          publicDirectoryPath,
+          responseFixturesPath,
+          openApiSpecificationPath,
+        },
+      });
+      defaultInterceptor.withTestTitle(testTitle);
+      await defaultInterceptor.apply();
+
+      await fetch(allowedUrl);
+
+      headers = getFetchHeadersForUrl(fetchMock, allowedUrl);
+
+      expect(headers[PROXY_MODE]).toBeUndefined();
+      expect(headers[PUBLIC_DIRECTORY_PATH]).toBeUndefined();
+      expect(headers[RESPONSE_FIXTURES_PATH]).toBeUndefined();
+      expect(headers[OPENAPI_SPECIFICATION_PATH]).toBeUndefined();
+    });
+  });
+
+  describe('test policy headers', () => {
+    const allowedUrl = `${allowedOrigin}/test-policy-test`;
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    beforeAll(async () => {
+      Interceptor.originalFetch = fetchMock;
+    });
+
+    afterAll(() => {
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('includes TEST_POLICY header when mode is test', async () => {
+      fetchMock.mockClear();
+
+      const testInterceptor = new Interceptor({
+        mode: InterceptMode.test,
+        urls: [{ pattern: allowedUrl }],
+        test: {
+          policy: TestPolicy.Found,
+        },
+      });
+      testInterceptor.withTestTitle(testTitle);
+      await testInterceptor.apply();
+
+      await fetch(allowedUrl);
+
+      const headers = getFetchHeadersForUrl(fetchMock, allowedUrl);
+
+      expect(headers[PROXY_MODE]).toBe(InterceptMode.test);
+      expect(headers[TEST_POLICY]).toBe(TestPolicy.Found);
+    });
+
+    test('does not include TEST_POLICY header when mode is mock, record, or unset', async () => {
+      fetchMock.mockClear();
+
+      const mockInterceptor = new Interceptor({
+        mode: InterceptMode.mock,
+        urls: [{ pattern: allowedUrl }],
+        test: {
+          policy: TestPolicy.Found,
+        },
+      });
+      mockInterceptor.withTestTitle(testTitle);
+      await mockInterceptor.apply();
+
+      await fetch(allowedUrl);
+
+      let headers = getFetchHeadersForUrl(fetchMock, allowedUrl);
+
+      expect(headers[PROXY_MODE]).toBe(InterceptMode.mock);
+      expect(headers[TEST_POLICY]).toBeUndefined();
+
+      fetchMock.mockClear();
+
+      const recordInterceptor = new Interceptor({
+        mode: InterceptMode.record,
+        urls: [{ pattern: allowedUrl }],
+        test: {
+          policy: TestPolicy.Found,
+        },
+      });
+      recordInterceptor.withTestTitle(testTitle);
+      await recordInterceptor.apply();
+
+      await fetch(allowedUrl);
+
+      headers = getFetchHeadersForUrl(fetchMock, allowedUrl);
+
+      expect(headers[PROXY_MODE]).toBe(InterceptMode.record);
+      expect(headers[TEST_POLICY]).toBeUndefined();
+
+      fetchMock.mockClear();
+
+      const defaultInterceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        test: {
+          policy: TestPolicy.Found,
+        },
+      });
+      defaultInterceptor.withTestTitle(testTitle);
+      await defaultInterceptor.apply();
+
+      await fetch(allowedUrl);
+
+      headers = getFetchHeadersForUrl(fetchMock, allowedUrl);
+
+      expect(headers[PROXY_MODE]).toBeUndefined();
+      expect(headers[TEST_POLICY]).toBeUndefined();
+    });
+
+    test('includes test path headers only when mode is test', async () => {
+      const publicDirectoryPath = '/test-public';
+      const responseFixturesPath = '/test-fixtures';
+      const openApiSpecificationPath = '/test-openapi.yaml';
+
+      fetchMock.mockClear();
+
+      const testInterceptor = new Interceptor({
+        mode: InterceptMode.test,
+        urls: [{ pattern: allowedUrl }],
+        test: {
+          publicDirectoryPath,
+          responseFixturesPath,
+          openApiSpecificationPath,
+        },
+      });
+      testInterceptor.withTestTitle(testTitle);
+      await testInterceptor.apply();
+
+      await fetch(allowedUrl);
+
+      let headers = getFetchHeadersForUrl(fetchMock, allowedUrl);
+
+      expect(headers[PROXY_MODE]).toBe(InterceptMode.test);
+      expect(headers[PUBLIC_DIRECTORY_PATH]).toBe(publicDirectoryPath);
+      expect(headers[RESPONSE_FIXTURES_PATH]).toBe(responseFixturesPath);
+      expect(headers[OPENAPI_SPECIFICATION_PATH]).toBe(openApiSpecificationPath);
+
+      fetchMock.mockClear();
+
+      const mockInterceptor = new Interceptor({
+        mode: InterceptMode.mock,
+        urls: [{ pattern: allowedUrl }],
+        test: {
+          publicDirectoryPath,
+          responseFixturesPath,
+          openApiSpecificationPath,
+        },
+      });
+      mockInterceptor.withTestTitle(testTitle);
+      await mockInterceptor.apply();
+
+      await fetch(allowedUrl);
+
+      headers = getFetchHeadersForUrl(fetchMock, allowedUrl);
+
+      expect(headers[PROXY_MODE]).toBe(InterceptMode.mock);
+      expect(headers[PUBLIC_DIRECTORY_PATH]).toBeUndefined();
+      expect(headers[RESPONSE_FIXTURES_PATH]).toBeUndefined();
+      expect(headers[OPENAPI_SPECIFICATION_PATH]).toBeUndefined();
+
+      fetchMock.mockClear();
+
+      const recordInterceptor = new Interceptor({
+        mode: InterceptMode.record,
+        urls: [{ pattern: allowedUrl }],
+        test: {
+          publicDirectoryPath,
+          responseFixturesPath,
+          openApiSpecificationPath,
+        },
+      });
+      recordInterceptor.withTestTitle(testTitle);
+      await recordInterceptor.apply();
+
+      await fetch(allowedUrl);
+
+      headers = getFetchHeadersForUrl(fetchMock, allowedUrl);
+
+      expect(headers[PROXY_MODE]).toBe(InterceptMode.record);
+      expect(headers[PUBLIC_DIRECTORY_PATH]).toBeUndefined();
+      expect(headers[RESPONSE_FIXTURES_PATH]).toBeUndefined();
+      expect(headers[OPENAPI_SPECIFICATION_PATH]).toBeUndefined();
+
+      fetchMock.mockClear();
+
+      const defaultInterceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        test: {
+          publicDirectoryPath,
+          responseFixturesPath,
+          openApiSpecificationPath,
+        },
+      });
+      defaultInterceptor.withTestTitle(testTitle);
+      await defaultInterceptor.apply();
+
+      await fetch(allowedUrl);
+
+      headers = getFetchHeadersForUrl(fetchMock, allowedUrl);
+
+      expect(headers[PROXY_MODE]).toBeUndefined();
+      expect(headers[PUBLIC_DIRECTORY_PATH]).toBeUndefined();
+      expect(headers[RESPONSE_FIXTURES_PATH]).toBeUndefined();
+      expect(headers[OPENAPI_SPECIFICATION_PATH]).toBeUndefined();
     });
   });
 
@@ -1742,6 +2017,7 @@ describe('Interceptor', () => {
     const fluentRecordStrategy = RecordStrategy.Full;
     const fluentMode = InterceptMode.replay;
     const fluentMockPolicy = MockPolicy.All;
+    const fluentTestPolicy = TestPolicy.Found;
 
     const fetchMock = jest.fn(async (): Promise<Response> => {
       return Promise.resolve(new Response(null, {status: 200}));
@@ -1894,6 +2170,97 @@ describe('Interceptor', () => {
           [MOCK_POLICY]: fluentMockPolicy,
         }),
       });
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('preserves test policy set via withTestPolicy() when apply() is called without test.policy in options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+      });
+
+      interceptor.withTestPolicy(fluentTestPolicy);
+      interceptor.withInterceptMode(InterceptMode.test);
+      await interceptor.apply();
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [TEST_POLICY]: fluentTestPolicy,
+        }),
+      });
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('allows explicit override when test.policy is provided in apply() options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      const overrideTestPolicy = TestPolicy.None;
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+      });
+
+      interceptor.withTestPolicy(fluentTestPolicy);
+      interceptor.withInterceptMode(InterceptMode.test);
+      await interceptor.apply({ test: { policy: overrideTestPolicy } });
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [TEST_POLICY]: overrideTestPolicy,
+        }),
+      });
+
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        allowedUrl,
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            [TEST_POLICY]: fluentTestPolicy,
+          }),
+        })
+      );
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('prefers fluent test policy over constructor test policy when apply() is called without test.policy in options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      const ctorTestPolicy = TestPolicy.None;
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+        test: { policy: ctorTestPolicy },
+      });
+
+      interceptor.withTestPolicy(fluentTestPolicy);
+      interceptor.withInterceptMode(InterceptMode.test);
+      await interceptor.apply();
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [TEST_POLICY]: fluentTestPolicy,
+        }),
+      });
+
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        allowedUrl,
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            [TEST_POLICY]: ctorTestPolicy,
+          }),
+        })
+      );
 
       Interceptor.originalFetch = originalFetch;
     });
