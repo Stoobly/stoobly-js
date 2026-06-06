@@ -7,6 +7,7 @@ import {Interceptor} from './core/interceptor';
 import {Playwright} from './core/playwright';
 import {Config} from './models/config';
 import { InterceptorSettings } from './types';
+import { TestFramework } from './utils/test-detection';
 
 export default class Stoobly {
   httpService: HttpService;
@@ -28,12 +29,12 @@ export default class Stoobly {
     return new Cypress(settings);
   }
 
-  interceptor(settings: InterceptorSettings) {
-    if (settings.framework === InterceptorFramework.CYPRESS) {
+  interceptor(settings: InterceptorSettings, framework?: TestFramework) {
+    if (framework === InterceptorFramework.CYPRESS) {
       return new Cypress(settings);
     }
 
-    if (settings.framework === InterceptorFramework.PLAYWRIGHT) {
+    if (framework === InterceptorFramework.PLAYWRIGHT) {
       return new Playwright(settings);
     }
 
