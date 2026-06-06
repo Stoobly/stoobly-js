@@ -68,19 +68,12 @@ export class Interceptor {
    * - settings (optional): Partial<InterceptorSettings>
    *   - urls?: (string | RegExp | InterceptorUrl)[] — URL filters to intercept
    *   - mode?: InterceptMode — proxy mode (mock, record, replay, test)
-   *   - mock?: {
-   *       openApiSpecificationPath?: string;
-   *       policy?: MockPolicy;
-   *       publicDirectoryPath?: string;
-   *       responseFixturesPath?: string;
-   *     }
+   *   - mock?: { policy?: MockPolicy }
    *   - record?: { order?: RecordOrder; policy?: RecordPolicy; strategy?: RecordStrategy }
-   *   - test?: {
-   *       openApiSpecificationPath?: string;
-   *       policy?: TestPolicy;
-   *       publicDirectoryPath?: string;
-   *       responseFixturesPath?: string;
-   *     }
+   *   - test?: { policy?: TestPolicy }
+   *   - openApiSpecificationPath?: string
+   *   - publicDirectoryPath?: string
+   *   - responseFixturesPath?: string
    *   - scenarioKey?: string
    *   - scenarioName?: string
    *   - sessionId?: string
@@ -279,58 +272,26 @@ export class Interceptor {
       this.withTestPolicy.bind(this),
     );
 
-    // Read the effective mode after we've applied PROXY_MODE precedence rules above.
-    const activeProxyMode = this.headers[PROXY_MODE];
-    switch (activeProxyMode) {
-      case InterceptMode.mock:
-        applySetting(
-          OPENAPI_SPECIFICATION_PATH,
-          _settings?.mock?.openApiSpecificationPath,
-          this.settings.mock?.openApiSpecificationPath,
-          this.withOpenApiSpecificationPath.bind(this),
-        );
+    applySetting(
+      OPENAPI_SPECIFICATION_PATH,
+      _settings?.openApiSpecificationPath,
+      this.settings.openApiSpecificationPath,
+      this.withOpenApiSpecificationPath.bind(this),
+    );
 
-        applySetting(
-          PUBLIC_DIRECTORY_PATH,
-          _settings?.mock?.publicDirectoryPath,
-          this.settings.mock?.publicDirectoryPath,
-          this.withPublicDirectoryPath.bind(this),
-        );
+    applySetting(
+      PUBLIC_DIRECTORY_PATH,
+      _settings?.publicDirectoryPath,
+      this.settings.publicDirectoryPath,
+      this.withPublicDirectoryPath.bind(this),
+    );
 
-        applySetting(
-          RESPONSE_FIXTURES_PATH,
-          _settings?.mock?.responseFixturesPath,
-          this.settings.mock?.responseFixturesPath,
-          this.withResponseFixturesPath.bind(this),
-        );
-        break;
-      case InterceptMode.test:
-        applySetting(
-          OPENAPI_SPECIFICATION_PATH,
-          _settings?.test?.openApiSpecificationPath,
-          this.settings.test?.openApiSpecificationPath,
-          this.withOpenApiSpecificationPath.bind(this),
-        );
-
-        applySetting(
-          PUBLIC_DIRECTORY_PATH,
-          _settings?.test?.publicDirectoryPath,
-          this.settings.test?.publicDirectoryPath,
-          this.withPublicDirectoryPath.bind(this),
-        );
-
-        applySetting(
-          RESPONSE_FIXTURES_PATH,
-          _settings?.test?.responseFixturesPath,
-          this.settings.test?.responseFixturesPath,
-          this.withResponseFixturesPath.bind(this),
-        );
-        break;
-      default:
-        this.withOpenApiSpecificationPath();
-        this.withPublicDirectoryPath();
-        this.withResponseFixturesPath();
-    }
+    applySetting(
+      RESPONSE_FIXTURES_PATH,
+      _settings?.responseFixturesPath,
+      this.settings.responseFixturesPath,
+      this.withResponseFixturesPath.bind(this),
+    );
 
     applySetting(
       RECORD_ORDER,
@@ -485,43 +446,7 @@ export class Interceptor {
       }
     }
 
-    switch (this.headers[PROXY_MODE]) {
-      case InterceptMode.record:
-        delete headers[MOCK_POLICY];
-        delete headers[TEST_POLICY];
-        this.deletePathHeadersFrom(headers);
-        break;
-      case InterceptMode.mock:
-        delete headers[RECORD_ORDER];
-        delete headers[OVERWRITE_ID];
-        delete headers[RECORD_POLICY];
-        delete headers[RECORD_STRATEGY];
-        delete headers[TEST_POLICY];
-        break;
-      case InterceptMode.test:
-        delete headers[MOCK_POLICY];
-        delete headers[RECORD_ORDER];
-        delete headers[OVERWRITE_ID];
-        delete headers[RECORD_POLICY];
-        delete headers[RECORD_STRATEGY];
-        break;
-      default:
-        delete headers[MOCK_POLICY];
-        delete headers[RECORD_ORDER];
-        delete headers[OVERWRITE_ID];
-        delete headers[RECORD_POLICY];
-        delete headers[RECORD_STRATEGY];
-        delete headers[TEST_POLICY];
-        this.deletePathHeadersFrom(headers);
-    }
-
     return headers;
-  }
-
-  private deletePathHeadersFrom(headers: Record<string, string>) {
-    delete headers[OPENAPI_SPECIFICATION_PATH];
-    delete headers[PUBLIC_DIRECTORY_PATH];
-    delete headers[RESPONSE_FIXTURES_PATH];
   }
 
   /**
