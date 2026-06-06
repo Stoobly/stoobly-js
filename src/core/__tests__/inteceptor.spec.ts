@@ -2690,5 +2690,20 @@ describe('Interceptor', () => {
 
       expect(getFetchHeadersForUrl(fetchMock, allowedUrl)[INTERCEPT_ACTIVE]).toBeUndefined();
     });
+
+    test(`preserves '${INTERCEPT_ACTIVE}' header after withDefaultSettings()`, async () => {
+      fetchMock.mockClear();
+
+      interceptor = new Interceptor({
+        scenarioKey,
+        sessionId,
+        urls: [{ pattern: allowedUrl }],
+      });
+      await interceptor.apply();
+      interceptor.withScenarioName('test').withDefaultSettings();
+      await fetch(allowedUrl);
+
+      expect(getFetchHeadersForUrl(fetchMock, allowedUrl)[INTERCEPT_ACTIVE]).toBe('1');
+    });
   });
 });

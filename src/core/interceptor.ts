@@ -135,7 +135,13 @@ export class Interceptor {
 
   // Settings term aligns with UI
   withDefaultSettings() {
+    // INTERCEPT_ACTIVE reflects enable state, not a user setting — preserve it while
+    // interception remains active (unlike clear()/disable(), this does not call restore()).
+    const interceptActive = this.headers[INTERCEPT_ACTIVE];
     this.headers = {};
+    if (interceptActive) {
+      this.headers[INTERCEPT_ACTIVE] = interceptActive;
+    }
     this.withSettings();
     return this;
   }
