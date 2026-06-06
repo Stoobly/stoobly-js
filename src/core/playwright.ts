@@ -1,3 +1,4 @@
+import { INTERCEPT_ACTIVE } from "@constants/custom_headers";
 import { InterceptMode } from "@constants/intercept";
 
 import { InterceptorSettings } from "../types/settings";
@@ -98,19 +99,12 @@ export class Playwright extends Interceptor {
    * - settings (optional): Partial<InterceptorSettings>
    *   - urls?: (string | RegExp | InterceptorUrl)[] — URL filters to intercept
    *   - mode?: InterceptMode — proxy mode (mock, record, replay, test)
-   *   - mock?: {
-   *       openApiSpecificationPath?: string;
-   *       policy?: MockPolicy;
-   *       publicDirectoryPath?: string;
-   *       responseFixturesPath?: string;
-   *     }
+   *   - mock?: { policy?: MockPolicy }
    *   - record?: { order?: RecordOrder; policy?: RecordPolicy; strategy?: RecordStrategy }
-   *   - test?: {
-   *       openApiSpecificationPath?: string;
-   *       policy?: TestPolicy;
-   *       publicDirectoryPath?: string;
-   *       responseFixturesPath?: string;
-   *     }
+   *   - test?: { policy?: TestPolicy }
+   *   - openApiSpecificationPath?: string
+   *   - publicDirectoryPath?: string
+   *   - responseFixturesPath?: string
    *   - scenarioKey?: string
    *   - scenarioName?: string
    *   - sessionId?: string
@@ -128,8 +122,10 @@ export class Playwright extends Interceptor {
 
     // After clearing intercepts on old urls, apply intercepts on new urls
     this.urls = this.normalizeUrls(settings?.urls ?? this.settings.urls);
+
     await this.decorate();
 
+    this.headers[INTERCEPT_ACTIVE] = '1';
     this.withSettings(settings);
 
     return this.applySession(settings);
@@ -165,6 +161,7 @@ export class Playwright extends Interceptor {
    */
   async clear() {
     await this.restore();
+    delete this.headers[INTERCEPT_ACTIVE];
     this.clearSession();
   }
 

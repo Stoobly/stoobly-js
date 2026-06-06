@@ -1,12 +1,7 @@
 import { test as base } from '@playwright/test';
 
 import Stoobly from '../../../dist/esm/stoobly.js';
-import {
-  InterceptMode,
-  RecordOrder,
-  RecordPolicy,
-  RecordStrategy,
-} from '../../../dist/esm/constants.js';
+import { InterceptMode } from '../../../dist/esm/constants.js';
 
 import { SERVER_URL } from '../../server-config';
 
@@ -21,11 +16,6 @@ export const test = base.extend({
     const interceptor = stoobly.playwrightInterceptor({
       mode: process.env.STOOBLY_INTERCEPT_MODE,
       urls: [{ pattern: targetUrl, matchRules, rewriteRules }],
-      record: {
-        order: RecordOrder.Overwrite,
-        policy: RecordPolicy.All,
-        strategy: RecordStrategy.Full,
-      },
     });
 
     await use(interceptor);

@@ -2,17 +2,11 @@ import { InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy, T
 import { MatchRule, RewriteRule } from "@models/config/types";
 
 export interface MockSettings {
-  openApiSpecificationPath?: string;
   policy?: MockPolicy;
-  publicDirectoryPath?: string;
-  responseFixturesPath?: string;
 }
 
 export interface TestSettings {
-  openApiSpecificationPath?: string;
   policy?: TestPolicy;
-  publicDirectoryPath?: string;
-  responseFixturesPath?: string;
 }
 
 export interface RecordSettings {
@@ -24,7 +18,10 @@ export interface RecordSettings {
 export interface InterceptorSettings {
   mock?: MockSettings;
   mode?: InterceptMode;
+  openApiSpecificationPath?: string;
+  publicDirectoryPath?: string;
   record?: RecordSettings;
+  responseFixturesPath?: string;
   scenarioKey?: string;
   scenarioName?: string;
   sessionId?: string;
