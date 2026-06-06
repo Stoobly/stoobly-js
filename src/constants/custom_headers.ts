@@ -1,3 +1,4 @@
+export const INTERCEPT_ACTIVE = 'X-Stoobly-Intercept-Active';
 export const MATCH_RULES = 'X-Stoobly-Request-Match-Rules';
 export const MOCK_POLICY = 'X-Stoobly-Mock-Policy';
 export const OPENAPI_SPECIFICATION_PATH = 'X-Stoobly-OpenAPI-Specification-Path';

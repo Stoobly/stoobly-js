@@ -1,7 +1,7 @@
 import {jest} from '@jest/globals';
 import {SpiedFunction} from 'jest-mock';
 
-import {MATCH_RULES, MOCK_POLICY, OPENAPI_SPECIFICATION_PATH, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_POLICY, TEST_TITLE} from '@constants/custom_headers';
+import {INTERCEPT_ACTIVE, MATCH_RULES, MOCK_POLICY, OPENAPI_SPECIFICATION_PATH, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_POLICY, TEST_TITLE} from '@constants/custom_headers';
 import {InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy, RequestParameter, TestPolicy} from '@constants/intercept';
 import {Interceptor} from '@core/interceptor';
 
@@ -2614,6 +2614,81 @@ describe('Interceptor', () => {
       });
 
       Interceptor.originalFetch = originalFetch;
+    });
+  });
+
+  describe('INTERCEPT_ACTIVE header', () => {
+    const allowedUrl = `${allowedOrigin}/intercept-active-test`;
+
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+
+    beforeAll(() => {
+      Interceptor.originalFetch = fetchMock;
+    });
+
+    afterAll(() => {
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test(`adds '${INTERCEPT_ACTIVE}' header when apply() is called`, async () => {
+      fetchMock.mockClear();
+
+      interceptor = new Interceptor({
+        scenarioKey,
+        sessionId,
+        urls: [{ pattern: allowedUrl }],
+      });
+      await interceptor.apply();
+      await fetch(allowedUrl);
+
+      expect(getFetchHeadersForUrl(fetchMock, allowedUrl)[INTERCEPT_ACTIVE]).toBe('1');
+    });
+
+    test(`adds '${INTERCEPT_ACTIVE}' header when enable() is called`, async () => {
+      fetchMock.mockClear();
+
+      interceptor = new Interceptor({
+        scenarioKey,
+        sessionId,
+        urls: [{ pattern: allowedUrl }],
+      });
+      await interceptor.enable();
+      await fetch(allowedUrl);
+
+      expect(getFetchHeadersForUrl(fetchMock, allowedUrl)[INTERCEPT_ACTIVE]).toBe('1');
+    });
+
+    test(`removes '${INTERCEPT_ACTIVE}' header after clear()`, async () => {
+      fetchMock.mockClear();
+
+      interceptor = new Interceptor({
+        scenarioKey,
+        sessionId,
+        urls: [{ pattern: allowedUrl }],
+      });
+      await interceptor.apply();
+      interceptor.clear();
+      await fetch(allowedUrl);
+
+      expect(getFetchHeadersForUrl(fetchMock, allowedUrl)[INTERCEPT_ACTIVE]).toBeUndefined();
+    });
+
+    test(`removes '${INTERCEPT_ACTIVE}' header after disable()`, async () => {
+      fetchMock.mockClear();
+
+      interceptor = new Interceptor({
+        scenarioKey,
+        sessionId,
+        urls: [{ pattern: allowedUrl }],
+      });
+      await interceptor.enable();
+      await interceptor.disable();
+      await fetch(allowedUrl);
+
+      expect(getFetchHeadersForUrl(fetchMock, allowedUrl)[INTERCEPT_ACTIVE]).toBeUndefined();
     });
   });
 });

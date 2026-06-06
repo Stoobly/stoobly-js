@@ -1,4 +1,4 @@
-import { MATCH_RULES, MOCK_POLICY, OPENAPI_SPECIFICATION_PATH, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_POLICY, TEST_TITLE } from "@constants/custom_headers";
+import { INTERCEPT_ACTIVE, MATCH_RULES, MOCK_POLICY, OPENAPI_SPECIFICATION_PATH, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_POLICY, TEST_TITLE } from "@constants/custom_headers";
 import { InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy, TestPolicy } from "@constants/intercept";
 
 import { InterceptorSettings, InterceptorUrl } from "../types/settings";
@@ -94,6 +94,7 @@ export class Interceptor {
 
     this.decorate();
 
+    this.headers[INTERCEPT_ACTIVE] = '1';
     this.withSettings(settings);
 
     return this.applySession(settings);
@@ -118,6 +119,7 @@ export class Interceptor {
    */
   clear() {
     this.restore();
+    delete this.headers[INTERCEPT_ACTIVE];
     this.clearSession();
   }
 
