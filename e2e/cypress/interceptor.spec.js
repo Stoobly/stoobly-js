@@ -182,7 +182,14 @@ describe('withInterceptModeRecord', () => {
   const stooblyInterceptor = buildStooblyInterceptor();
 
   beforeEach(() => {
-    stooblyInterceptor.withInterceptModeRecord().enable();
+    stooblyInterceptor.enable({
+      mode: InterceptMode.record,
+      record: {
+        order: RecordOrder.Overwrite,
+        policy: RecordPolicy.All,
+        strategy: RecordStrategy.Full,
+      },
+    });
   });
 
   it('should send record headers', () => {
@@ -218,7 +225,14 @@ describe('Record settings', () => {
   const stooblyInterceptor = buildStooblyInterceptor();
 
   beforeEach(() => {
-    stooblyInterceptor.withInterceptModeRecord().enable();
+    stooblyInterceptor.enable({
+      mode: InterceptMode.record,
+      record: {
+        order: RecordOrder.Overwrite,
+        policy: RecordPolicy.All,
+        strategy: RecordStrategy.Full,
+      },
+    });
   });
 
   it('should send record policy header when policy is "all"', () => {
@@ -501,11 +515,9 @@ describe('InterceptorUrl', () => {
 
     stooblyInterceptor.enable({
       mode: InterceptMode.mock,
-      mock: {
-        publicDirectoryPath,
-        responseFixturesPath,
-        openApiSpecificationPath,
-      },
+      publicDirectoryPath,
+      responseFixturesPath,
+      openApiSpecificationPath,
       urls: [
         { pattern: headersUrl, matchRules: rulesForHeaders },
         { pattern: apiDataUrl, matchRules: rulesForApi },
@@ -551,10 +563,10 @@ describe('InterceptorUrl', () => {
       mode: InterceptMode.test,
       test: {
         policy: TestPolicy.Found,
-        publicDirectoryPath,
-        responseFixturesPath,
-        openApiSpecificationPath,
       },
+      publicDirectoryPath,
+      responseFixturesPath,
+      openApiSpecificationPath,
       urls: [
         { pattern: headersUrl, matchRules: rulesForHeaders },
         { pattern: apiDataUrl, matchRules: rulesForApi },

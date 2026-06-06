@@ -192,8 +192,13 @@ test.describe('Scenario', () => {
 
 test.describe('wihInterceptModeRecord', () => {
   test.beforeEach(async ({ page, stooblyInterceptor }) => {
-    await stooblyInterceptor.enableForPage(page, { 
-      mode: InterceptMode.record
+    await stooblyInterceptor.enableForPage(page, {
+      mode: InterceptMode.record,
+      record: {
+        order: RecordOrder.Overwrite,
+        policy: RecordPolicy.All,
+        strategy: RecordStrategy.Full,
+      },
     });
   });
 
@@ -229,8 +234,13 @@ test.describe('wihInterceptModeRecord', () => {
 
 test.describe('Record settings', () => {
   test.beforeEach(async ({ page, stooblyInterceptor }) => {
-    await stooblyInterceptor.enableForPage(page, { 
-      mode: InterceptMode.record
+    await stooblyInterceptor.enableForPage(page, {
+      mode: InterceptMode.record,
+      record: {
+        order: RecordOrder.Overwrite,
+        policy: RecordPolicy.All,
+        strategy: RecordStrategy.Full,
+      },
     });
   });
 
@@ -563,11 +573,9 @@ test.describe('InterceptorUrl', () => {
 
     await stooblyInterceptor.enableForPage(page, {
       mode: InterceptMode.mock,
-      mock: {
-        publicDirectoryPath,
-        responseFixturesPath,
-        openApiSpecificationPath,
-      },
+      publicDirectoryPath,
+      responseFixturesPath,
+      openApiSpecificationPath,
       urls: [
         { pattern: headersUrl, matchRules: rulesForHeaders },
         { pattern: apiDataUrl, matchRules: rulesForApi },
@@ -613,10 +621,10 @@ test.describe('InterceptorUrl', () => {
       mode: InterceptMode.test,
       test: {
         policy: TestPolicy.Found,
-        publicDirectoryPath,
-        responseFixturesPath,
-        openApiSpecificationPath,
       },
+      publicDirectoryPath,
+      responseFixturesPath,
+      openApiSpecificationPath,
       urls: [
         { pattern: headersUrl, matchRules: rulesForHeaders },
         { pattern: apiDataUrl, matchRules: rulesForApi },
