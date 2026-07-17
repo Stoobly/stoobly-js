@@ -8,6 +8,7 @@ import {
   RECORD_ORDER,
   RECORD_POLICY,
   RECORD_STRATEGY,
+  REQUEST_SEQUENCE_ID,
   RESPONSE_FIXTURES_PATH,
   REWRITE_RULES,
   SCENARIO_KEY,
@@ -27,6 +28,17 @@ const scenarioKey = 'test';
 const targetUrl = `${SERVER_URL}/headers`;
 const matchRules = [{ modes: [InterceptMode.replay], components: 'Header' }];
 
+const sequenceHeader = REQUEST_SEQUENCE_ID.toLowerCase();
+
+async function gotoAndReadHeaders(page, url) {
+  const responsePromise = page.waitForResponse(
+    (response) => response.url().startsWith(url) && response.status() === 200
+  );
+  await page.goto(url);
+  const response = await responsePromise;
+  return response.json();
+}
+
 test.describe('Options', () => {
 
   test.beforeEach(async ({ page, stooblyInterceptor }, testInfo) => {
@@ -45,6 +57,7 @@ test.describe('Options', () => {
     const responseBody = await response.json();
 
     expect(responseBody[SESSION_ID.toLowerCase()]).toBeDefined();
+    expect(responseBody[sequenceHeader]).toBe('1');
     expect(responseBody[PROXY_MODE.toLowerCase()]).toBeUndefined();
     expect(responseBody[RECORD_ORDER.toLowerCase()]).toBeUndefined();
     expect(responseBody[RECORD_POLICY.toLowerCase()]).toBeUndefined();
@@ -838,4 +851,71 @@ test.describe('Context routing', () => {
 
     await page2.close();
   });
-})
+});
+
+test.describe('Request sequence id', () => {
+  const url1 = `${SERVER_URL}/headers`;
+  const url2 = `${SERVER_URL}/api/data`;
+
+  test.beforeEach(async ({ page, stooblyInterceptor }) => {
+    await stooblyInterceptor.enableForPage(page, {
+      urls: [{ pattern: url1 }, { pattern: url2 }],
+    });
+  });
+
+  test('starts at 1', async ({ page }) => {
+    const headers = await gotoAndReadHeaders(page, url1);
+    expect(headers[sequenceHeader]).toBe('1');
+  });
+
+  test('increments for the same method + scheme + domain + port + path', async ({ page }) => {
+    const headers1 = await gotoAndReadHeaders(page, url1);
+    const headers2 = await gotoAndReadHeaders(page, url1);
+    const headers3 = await gotoAndReadHeaders(page, url1);
+
+    expect(headers1[sequenceHeader]).toBe('1');
+    expect(headers2[sequenceHeader]).toBe('2');
+    expect(headers3[sequenceHeader]).toBe('3');
+  });
+
+  test('tracks separate counters for different paths', async ({ page }) => {
+    const headers1 = await gotoAndReadHeaders(page, url1);
+    const headers2 = await gotoAndReadHeaders(page, url2);
+    const headers3 = await gotoAndReadHeaders(page, url1);
+
+    expect(headers1[sequenceHeader]).toBe('1');
+    expect(headers2[sequenceHeader]).toBe('1');
+    expect(headers3[sequenceHeader]).toBe('2');
+  });
+
+  test('resets when a new session is created after disable()', async ({ page, stooblyInterceptor }) => {
+    const headers1 = await gotoAndReadHeaders(page, url1);
+    const headers2 = await gotoAndReadHeaders(page, url1);
+    expect(headers1[sequenceHeader]).toBe('1');
+    expect(headers2[sequenceHeader]).toBe('2');
+
+    await stooblyInterceptor.disable();
+    await stooblyInterceptor.enableForPage(page, {
+      sessionId: 'new-sequence-session',
+      urls: [{ pattern: url1 }, { pattern: url2 }],
+    });
+
+    const headers3 = await gotoAndReadHeaders(page, url1);
+    expect(headers3[sequenceHeader]).toBe('1');
+  });
+
+  test('does not reset when enableForPage() is called without clearing the session', async ({
+    page,
+    stooblyInterceptor,
+  }) => {
+    const headers1 = await gotoAndReadHeaders(page, url1);
+    expect(headers1[sequenceHeader]).toBe('1');
+
+    await stooblyInterceptor.enableForPage(page, {
+      urls: [{ pattern: url1 }, { pattern: url2 }],
+    });
+
+    const headers2 = await gotoAndReadHeaders(page, url1);
+    expect(headers2[sequenceHeader]).toBe('2');
+  });
+});

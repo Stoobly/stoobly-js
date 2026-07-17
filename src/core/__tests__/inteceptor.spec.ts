@@ -1,7 +1,7 @@
 import {jest} from '@jest/globals';
 import {SpiedFunction} from 'jest-mock';
 
-import {INTERCEPT_ACTIVE, MATCH_RULES, MOCK_POLICY, OPENAPI_SPECIFICATION_PATH, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_POLICY, TEST_TITLE} from '@constants/custom_headers';
+import {INTERCEPT_ACTIVE, MATCH_RULES, MOCK_POLICY, OPENAPI_SPECIFICATION_PATH, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, REQUEST_SEQUENCE_ID, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_POLICY, TEST_TITLE} from '@constants/custom_headers';
 import {InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy, RequestParameter, TestPolicy} from '@constants/intercept';
 import {Interceptor} from '@core/interceptor';
 
@@ -2704,6 +2704,69 @@ describe('Interceptor', () => {
       await fetch(allowedUrl);
 
       expect(getFetchHeadersForUrl(fetchMock, allowedUrl)[INTERCEPT_ACTIVE]).toBe('1');
+    });
+  });
+
+  describe('request sequence id', () => {
+    const fetchMock = jest.fn(async (): Promise<Response> => {
+      return Promise.resolve(new Response(null, {status: 200}));
+    });
+    const originalFetch: typeof window.fetch = window.fetch;
+    const allowedUrl = `${allowedOrigin}/api/users`;
+
+    beforeEach(async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      interceptor = new Interceptor({
+        sessionId,
+        urls: [
+          { pattern: new RegExp(`${allowedOrigin}/.*`) },
+        ],
+      });
+      await interceptor.apply();
+    });
+
+    afterEach(() => {
+      interceptor.clear();
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test(`adds '${REQUEST_SEQUENCE_ID}' starting at 1`, async () => {
+      await fetch(allowedUrl);
+
+      expect(getFetchHeadersForUrl(fetchMock, allowedUrl)[REQUEST_SEQUENCE_ID]).toBe('1');
+    });
+
+    test('resets counters when a new session is created after clear()', async () => {
+      await fetch(allowedUrl);
+      await fetch(allowedUrl);
+
+      const beforeClear = fetchMock.mock.calls.map(
+        (c: unknown) =>
+          ((c as unknown as [string, RequestInit?])[1]?.headers as Record<string, string>)?.[
+            REQUEST_SEQUENCE_ID
+          ]
+      );
+      expect(beforeClear).toEqual(['1', '2']);
+
+      interceptor.clear();
+      fetchMock.mockClear();
+      await interceptor.apply({ sessionId: 'new-session' });
+
+      await fetch(allowedUrl);
+      expect(getFetchHeadersForUrl(fetchMock, allowedUrl)[REQUEST_SEQUENCE_ID]).toBe('1');
+    });
+
+    test('does not reset counters when apply() is called without clearing the session', async () => {
+      await fetch(allowedUrl);
+      expect(getFetchHeadersForUrl(fetchMock, allowedUrl)[REQUEST_SEQUENCE_ID]).toBe('1');
+
+      fetchMock.mockClear();
+      await interceptor.apply();
+      await fetch(allowedUrl);
+
+      expect(getFetchHeadersForUrl(fetchMock, allowedUrl)[REQUEST_SEQUENCE_ID]).toBe('2');
     });
   });
 });

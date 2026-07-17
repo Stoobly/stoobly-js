@@ -3,6 +3,7 @@ import { InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy, T
 
 import { InterceptorSettings, InterceptorUrl } from "../types/settings";
 import { getTestTitle } from "../utils/test-detection";
+import { RequestSequenceId } from "./request-sequence-id";
 
 export class Interceptor {
   static originalXMLHttpRequestOpen = typeof XMLHttpRequest !== 'undefined' ? XMLHttpRequest.prototype.open : null;
@@ -16,6 +17,7 @@ export class Interceptor {
   private started: boolean = false; // Locks session creation
   private appliedFetch: boolean = false;
   private appliedXMLHttpRequestOpen: boolean = false;
+  private requestSequenceId: RequestSequenceId = new RequestSequenceId();
 
   constructor(settings: InterceptorSettings) {
     this.settings = settings;
@@ -458,6 +460,18 @@ export class Interceptor {
   }
 
   /**
+   * Sets `X-Stoobly-Request-Sequence-Id` for the request.
+   * Counters reset when a new interceptor session is created.
+   */
+  protected applyRequestSequenceIdHeader(
+    headers: Record<string, string>,
+    method: string,
+    url: string,
+  ) {
+    this.requestSequenceId.apply(headers, method, url);
+  }
+
+  /**
    * Filters out the overwrite record order header after the first request to each URL pattern.
    * 
    * The overwrite header (RECORD_ORDER and OVERWRITE_ID) should only be sent once per URL 
@@ -548,6 +562,9 @@ export class Interceptor {
       this.started = true;
     }
 
+    // New session: reset per-scope request sequence counters.
+    this.requestSequenceId.reset();
+
     // Session ID precedence:
     // 1. Explicit _settings.sessionId passed to apply()
     // 2. Existing header set via fluent .withSessionId()
@@ -566,6 +583,7 @@ export class Interceptor {
 
   protected clearSession() {
     this.started = false;
+    this.requestSequenceId.reset();
   }
 
   private allowedUrl(url: string) {
@@ -661,9 +679,14 @@ export class Interceptor {
         if (!init.headers) {
           init.headers = {};
         }
+
+        const method =
+          init.method ||
+          (input instanceof Request ? input.method : 'GET');
         
         const headers = self.decorateHeaders(init.headers as Record<string, string>);
         self.applyUrlSpecificHeaders(headers, self.findMatchingUrl(url));
+        self.applyRequestSequenceIdHeader(headers, method, url);
         self.filterOverwriteHeader(headers, url, urlsToVisit);
         init.headers = headers;
       }
@@ -684,7 +707,7 @@ export class Interceptor {
     const urlsToVisit = this.urlsToVisit;
 
     XMLHttpRequest.prototype.open = function (
-      _method: string,
+      method: string,
       url: string,
       _async: boolean = true,
       _user?: string | null,
@@ -701,6 +724,7 @@ export class Interceptor {
 
         const headers = self.decorateHeaders({});
         self.applyUrlSpecificHeaders(headers, self.findMatchingUrl(url));
+        self.applyRequestSequenceIdHeader(headers, method, url);
         self.filterOverwriteHeader(headers, url, urlsToVisit);
 
         Object.entries(headers).forEach(([key, value]) => {
