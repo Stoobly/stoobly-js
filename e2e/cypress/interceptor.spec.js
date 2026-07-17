@@ -6,6 +6,7 @@ import {
   RECORD_ORDER,
   RECORD_POLICY,
   RECORD_STRATEGY,
+  REQUEST_SEQUENCE_ID,
   RESPONSE_FIXTURES_PATH,
   REWRITE_RULES,
   SCENARIO_KEY,
@@ -22,6 +23,8 @@ import {
 import { buildStooblyInterceptor, targetUrl, matchRules, rewriteRules, stoobly } from './fixtures/stoobly';
 
 import { SERVER_URL } from '../server-config';
+
+const sequenceHeader = REQUEST_SEQUENCE_ID.toLowerCase();
 
 describe('Options', () => {
   const stooblyInterceptor = buildStooblyInterceptor();
@@ -46,6 +49,7 @@ describe('Options', () => {
       expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.be.undefined;
       expect(responseBody[SCENARIO_NAME.toLowerCase()]).to.be.undefined;
       expect(responseBody[SESSION_ID.toLowerCase()]).not.to.be.undefined;
+      expect(responseBody[sequenceHeader]).to.equal('1');
 
       // matchRules: base64-encoded JSON
       const matchRulesEncoded = responseBody[MATCH_RULES.toLowerCase()];
@@ -629,6 +633,120 @@ describe('Urls', () => {
     cy.wait('@getHeaders').then((interception) => {
       const responseBody = interception.response?.body || {};
       expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.be.undefined;
+    });
+  });
+});
+
+describe('Request sequence id', () => {
+  const url1 = `${SERVER_URL}/headers`;
+  const url2 = `${SERVER_URL}/api/data`;
+
+  const sequenceInterceptor = stoobly.cypressInterceptor({
+    urls: [{ pattern: url1 }, { pattern: url2 }],
+  });
+
+  beforeEach(() => {
+    sequenceInterceptor.enable({
+      urls: [{ pattern: url1 }, { pattern: url2 }],
+    });
+  });
+
+  afterEach(() => {
+    sequenceInterceptor.disable();
+  });
+
+  it('starts at 1', () => {
+    cy.intercept('GET', url1).as('request1');
+    cy.visit(SERVER_URL);
+
+    cy.wait('@request1').its('response.body').then((headers) => {
+      expect(headers[sequenceHeader]).to.equal('1');
+    });
+  });
+
+  it('increments for the same method + scheme + domain + port + path', () => {
+    cy.intercept('GET', url1).as('request1');
+    cy.visit(SERVER_URL);
+    cy.wait('@request1').its('response.body').then((headers) => {
+      expect(headers[sequenceHeader]).to.equal('1');
+    });
+
+    cy.intercept('GET', url1).as('request2');
+    cy.visit(SERVER_URL);
+    cy.wait('@request2').its('response.body').then((headers) => {
+      expect(headers[sequenceHeader]).to.equal('2');
+    });
+
+    cy.intercept('GET', url1).as('request3');
+    cy.visit(SERVER_URL);
+    cy.wait('@request3').its('response.body').then((headers) => {
+      expect(headers[sequenceHeader]).to.equal('3');
+    });
+  });
+
+  it('tracks separate counters for different paths', () => {
+    cy.intercept('GET', url1).as('request1');
+    cy.visit(SERVER_URL);
+    cy.wait('@request1').its('response.body').then((headers) => {
+      expect(headers[sequenceHeader]).to.equal('1');
+    });
+
+    cy.intercept('GET', url2).as('request2');
+    cy.window().then((win) => {
+      win.fetch(url2);
+    });
+    cy.wait('@request2').its('response.body').then((headers) => {
+      expect(headers[sequenceHeader]).to.equal('1');
+    });
+
+    cy.intercept('GET', url1).as('request3');
+    cy.visit(SERVER_URL);
+    cy.wait('@request3').its('response.body').then((headers) => {
+      expect(headers[sequenceHeader]).to.equal('2');
+    });
+  });
+
+  it('resets when a new session is created after disable()', () => {
+    cy.intercept('GET', url1).as('request1');
+    cy.visit(SERVER_URL);
+    cy.wait('@request1').its('response.body').then((headers) => {
+      expect(headers[sequenceHeader]).to.equal('1');
+    });
+
+    cy.intercept('GET', url1).as('request2');
+    cy.visit(SERVER_URL);
+    cy.wait('@request2').its('response.body').then((headers) => {
+      expect(headers[sequenceHeader]).to.equal('2');
+    });
+
+    sequenceInterceptor.disable();
+    sequenceInterceptor.enable({
+      sessionId: 'new-sequence-session',
+      urls: [{ pattern: url1 }, { pattern: url2 }],
+    });
+
+    cy.intercept('GET', url1).as('request3');
+    cy.visit(SERVER_URL);
+    cy.wait('@request3').its('response.body').then((headers) => {
+      expect(headers[sequenceHeader]).to.equal('1');
+    });
+  });
+
+  it('does not reset when enable() is called without clearing the session', () => {
+    cy.intercept('GET', url1).as('request1');
+    cy.visit(SERVER_URL);
+    cy.wait('@request1').its('response.body').then((headers) => {
+      expect(headers[sequenceHeader]).to.equal('1');
+    });
+
+    sequenceInterceptor.enable({
+      urls: [{ pattern: url1 }, { pattern: url2 }],
+    });
+
+    cy.intercept('GET', url1).as('request2');
+    cy.visit(SERVER_URL);
+    cy.wait('@request2').its('response.body').then((headers) => {
+      expect(headers[sequenceHeader]).to.equal('2');
     });
   });
 });

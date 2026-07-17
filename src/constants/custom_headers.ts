@@ -8,6 +8,7 @@ export const PUBLIC_DIRECTORY_PATH = 'X-Stoobly-Public-Directory-Path';
 export const RECORD_ORDER = 'X-Stoobly-Record-Order';
 export const RECORD_POLICY = 'X-Stoobly-Record-Policy';
 export const RECORD_STRATEGY = 'X-Stoobly-Record-Strategy';
+export const REQUEST_SEQUENCE_ID = 'X-Stoobly-Request-Sequence-Id';
 export const RESPONSE_FIXTURES_PATH = 'X-Stoobly-Response-Fixtures-Path';
 export const REWRITE_RULES = 'X-Stoobly-Request-Rewrite-Rules';
 export const SCENARIO_CREATE_IF_MISSING = 'X-Stoobly-Scenario-Create-If-Missing';
