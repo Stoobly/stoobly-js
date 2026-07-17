@@ -717,12 +717,13 @@ describe('Request sequence id', () => {
     cy.visit(SERVER_URL);
     cy.wait('@request2').its('response.body').then((headers) => {
       expect(headers[sequenceHeader]).to.equal('2');
-    });
 
-    sequenceInterceptor.disable();
-    sequenceInterceptor.enable({
-      sessionId: 'new-sequence-session',
-      urls: [{ pattern: url1 }, { pattern: url2 }],
+      // Must run inside .then() so disable/enable happen after request2 in the Cypress queue.
+      sequenceInterceptor.disable();
+      sequenceInterceptor.enable({
+        sessionId: 'new-sequence-session',
+        urls: [{ pattern: url1 }, { pattern: url2 }],
+      });
     });
 
     cy.intercept('GET', url1).as('request3');
@@ -737,10 +738,11 @@ describe('Request sequence id', () => {
     cy.visit(SERVER_URL);
     cy.wait('@request1').its('response.body').then((headers) => {
       expect(headers[sequenceHeader]).to.equal('1');
-    });
 
-    sequenceInterceptor.enable({
-      urls: [{ pattern: url1 }, { pattern: url2 }],
+      // Must run inside .then() so re-enable happens after request1 in the Cypress queue.
+      sequenceInterceptor.enable({
+        urls: [{ pattern: url1 }, { pattern: url2 }],
+      });
     });
 
     cy.intercept('GET', url1).as('request2');
