@@ -49,7 +49,7 @@ describe('Options', () => {
       expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.be.undefined;
       expect(responseBody[SCENARIO_NAME.toLowerCase()]).to.be.undefined;
       expect(responseBody[SESSION_ID.toLowerCase()]).not.to.be.undefined;
-      expect(responseBody[sequenceHeader]).to.equal('1');
+      expect(responseBody[sequenceHeader]).to.equal('0');
 
       // matchRules: base64-encoded JSON
       const matchRulesEncoded = responseBody[MATCH_RULES.toLowerCase()];
@@ -655,12 +655,12 @@ describe('Request sequence id', () => {
     sequenceInterceptor.disable();
   });
 
-  it('starts at 1', () => {
+  it('starts at 0', () => {
     cy.intercept('GET', url1).as('request1');
     cy.visit(SERVER_URL);
 
     cy.wait('@request1').its('response.body').then((headers) => {
-      expect(headers[sequenceHeader]).to.equal('1');
+      expect(headers[sequenceHeader]).to.equal('0');
     });
   });
 
@@ -668,19 +668,19 @@ describe('Request sequence id', () => {
     cy.intercept('GET', url1).as('request1');
     cy.visit(SERVER_URL);
     cy.wait('@request1').its('response.body').then((headers) => {
-      expect(headers[sequenceHeader]).to.equal('1');
+      expect(headers[sequenceHeader]).to.equal('0');
     });
 
     cy.intercept('GET', url1).as('request2');
     cy.visit(SERVER_URL);
     cy.wait('@request2').its('response.body').then((headers) => {
-      expect(headers[sequenceHeader]).to.equal('2');
+      expect(headers[sequenceHeader]).to.equal('1');
     });
 
     cy.intercept('GET', url1).as('request3');
     cy.visit(SERVER_URL);
     cy.wait('@request3').its('response.body').then((headers) => {
-      expect(headers[sequenceHeader]).to.equal('3');
+      expect(headers[sequenceHeader]).to.equal('2');
     });
   });
 
@@ -688,7 +688,7 @@ describe('Request sequence id', () => {
     cy.intercept('GET', url1).as('request1');
     cy.visit(SERVER_URL);
     cy.wait('@request1').its('response.body').then((headers) => {
-      expect(headers[sequenceHeader]).to.equal('1');
+      expect(headers[sequenceHeader]).to.equal('0');
     });
 
     cy.intercept('GET', url2).as('request2');
@@ -696,13 +696,13 @@ describe('Request sequence id', () => {
       win.fetch(url2);
     });
     cy.wait('@request2').its('response.body').then((headers) => {
-      expect(headers[sequenceHeader]).to.equal('1');
+      expect(headers[sequenceHeader]).to.equal('0');
     });
 
     cy.intercept('GET', url1).as('request3');
     cy.visit(SERVER_URL);
     cy.wait('@request3').its('response.body').then((headers) => {
-      expect(headers[sequenceHeader]).to.equal('2');
+      expect(headers[sequenceHeader]).to.equal('1');
     });
   });
 
@@ -710,13 +710,13 @@ describe('Request sequence id', () => {
     cy.intercept('GET', url1).as('request1');
     cy.visit(SERVER_URL);
     cy.wait('@request1').its('response.body').then((headers) => {
-      expect(headers[sequenceHeader]).to.equal('1');
+      expect(headers[sequenceHeader]).to.equal('0');
     });
 
     cy.intercept('GET', url1).as('request2');
     cy.visit(SERVER_URL);
     cy.wait('@request2').its('response.body').then((headers) => {
-      expect(headers[sequenceHeader]).to.equal('2');
+      expect(headers[sequenceHeader]).to.equal('1');
 
       // Must run inside .then() so disable/enable happen after request2 in the Cypress queue.
       sequenceInterceptor.disable();
@@ -729,7 +729,7 @@ describe('Request sequence id', () => {
     cy.intercept('GET', url1).as('request3');
     cy.visit(SERVER_URL);
     cy.wait('@request3').its('response.body').then((headers) => {
-      expect(headers[sequenceHeader]).to.equal('1');
+      expect(headers[sequenceHeader]).to.equal('0');
     });
   });
 
@@ -737,7 +737,7 @@ describe('Request sequence id', () => {
     cy.intercept('GET', url1).as('request1');
     cy.visit(SERVER_URL);
     cy.wait('@request1').its('response.body').then((headers) => {
-      expect(headers[sequenceHeader]).to.equal('1');
+      expect(headers[sequenceHeader]).to.equal('0');
 
       // Must run inside .then() so re-enable happens after request1 in the Cypress queue.
       sequenceInterceptor.enable({
@@ -748,7 +748,7 @@ describe('Request sequence id', () => {
     cy.intercept('GET', url1).as('request2');
     cy.visit(SERVER_URL);
     cy.wait('@request2').its('response.body').then((headers) => {
-      expect(headers[sequenceHeader]).to.equal('2');
+      expect(headers[sequenceHeader]).to.equal('1');
     });
   });
 });

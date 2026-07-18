@@ -2732,10 +2732,10 @@ describe('Interceptor', () => {
       Interceptor.originalFetch = originalFetch;
     });
 
-    test(`adds '${REQUEST_SEQUENCE_ID}' starting at 1`, async () => {
+    test(`adds '${REQUEST_SEQUENCE_ID}' starting at 0`, async () => {
       await fetch(allowedUrl);
 
-      expect(getFetchHeadersForUrl(fetchMock, allowedUrl)[REQUEST_SEQUENCE_ID]).toBe('1');
+      expect(getFetchHeadersForUrl(fetchMock, allowedUrl)[REQUEST_SEQUENCE_ID]).toBe('0');
     });
 
     test('resets counters when a new session is created after clear()', async () => {
@@ -2748,25 +2748,25 @@ describe('Interceptor', () => {
             REQUEST_SEQUENCE_ID
           ]
       );
-      expect(beforeClear).toEqual(['1', '2']);
+      expect(beforeClear).toEqual(['0', '1']);
 
       interceptor.clear();
       fetchMock.mockClear();
       await interceptor.apply({ sessionId: 'new-session' });
 
       await fetch(allowedUrl);
-      expect(getFetchHeadersForUrl(fetchMock, allowedUrl)[REQUEST_SEQUENCE_ID]).toBe('1');
+      expect(getFetchHeadersForUrl(fetchMock, allowedUrl)[REQUEST_SEQUENCE_ID]).toBe('0');
     });
 
     test('does not reset counters when apply() is called without clearing the session', async () => {
       await fetch(allowedUrl);
-      expect(getFetchHeadersForUrl(fetchMock, allowedUrl)[REQUEST_SEQUENCE_ID]).toBe('1');
+      expect(getFetchHeadersForUrl(fetchMock, allowedUrl)[REQUEST_SEQUENCE_ID]).toBe('0');
 
       fetchMock.mockClear();
       await interceptor.apply();
       await fetch(allowedUrl);
 
-      expect(getFetchHeadersForUrl(fetchMock, allowedUrl)[REQUEST_SEQUENCE_ID]).toBe('2');
+      expect(getFetchHeadersForUrl(fetchMock, allowedUrl)[REQUEST_SEQUENCE_ID]).toBe('1');
     });
   });
 });

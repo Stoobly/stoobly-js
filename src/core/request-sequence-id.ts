@@ -4,7 +4,7 @@ import { REQUEST_SEQUENCE_ID } from "@constants/custom_headers";
  * Tracks per-scope request sequence ids for `X-Stoobly-Request-Sequence-Id`.
  *
  * Scope: uppercase method + scheme + hostname + port + pathname.
- * Counters start at 1 and are reset when a new interceptor session is created.
+ * Counters start at 0 and are reset when a new interceptor session is created.
  */
 export class RequestSequenceId {
   private counters: Map<string, number> = new Map();
@@ -21,9 +21,9 @@ export class RequestSequenceId {
    */
   next(method: string, url: string): number {
     const scope = RequestSequenceId.buildScope(method, url);
-    const next = (this.counters.get(scope) ?? 0) + 1;
-    this.counters.set(scope, next);
-    return next;
+    const current = this.counters.get(scope) ?? 0;
+    this.counters.set(scope, current + 1);
+    return current;
   }
 
   /**
