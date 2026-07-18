@@ -52,27 +52,27 @@ describe('RequestSequenceId', () => {
   });
 
   describe('next', () => {
-    test('starts at 1 and increments per matching scope', () => {
+    test('starts at 0 and increments per matching scope', () => {
+      expect(sequenceId.next('GET', url)).toBe(0);
       expect(sequenceId.next('GET', url)).toBe(1);
       expect(sequenceId.next('GET', url)).toBe(2);
-      expect(sequenceId.next('GET', url)).toBe(3);
     });
 
     test('tracks separate counters for different paths', () => {
+      expect(sequenceId.next('GET', url)).toBe(0);
+      expect(sequenceId.next('GET', otherPathUrl)).toBe(0);
       expect(sequenceId.next('GET', url)).toBe(1);
-      expect(sequenceId.next('GET', otherPathUrl)).toBe(1);
-      expect(sequenceId.next('GET', url)).toBe(2);
     });
 
     test('tracks separate counters for different methods on the same path', () => {
+      expect(sequenceId.next('GET', url)).toBe(0);
+      expect(sequenceId.next('POST', url)).toBe(0);
       expect(sequenceId.next('GET', url)).toBe(1);
-      expect(sequenceId.next('POST', url)).toBe(1);
-      expect(sequenceId.next('GET', url)).toBe(2);
     });
 
     test('ignores query string when scoping', () => {
-      expect(sequenceId.next('GET', `${url}?page=1`)).toBe(1);
-      expect(sequenceId.next('GET', `${url}?page=2`)).toBe(2);
+      expect(sequenceId.next('GET', `${url}?page=1`)).toBe(0);
+      expect(sequenceId.next('GET', `${url}?page=2`)).toBe(1);
     });
   });
 
@@ -80,21 +80,21 @@ describe('RequestSequenceId', () => {
     test(`sets '${REQUEST_SEQUENCE_ID}' as a string`, () => {
       const headers: Record<string, string> = {};
       sequenceId.apply(headers, 'GET', url);
-      expect(headers[REQUEST_SEQUENCE_ID]).toBe('1');
+      expect(headers[REQUEST_SEQUENCE_ID]).toBe('0');
 
       sequenceId.apply(headers, 'GET', url);
-      expect(headers[REQUEST_SEQUENCE_ID]).toBe('2');
+      expect(headers[REQUEST_SEQUENCE_ID]).toBe('1');
     });
   });
 
   describe('reset', () => {
-    test('clears counters so the next id starts at 1 again', () => {
+    test('clears counters so the next id starts at 0 again', () => {
+      expect(sequenceId.next('GET', url)).toBe(0);
       expect(sequenceId.next('GET', url)).toBe(1);
-      expect(sequenceId.next('GET', url)).toBe(2);
 
       sequenceId.reset();
 
-      expect(sequenceId.next('GET', url)).toBe(1);
+      expect(sequenceId.next('GET', url)).toBe(0);
     });
   });
 });

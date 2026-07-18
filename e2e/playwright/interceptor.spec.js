@@ -57,7 +57,7 @@ test.describe('Options', () => {
     const responseBody = await response.json();
 
     expect(responseBody[SESSION_ID.toLowerCase()]).toBeDefined();
-    expect(responseBody[sequenceHeader]).toBe('1');
+    expect(responseBody[sequenceHeader]).toBe('0');
     expect(responseBody[PROXY_MODE.toLowerCase()]).toBeUndefined();
     expect(responseBody[RECORD_ORDER.toLowerCase()]).toBeUndefined();
     expect(responseBody[RECORD_POLICY.toLowerCase()]).toBeUndefined();
@@ -863,9 +863,9 @@ test.describe('Request sequence id', () => {
     });
   });
 
-  test('starts at 1', async ({ page }) => {
+  test('starts at 0', async ({ page }) => {
     const headers = await gotoAndReadHeaders(page, url1);
-    expect(headers[sequenceHeader]).toBe('1');
+    expect(headers[sequenceHeader]).toBe('0');
   });
 
   test('increments for the same method + scheme + domain + port + path', async ({ page }) => {
@@ -873,9 +873,9 @@ test.describe('Request sequence id', () => {
     const headers2 = await gotoAndReadHeaders(page, url1);
     const headers3 = await gotoAndReadHeaders(page, url1);
 
-    expect(headers1[sequenceHeader]).toBe('1');
-    expect(headers2[sequenceHeader]).toBe('2');
-    expect(headers3[sequenceHeader]).toBe('3');
+    expect(headers1[sequenceHeader]).toBe('0');
+    expect(headers2[sequenceHeader]).toBe('1');
+    expect(headers3[sequenceHeader]).toBe('2');
   });
 
   test('tracks separate counters for different paths', async ({ page }) => {
@@ -883,16 +883,16 @@ test.describe('Request sequence id', () => {
     const headers2 = await gotoAndReadHeaders(page, url2);
     const headers3 = await gotoAndReadHeaders(page, url1);
 
-    expect(headers1[sequenceHeader]).toBe('1');
-    expect(headers2[sequenceHeader]).toBe('1');
-    expect(headers3[sequenceHeader]).toBe('2');
+    expect(headers1[sequenceHeader]).toBe('0');
+    expect(headers2[sequenceHeader]).toBe('0');
+    expect(headers3[sequenceHeader]).toBe('1');
   });
 
   test('resets when a new session is created after disable()', async ({ page, stooblyInterceptor }) => {
     const headers1 = await gotoAndReadHeaders(page, url1);
     const headers2 = await gotoAndReadHeaders(page, url1);
-    expect(headers1[sequenceHeader]).toBe('1');
-    expect(headers2[sequenceHeader]).toBe('2');
+    expect(headers1[sequenceHeader]).toBe('0');
+    expect(headers2[sequenceHeader]).toBe('1');
 
     await stooblyInterceptor.disable();
     await stooblyInterceptor.enableForPage(page, {
@@ -901,7 +901,7 @@ test.describe('Request sequence id', () => {
     });
 
     const headers3 = await gotoAndReadHeaders(page, url1);
-    expect(headers3[sequenceHeader]).toBe('1');
+    expect(headers3[sequenceHeader]).toBe('0');
   });
 
   test('does not reset when enableForPage() is called without clearing the session', async ({
@@ -909,13 +909,13 @@ test.describe('Request sequence id', () => {
     stooblyInterceptor,
   }) => {
     const headers1 = await gotoAndReadHeaders(page, url1);
-    expect(headers1[sequenceHeader]).toBe('1');
+    expect(headers1[sequenceHeader]).toBe('0');
 
     await stooblyInterceptor.enableForPage(page, {
       urls: [{ pattern: url1 }, { pattern: url2 }],
     });
 
     const headers2 = await gotoAndReadHeaders(page, url1);
-    expect(headers2[sequenceHeader]).toBe('2');
+    expect(headers2[sequenceHeader]).toBe('1');
   });
 });
