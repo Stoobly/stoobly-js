@@ -1,9 +1,9 @@
 import { 
+  DevelopPolicy,
   FilterAction, 
-  MockPolicy, 
   InterceptMode, 
+  MockPolicy, 
   RecordPolicy, 
-  ReplayPolicy, 
   RequestParameter,
   TestPolicy, 
   TestStrategy 
@@ -43,9 +43,9 @@ export interface MatchRule {
 }
 
 export interface ProxyDataRules {
+  develop_policy: DevelopPolicy;
   mock_policy: MockPolicy;
   record_policy: RecordPolicy;
-  replay_policy: ReplayPolicy;
   scenario_key?: string;
   test_policy: TestPolicy;
   test_strategy: TestStrategy;

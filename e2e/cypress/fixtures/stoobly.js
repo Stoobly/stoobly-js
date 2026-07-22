@@ -6,7 +6,7 @@ import { SERVER_URL } from '../../server-config.js';
 export const targetUrl = `${SERVER_URL}/headers`;
 
 export const matchRules = [
-  { modes: [InterceptMode.replay], components: RequestParameter.Header },
+  { modes: [InterceptMode.develop], components: RequestParameter.Header },
 ];
 
 export const rewriteRules = [{ urlRules: [{ path: '/new-path' }] }];

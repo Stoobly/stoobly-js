@@ -122,13 +122,13 @@ import {
 
   // Additional constants available:
   //
-  // InterceptMode,   // mock, record, replay
+  // DevelopPolicy,   // All
+  // FilterAction,    // Exclude, Include
+  // InterceptMode,   // develop, mock, record, test
   // MockPolicy,      // All, Found
-  // ReplayPolicy,    // All
+  // RequestParameter // Header, BodyParam, QueryParam
   // TestPolicy,      // All, Found
   // TestStrategy,    // Diff, Fuzzy, Custom
-  // FilterAction,  // Exclude, Include
-  // RequestParameter // Header, BodyParam, QueryParam
 } from 'stoobly/constants';
 
 const stoobly = new Stoobly();
@@ -173,7 +173,7 @@ import { defineConfig } from 'cypress'
 export default defineConfig({
   e2e: {
     env: {
-      STOOBLY_INTERCEPT_MODE: process.env.STOOBLY_INTERCEPT_MODE, // 'mock' | 'record' | 'replay'
+      STOOBLY_INTERCEPT_MODE: process.env.STOOBLY_INTERCEPT_MODE, // 'develop' | 'mock' | 'record' | 'test'
     },
   },
 })
@@ -226,7 +226,7 @@ import { RecordPolicy, RecordOrder, RecordStrategy } from 'stoobly/constants';
 
 const stoobly = new Stoobly();
 const interceptor = stoobly.playwrightInterceptor({
-    mode: process.env.STOOBLY_INTERCEPT_MODE, // 'mock' | 'record' | 'replay'
+    mode: process.env.STOOBLY_INTERCEPT_MODE, // 'develop' | 'mock' | 'record' | 'test'
     record: {
         policy: RecordPolicy.All,
         order: RecordOrder.Overwrite, // Defaults to RecordOrder.Append

@@ -98,7 +98,7 @@ export class Playwright extends Interceptor {
    * Parameters:
    * - settings (optional): Partial<InterceptorSettings>
    *   - urls?: (string | RegExp | InterceptorUrl)[] — URL filters to intercept
-   *   - mode?: InterceptMode — proxy mode (mock, record, replay, test)
+   *   - mode?: InterceptMode — proxy mode (develop, mock, record, test)
    *   - mock?: { policy?: MockPolicy }
    *   - record?: { order?: RecordOrder; policy?: RecordPolicy; strategy?: RecordStrategy }
    *   - test?: { policy?: TestPolicy }
