@@ -69,7 +69,7 @@ export class Interceptor {
    * Parameters:
    * - settings (optional): Partial<InterceptorSettings>
    *   - urls?: (string | RegExp | InterceptorUrl)[] — URL filters to intercept
-   *   - mode?: InterceptMode — proxy mode (mock, record, replay, test)
+   *   - mode?: InterceptMode — proxy mode (develop, mock, record, test)
    *   - mock?: { policy?: MockPolicy }
    *   - record?: { order?: RecordOrder; policy?: RecordPolicy; strategy?: RecordStrategy }
    *   - test?: { policy?: TestPolicy }
@@ -168,6 +168,11 @@ export class Interceptor {
     return this;
   }
 
+  withInterceptModeDevelop() {
+    this.withInterceptMode(InterceptMode.develop);
+    return this;
+  }
+
   withInterceptModeMock() {
     this.withInterceptMode(InterceptMode.mock);
     return this;
@@ -177,11 +182,6 @@ export class Interceptor {
   // if provided, and returns a promise resolving to the session ID.
   withInterceptModeRecord() {
     this.withInterceptMode(InterceptMode.record);
-    return this;
-  }
-
-  withInterceptModeReplay() {
-    this.withInterceptMode(InterceptMode.replay);
     return this;
   }
 

@@ -26,7 +26,7 @@ import { SERVER_URL } from '../server-config';
 
 const scenarioKey = 'test';
 const targetUrl = `${SERVER_URL}/headers`;
-const matchRules = [{ modes: [InterceptMode.replay], components: 'Header' }];
+const matchRules = [{ modes: [InterceptMode.develop], components: 'Header' }];
 
 const sequenceHeader = REQUEST_SEQUENCE_ID.toLowerCase();
 
@@ -578,8 +578,8 @@ test.describe('InterceptorUrl', () => {
     page,
     stooblyInterceptor,
   }) => {
-    const rulesForHeaders = [{ modes: [InterceptMode.replay], components: 'Header' }];
-    const rulesForApi = [{ modes: [InterceptMode.replay], components: 'Body' }];
+    const rulesForHeaders = [{ modes: [InterceptMode.develop], components: 'Header' }];
+    const rulesForApi = [{ modes: [InterceptMode.develop], components: 'Body' }];
     const publicDirectoryPath = '/shared-public';
     const responseFixturesPath = '/shared-fixtures';
     const openApiSpecificationPath = '/shared-openapi.yaml';
@@ -624,8 +624,8 @@ test.describe('InterceptorUrl', () => {
     page,
     stooblyInterceptor,
   }) => {
-    const rulesForHeaders = [{ modes: [InterceptMode.replay], components: 'Header' }];
-    const rulesForApi = [{ modes: [InterceptMode.replay], components: 'Body' }];
+    const rulesForHeaders = [{ modes: [InterceptMode.develop], components: 'Header' }];
+    const rulesForApi = [{ modes: [InterceptMode.develop], components: 'Body' }];
     const publicDirectoryPath = '/test-public';
     const responseFixturesPath = '/test-fixtures';
     const openApiSpecificationPath = '/test-openapi.yaml';
@@ -707,7 +707,7 @@ test.describe('Urls', () => {
 test.describe('Context routing', () => {
   test.beforeEach(async ({ stooblyInterceptor }, testInfo) => {
     stooblyInterceptor
-      .withInterceptMode(InterceptMode.replay) // Ensure stable assertions regardless of env
+      .withInterceptMode(InterceptMode.develop) // Ensure stable assertions regardless of env
       .withScenarioKey(scenarioKey)
       .withTestTitle(testInfo.title);
   });

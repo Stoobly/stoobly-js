@@ -1,13 +1,17 @@
-export enum InterceptMode {
-  mock = 'mock',
-  record = 'record',
-  replay = 'replay',
-  test = 'test',
+export enum DevelopPolicy {
+  All = 'all',
 }
 
 export enum FilterAction {
   Exclude = 'exclude',
   Include = 'include',
+}
+
+export enum InterceptMode {
+  develop = 'develop',
+  mock = 'mock',
+  record = 'record',
+  test = 'test',
 }
 
 export enum MockPolicy {
@@ -32,10 +36,6 @@ export enum RecordPolicy {
 export enum RecordStrategy {
   Full = 'full',
   Minimal = 'minimal',
-}
-
-export enum ReplayPolicy {
-  All = 'all',
 }
 
 export enum RequestParameter {

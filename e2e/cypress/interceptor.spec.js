@@ -511,8 +511,8 @@ describe('InterceptorUrl', () => {
   });
 
   it('applies match headers from the matching InterceptorUrl and mock headers from settings', () => {
-    const rulesForHeaders = [{ modes: [InterceptMode.replay], components: 'Header' }];
-    const rulesForApi = [{ modes: [InterceptMode.replay], components: 'Body' }];
+    const rulesForHeaders = [{ modes: [InterceptMode.develop], components: 'Header' }];
+    const rulesForApi = [{ modes: [InterceptMode.develop], components: 'Body' }];
     const publicDirectoryPath = '/shared-public';
     const responseFixturesPath = '/shared-fixtures';
     const openApiSpecificationPath = '/shared-openapi.yaml';
@@ -557,8 +557,8 @@ describe('InterceptorUrl', () => {
   });
 
   it('applies match headers from the matching InterceptorUrl and test headers from settings', () => {
-    const rulesForHeaders = [{ modes: [InterceptMode.replay], components: 'Header' }];
-    const rulesForApi = [{ modes: [InterceptMode.replay], components: 'Body' }];
+    const rulesForHeaders = [{ modes: [InterceptMode.develop], components: 'Header' }];
+    const rulesForApi = [{ modes: [InterceptMode.develop], components: 'Body' }];
     const publicDirectoryPath = '/test-public';
     const responseFixturesPath = '/test-fixtures';
     const openApiSpecificationPath = '/test-openapi.yaml';

@@ -149,7 +149,7 @@ describe('Interceptor', () => {
 
     describe('when urls is a mixed array of strings/RegExp and InterceptorUrl objects', () => {
       const otherUrl = `${allowedOrigin}/other`;
-      const matchRules = [{modes: [InterceptMode.replay], components: RequestParameter.Header}];
+      const matchRules = [{modes: [InterceptMode.develop], components: RequestParameter.Header}];
 
       beforeAll(async () => {
         interceptor = new Interceptor({
@@ -295,7 +295,7 @@ describe('Interceptor', () => {
   describe('fetch with matchRules and mock settings', () => {
     const allowedUrl = `${allowedOrigin}/test`;
     const matchRules = [
-      {modes: [InterceptMode.replay], components: RequestParameter.Header},
+      {modes: [InterceptMode.develop], components: RequestParameter.Header},
     ];
 
     const fetchMock = jest.fn(async (): Promise<Response> => {
@@ -346,7 +346,7 @@ describe('Interceptor', () => {
       const usersUrl = `${allowedOrigin}/api/users`;
       const postsUrl = `${allowedOrigin}/api/posts`;
       const usersMatchRules = [
-        {modes: [InterceptMode.replay], components: RequestParameter.Header},
+        {modes: [InterceptMode.develop], components: RequestParameter.Header},
       ];
       const postsRewriteRules = [{urlRules: [{path: '/posts-rewritten'}]}];
       const publicDirectoryPath = '/shared-public';
@@ -669,7 +669,7 @@ describe('Interceptor', () => {
     const allowedUrl = `${allowedOrigin}/test`;
     const matchRules = [
       {
-        modes: [InterceptMode.replay],
+        modes: [InterceptMode.develop],
         components: RequestParameter.QueryParam,
       },
     ];
@@ -1999,7 +1999,7 @@ describe('Interceptor', () => {
     const fluentRecordOrder = RecordOrder.Overwrite;
     const fluentRecordPolicy = RecordPolicy.All;
     const fluentRecordStrategy = RecordStrategy.Full;
-    const fluentMode = InterceptMode.replay;
+    const fluentMode = InterceptMode.develop;
     const fluentMockPolicy = MockPolicy.All;
     const fluentTestPolicy = TestPolicy.Found;
 
