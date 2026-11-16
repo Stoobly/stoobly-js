@@ -1,4 +1,4 @@
-const SCENARIO_NAME_DELIMITER = ' · ';
+const SCENARIO_NAME_DELIMITER = ' > ';
 
 export function pathBasename(filePath: string): string {
   return filePath.split(/[/\\]/).pop() || filePath;
@@ -6,7 +6,7 @@ export function pathBasename(filePath: string): string {
 
 /**
  * Builds a UI-friendly scenario name from a spec file and test title.
- * Example: "interceptor.spec.js · should send request with scenario name header"
+ * Example: "interceptor.spec.js > should send request with scenario name header"
  */
 export function scenarioNameFromFileAndTitle(
   filePath?: string | null,

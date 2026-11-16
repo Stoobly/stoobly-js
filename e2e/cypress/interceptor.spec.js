@@ -150,7 +150,7 @@ describe('Scenario', () => {
 
       cy.wait('@getHeaders').then((interception) => {
         const responseBody = interception.response?.body || {};
-        const scenarioName = `${Cypress.spec.name} · ${Cypress.currentTest.title}`;
+        const scenarioName = `${Cypress.spec.name} > ${Cypress.currentTest.title}`;
 
         expect(responseBody[SCENARIO_NAME.toLowerCase()]).to.equal(scenarioName);
       });

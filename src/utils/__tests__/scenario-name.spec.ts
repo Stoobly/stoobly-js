@@ -17,14 +17,14 @@ describe('scenario-name', () => {
   });
 
   describe('scenarioNameFromFileAndTitle', () => {
-    it('joins basename and title with a middle dot', () => {
+    it('joins basename and title with >', () => {
       expect(
         scenarioNameFromFileAndTitle(
           'e2e/playwright/interceptor.spec.js',
           'should send request with scenario name header'
         )
       ).toBe(
-        'interceptor.spec.js · should send request with scenario name header'
+        'interceptor.spec.js > should send request with scenario name header'
       );
     });
 
