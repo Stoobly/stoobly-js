@@ -111,29 +111,41 @@ interceptor.enable();
 
 ### Recording requests
 
-Record requests with specific policy, order, and strategy options:
+Record requests with specific policy, order, and strategy options. Optionally set per-URL `rewriteRules` to rewrite the request path (`urlRules`) and/or headers, query params, or body params (`parameterRules`):
 
 ```js
 import Stoobly from 'stoobly';
 import {
+  InterceptMode,
   RecordPolicy,
   RecordOrder,
   RecordStrategy,
+  RequestParameter,
 
   // Additional constants available:
   //
   // DevelopPolicy,   // All
   // FilterAction,    // Exclude, Include
-  // InterceptMode,   // develop, mock, record, test
   // MockPolicy,      // All, Found
-  // RequestParameter // Header, BodyParam, QueryParam
   // TestPolicy,      // All, Found
   // TestStrategy,    // Diff, Fuzzy, Custom
 } from 'stoobly/constants';
 
 const stoobly = new Stoobly();
 const interceptor = stoobly.interceptor({
-    urls: [{ pattern: 'https://docs.stoobly.com/use-cases' }],
+    urls: [{
+        pattern: new RegExp('https://docs.stoobly.com/.*'),
+        rewriteRules: [{
+            parameterRules: [
+                {
+                    name: 'Authorization',
+                    modes: [InterceptMode.mock, InterceptMode.record], // Optional: limit to specific modes
+                    value: 'Bearer <TOKEN>', // Redact value
+                    type: RequestParameter.Header,
+                },
+            ],
+        }],
+    }],
     record: {
         policy: RecordPolicy.All,
         order: RecordOrder.Overwrite, // Defaults to RecordOrder.Append
