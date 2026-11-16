@@ -144,14 +144,13 @@ describe('Scenario', () => {
       stooblyInterceptor.withScenarioNameFromTest().enable();
     });
 
-    it('sets X-Stoobly-Scenario-Name from Cypress.currentTest.titlePath.join(" > ")', () => {
-  ;
+    it('sets X-Stoobly-Scenario-Name from spec basename and current test title', () => {
       cy.intercept('GET', `${targetUrl}`).as('getHeaders');
       cy.visit(SERVER_URL);
 
       cy.wait('@getHeaders').then((interception) => {
         const responseBody = interception.response?.body || {};
-        const scenarioName = Cypress.currentTest.titlePath.join(' > ');
+        const scenarioName = `${Cypress.spec.name} > ${Cypress.currentTest.title}`;
 
         expect(responseBody[SCENARIO_NAME.toLowerCase()]).to.equal(scenarioName);
       });
