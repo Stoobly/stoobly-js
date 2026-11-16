@@ -1,4 +1,5 @@
 import {InterceptorSettings} from "../types/settings";
+import {scenarioNameFromFileAndTitle} from "../utils/scenario-name";
 import {setTestFramework, CYPRESS_FRAMEWORK} from "../utils/test-detection";
 import {Interceptor} from "./interceptor";
 
@@ -13,16 +14,14 @@ export class Cypress extends Interceptor {
 
   withScenarioNameFromTest() {
     const cypress = (window as any).Cypress;
-    const titlePath = cypress?.currentTest?.titlePath;
+    // Cypress.spec.name is typically already the basename; fall back to relative/absolute.
+    const file =
+      cypress?.spec?.name ||
+      cypress?.spec?.relative ||
+      cypress?.spec?.absolute;
     const title = cypress?.currentTest?.title;
 
-    const scenarioName = Array.isArray(titlePath) && titlePath.length
-      ? titlePath.map(String).join(' > ')
-      : typeof title === 'string' && title.length
-        ? title
-        : undefined;
-
-    this.withScenarioName(scenarioName);
+    this.withScenarioName(scenarioNameFromFileAndTitle(file, title));
 
     return this;
   }

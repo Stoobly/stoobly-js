@@ -180,7 +180,8 @@ test.describe('Scenario', () => {
 
       const body = await response.json();
 
-      const scenarioName = testInfo.titlePath.join(' > ');
+      const basename = String(testInfo.file).split(/[/\\]/).pop();
+      const scenarioName = `${basename} · ${testInfo.title}`;
       expect(body[SCENARIO_NAME.toLowerCase()]).toEqual(scenarioName);
     });
   });

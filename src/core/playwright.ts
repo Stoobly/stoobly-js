@@ -3,6 +3,7 @@ import { InterceptMode } from "@constants/intercept";
 
 import { InterceptorSettings } from "../types/settings";
 import {Page, Route as PlaywrightRoute, Request as PlaywrightRequest, BrowserContext } from "../types/playwright";
+import {scenarioNameFromFileAndTitle} from "../utils/scenario-name";
 import {setTestFramework, PLAYWRIGHT_FRAMEWORK} from "../utils/test-detection";
 import {Interceptor} from "./interceptor";
 
@@ -19,18 +20,25 @@ export class Playwright extends Interceptor {
     setTestFramework(PLAYWRIGHT_FRAMEWORK);
   }
 
-  withScenarioNameFromTest(testInfo: { titlePath?: Array<string | unknown>; title?: unknown }) {
-    const titlePath = testInfo?.titlePath;
-    const title = testInfo?.title;
-
-    const scenarioName =
-      Array.isArray(titlePath) && titlePath.length
-        ? titlePath.map(String).join(' > ')
-        : typeof title === 'string' && title.length
-          ? title
+  withScenarioNameFromTest(testInfo: {
+    file?: unknown;
+    titlePath?: Array<string | unknown>;
+    title?: unknown;
+  }) {
+    const file =
+      typeof testInfo?.file === 'string' && testInfo.file.length
+        ? testInfo.file
+        : Array.isArray(testInfo?.titlePath) && testInfo.titlePath.length
+          ? String(testInfo.titlePath[0])
+          : undefined;
+    const title =
+      typeof testInfo?.title === 'string' && testInfo.title.length
+        ? testInfo.title
+        : Array.isArray(testInfo?.titlePath) && testInfo.titlePath.length
+          ? String(testInfo.titlePath[testInfo.titlePath.length - 1])
           : undefined;
 
-    this.withScenarioName(scenarioName);
+    this.withScenarioName(scenarioNameFromFileAndTitle(file, title));
 
     return this;
   }
