@@ -1,5 +1,5 @@
-import { INTERCEPT_ACTIVE, MATCH_RULES, MOCK_POLICY, OPENAPI_SPECIFICATION_PATH, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_POLICY, TEST_TITLE } from "@constants/custom_headers";
-import { InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy, TestPolicy } from "@constants/intercept";
+import { INTERCEPT_ACTIVE, MATCH_RULES, MOCK_POLICY, OPENAPI_SPECIFICATION_PATH, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_POLICY, TEST_STRATEGY, TEST_TITLE } from "@constants/custom_headers";
+import { InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy, TestPolicy, TestStrategy } from "@constants/intercept";
 
 import { InterceptorSettings, InterceptorUrl } from "../types/settings";
 import { getTestTitle } from "../utils/test-detection";
@@ -72,7 +72,7 @@ export class Interceptor {
    *   - mode?: InterceptMode — proxy mode (develop, mock, record, test)
    *   - mock?: { policy?: MockPolicy }
    *   - record?: { order?: RecordOrder; policy?: RecordPolicy; strategy?: RecordStrategy }
-   *   - test?: { policy?: TestPolicy }
+   *   - test?: { policy?: TestPolicy; strategy?: TestStrategy }
    *   - openApiSpecificationPath?: string
    *   - publicDirectoryPath?: string
    *   - responseFixturesPath?: string
@@ -205,6 +205,16 @@ export class Interceptor {
     return this;
   }
 
+  withTestStrategy(strategy?: TestStrategy) {
+    if (!strategy) {
+      delete this.headers[TEST_STRATEGY];
+    } else {
+      this.headers[TEST_STRATEGY] = strategy;
+    }
+
+    return this;
+  }
+
   withOpenApiSpecificationPath(path?: string) {
     if (!path) {
       delete this.headers[OPENAPI_SPECIFICATION_PATH];
@@ -280,6 +290,13 @@ export class Interceptor {
       _settings?.test?.policy,
       this.settings.test?.policy,
       this.withTestPolicy.bind(this),
+    );
+
+    applySetting(
+      TEST_STRATEGY,
+      _settings?.test?.strategy,
+      this.settings.test?.strategy,
+      this.withTestStrategy.bind(this),
     );
 
     applySetting(

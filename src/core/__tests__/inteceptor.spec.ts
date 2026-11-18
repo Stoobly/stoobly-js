@@ -1,8 +1,8 @@
 import {jest} from '@jest/globals';
 import {SpiedFunction} from 'jest-mock';
 
-import {INTERCEPT_ACTIVE, MATCH_RULES, MOCK_POLICY, OPENAPI_SPECIFICATION_PATH, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, REQUEST_SEQUENCE_ID, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_POLICY, TEST_TITLE} from '@constants/custom_headers';
-import {InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy, RequestParameter, TestPolicy} from '@constants/intercept';
+import {INTERCEPT_ACTIVE, MATCH_RULES, MOCK_POLICY, OPENAPI_SPECIFICATION_PATH, OVERWRITE_ID, PROXY_MODE, PUBLIC_DIRECTORY_PATH, RECORD_ORDER, RECORD_POLICY, RECORD_STRATEGY, REQUEST_SEQUENCE_ID, RESPONSE_FIXTURES_PATH, REWRITE_RULES, SCENARIO_CREATE_IF_MISSING, SCENARIO_KEY, SCENARIO_NAME, SESSION_ID, TEST_POLICY, TEST_STRATEGY, TEST_TITLE} from '@constants/custom_headers';
+import {InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy, RequestParameter, TestPolicy, TestStrategy} from '@constants/intercept';
 import {Interceptor} from '@core/interceptor';
 
 function getFetchInitForUrl(
@@ -1149,6 +1149,27 @@ describe('Interceptor', () => {
       expect(headers[TEST_POLICY]).toBe(TestPolicy.Found);
     });
 
+    test('includes TEST_STRATEGY header when test strategy is configured', async () => {
+      fetchMock.mockClear();
+
+      const testInterceptor = new Interceptor({
+        mode: InterceptMode.test,
+        urls: [{ pattern: allowedUrl }],
+        test: {
+          strategy: TestStrategy.Diff,
+        },
+      });
+      testInterceptor.withTestTitle(testTitle);
+      await testInterceptor.apply();
+
+      await fetch(allowedUrl);
+
+      const headers = getFetchHeadersForUrl(fetchMock, allowedUrl);
+
+      expect(headers[PROXY_MODE]).toBe(InterceptMode.test);
+      expect(headers[TEST_STRATEGY]).toBe(TestStrategy.Diff);
+    });
+
     test('includes TEST_POLICY header when test policy is configured regardless of mode', async () => {
       fetchMock.mockClear();
 
@@ -2002,6 +2023,7 @@ describe('Interceptor', () => {
     const fluentMode = InterceptMode.develop;
     const fluentMockPolicy = MockPolicy.All;
     const fluentTestPolicy = TestPolicy.Found;
+    const fluentTestStrategy = TestStrategy.Fuzzy;
 
     const fetchMock = jest.fn(async (): Promise<Response> => {
       return Promise.resolve(new Response(null, {status: 200}));
@@ -2175,6 +2197,29 @@ describe('Interceptor', () => {
       expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
         headers: expect.objectContaining({
           [TEST_POLICY]: fluentTestPolicy,
+        }),
+      });
+
+      Interceptor.originalFetch = originalFetch;
+    });
+
+    test('preserves test strategy set via withTestStrategy() when apply() is called without test.strategy in options', async () => {
+      Interceptor.originalFetch = fetchMock;
+      fetchMock.mockClear();
+
+      interceptor = new Interceptor({
+        urls: [{ pattern: allowedUrl }],
+      });
+
+      interceptor.withTestStrategy(fluentTestStrategy);
+      interceptor.withInterceptMode(InterceptMode.test);
+      await interceptor.apply();
+
+      await fetch(allowedUrl);
+
+      expect(fetchMock).toHaveBeenCalledWith(allowedUrl, {
+        headers: expect.objectContaining({
+          [TEST_STRATEGY]: fluentTestStrategy,
         }),
       });
 
