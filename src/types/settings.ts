@@ -1,4 +1,4 @@
-import { InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy, TestPolicy } from "@constants/intercept";
+import { InterceptMode, MockPolicy, RecordOrder, RecordPolicy, RecordStrategy, TestPolicy, TestStrategy } from "@constants/intercept";
 import { MatchRule, RewriteRule } from "@models/config/types";
 
 export interface MockSettings {
@@ -7,6 +7,7 @@ export interface MockSettings {
 
 export interface TestSettings {
   policy?: TestPolicy;
+  strategy?: TestStrategy;
 }
 
 export interface RecordSettings {

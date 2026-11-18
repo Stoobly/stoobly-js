@@ -22,12 +22,13 @@ import {
   RecordStrategy,
   TestPolicy,
 } from "../../dist/esm/constants.js";
+import Stoobly from '../../dist/esm/stoobly.js';
 import { SERVER_URL } from '../server-config';
 
 const scenarioKey = 'test';
 const targetUrl = `${SERVER_URL}/headers`;
 const matchRules = [{ modes: [InterceptMode.develop], components: 'Header' }];
-
+const rewriteRules = [{ urlRules: [{ path: '/new-path' }] }];
 const sequenceHeader = REQUEST_SEQUENCE_ID.toLowerCase();
 
 async function gotoAndReadHeaders(page, url) {
@@ -113,6 +114,120 @@ test.describe('Options', () => {
 
       const responseBody = await response.json();
       expect(responseBody[SCENARIO_NAME.toLowerCase()]).toBeUndefined();
+    });
+  });
+});
+
+// Shared interceptor from beforeAll is not reset between tests (unlike the per-test fixture).
+test.describe('beforeAll', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  let sharedContext;
+  let interceptor;
+
+  test.beforeAll(async ({ browser }) => {
+    sharedContext = await browser.newContext();
+
+    const stoobly = new Stoobly();
+    interceptor = stoobly.playwrightInterceptor({
+      mode: InterceptMode.develop,
+      urls: [{ pattern: targetUrl, matchRules, rewriteRules }],
+      scenarioKey,
+    });
+
+    await interceptor.enableForContext(sharedContext);
+    interceptor.withScenarioName('before-all-scenario');
+  });
+
+  test.afterAll(async () => {
+    await sharedContext?.close();
+  });
+
+  test('sends headers configured in beforeAll', async () => {
+    const page = await sharedContext.newPage();
+    const responseBody = await gotoAndReadHeaders(page, targetUrl);
+
+    expect(responseBody[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
+    expect(responseBody[SCENARIO_NAME.toLowerCase()]).toEqual('before-all-scenario');
+    expect(responseBody[SESSION_ID.toLowerCase()]).toBeDefined();
+
+    await page.close();
+  });
+
+  test('does not require enable after changing settings', async () => {
+    interceptor.withScenarioName('mutated-in-before-all-suite');
+
+    const page = await sharedContext.newPage();
+    const responseBody = await gotoAndReadHeaders(page, targetUrl);
+
+    expect(responseBody[SCENARIO_NAME.toLowerCase()]).toEqual('mutated-in-before-all-suite');
+    expect(responseBody[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
+
+    await page.close();
+  });
+
+  test('preserves setting changes from previous tests', async () => {
+    const page = await sharedContext.newPage();
+    const responseBody = await gotoAndReadHeaders(page, targetUrl);
+
+    expect(responseBody[SCENARIO_NAME.toLowerCase()]).toEqual('mutated-in-before-all-suite');
+    expect(responseBody[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
+
+    await page.close();
+  });
+
+  test('resets settings when withDefaultSettings is called', async () => {
+    interceptor.withDefaultSettings();
+
+    const page = await sharedContext.newPage();
+    const responseBody = await gotoAndReadHeaders(page, targetUrl);
+
+    expect(responseBody[SCENARIO_NAME.toLowerCase()]).toBeUndefined();
+    // Constructor defaults are re-applied by withDefaultSettings()
+    expect(responseBody[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
+
+    await page.close();
+  });
+
+  test.describe('page-only enable', () => {
+    let pageOnlyContext;
+    let pageOnlyInterceptor;
+    let enabledPage;
+
+    test.beforeAll(async ({ browser }) => {
+      pageOnlyContext = await browser.newContext();
+      enabledPage = await pageOnlyContext.newPage();
+
+      const stoobly = new Stoobly();
+      pageOnlyInterceptor = stoobly.playwrightInterceptor({
+        mode: InterceptMode.develop,
+        urls: [{ pattern: targetUrl, matchRules, rewriteRules }],
+        scenarioKey,
+      });
+
+      await pageOnlyInterceptor.enableForPage(enabledPage);
+      pageOnlyInterceptor.withScenarioName('page-only-before-all');
+    });
+
+    test.afterAll(async () => {
+      await pageOnlyContext?.close();
+    });
+
+    test('intercepts the page enabled in beforeAll', async () => {
+      const responseBody = await gotoAndReadHeaders(enabledPage, targetUrl);
+
+      expect(responseBody[SCENARIO_KEY.toLowerCase()]).toEqual(scenarioKey);
+      expect(responseBody[SCENARIO_NAME.toLowerCase()]).toEqual('page-only-before-all');
+    });
+
+    test('does not intercept new pages created after beforeAll', async () => {
+      const newPage = await pageOnlyContext.newPage();
+      const responseBody = await gotoAndReadHeaders(newPage, targetUrl);
+
+      expect(responseBody[SCENARIO_KEY.toLowerCase()]).toBeUndefined();
+      expect(responseBody[SCENARIO_NAME.toLowerCase()]).toBeUndefined();
+
+      await newPage.close();
     });
   });
 });
