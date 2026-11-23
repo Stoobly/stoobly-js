@@ -102,6 +102,80 @@ describe('Options', () => {
   });
 });
 
+// Shared interceptor from before() is not reset between tests.
+// Cypress clears cy.intercept routes between tests, so enable() is still
+// called in beforeEach to re-register routes while fluent settings persist.
+describe('beforeAll', () => {
+  const scenarioKey = 'test';
+  const interceptor = stoobly.cypressInterceptor({
+    mode: InterceptMode.develop,
+    urls: [{ pattern: targetUrl, matchRules, rewriteRules }],
+    scenarioKey,
+  });
+
+  before(() => {
+    interceptor.withScenarioName('before-all-scenario');
+  });
+
+  beforeEach(() => {
+    interceptor.enable();
+  });
+
+  it('sends headers configured in beforeAll', () => {
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+    cy.visit(SERVER_URL);
+
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+
+      expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.equal(scenarioKey);
+      expect(responseBody[SCENARIO_NAME.toLowerCase()]).to.equal('before-all-scenario');
+      expect(responseBody[SESSION_ID.toLowerCase()]).not.to.be.undefined;
+    });
+  });
+
+  it('does not require enable after changing settings', () => {
+    interceptor.withScenarioName('mutated-in-before-all-suite');
+
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+    cy.visit(SERVER_URL);
+
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+
+      expect(responseBody[SCENARIO_NAME.toLowerCase()]).to.equal('mutated-in-before-all-suite');
+      expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.equal(scenarioKey);
+    });
+  });
+
+  it('preserves setting changes from previous tests', () => {
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+    cy.visit(SERVER_URL);
+
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+
+      expect(responseBody[SCENARIO_NAME.toLowerCase()]).to.equal('mutated-in-before-all-suite');
+      expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.equal(scenarioKey);
+    });
+  });
+
+  it('resets settings when withDefaultSettings is called', () => {
+    interceptor.withDefaultSettings();
+
+    cy.intercept('GET', `${targetUrl}`).as('getHeaders');
+    cy.visit(SERVER_URL);
+
+    cy.wait('@getHeaders').then((interception) => {
+      const responseBody = interception.response?.body || {};
+
+      expect(responseBody[SCENARIO_NAME.toLowerCase()]).to.be.undefined;
+      // Constructor defaults are re-applied by withDefaultSettings()
+      expect(responseBody[SCENARIO_KEY.toLowerCase()]).to.equal(scenarioKey);
+    });
+  });
+});
+
 describe('Test title', () => {
   const stooblyInterceptor = buildStooblyInterceptor();
 
@@ -150,7 +224,7 @@ describe('Scenario', () => {
 
       cy.wait('@getHeaders').then((interception) => {
         const responseBody = interception.response?.body || {};
-        const scenarioName = `${Cypress.spec.name} > ${Cypress.currentTest.title}`;
+        const scenarioName = `${Cypress.spec.name} -- ${Cypress.currentTest.title}`;
 
         expect(responseBody[SCENARIO_NAME.toLowerCase()]).to.equal(scenarioName);
       });

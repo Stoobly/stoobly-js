@@ -92,7 +92,7 @@ export class Playwright extends Interceptor {
    *   - mode?: InterceptMode — proxy mode (develop, mock, record, test)
    *   - mock?: { policy?: MockPolicy }
    *   - record?: { order?: RecordOrder; policy?: RecordPolicy; strategy?: RecordStrategy }
-   *   - test?: { policy?: TestPolicy }
+   *   - test?: { policy?: TestPolicy; strategy?: TestStrategy }
    *   - openApiSpecificationPath?: string
    *   - publicDirectoryPath?: string
    *   - responseFixturesPath?: string

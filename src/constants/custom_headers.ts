@@ -16,4 +16,5 @@ export const SCENARIO_KEY = 'X-Stoobly-Scenario-Key';
 export const SCENARIO_NAME = 'X-Stoobly-Scenario-Name';
 export const SESSION_ID = 'X-Stoobly-Session-Id';
 export const TEST_POLICY = 'X-Stoobly-Test-Policy';
+export const TEST_STRATEGY = 'X-Stoobly-Test-Strategy';
 export const TEST_TITLE = 'X-Stoobly-Test-Title';
