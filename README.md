@@ -1,7 +1,7 @@
 
 # Stoobly Node.js library
 
-![Node.js Version](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
+![Node.js Version](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
 ![npm version](https://img.shields.io/npm/v/stoobly)
 ![CI](https://github.com/Stoobly/stoobly-js/workflows/Integration%20tests/badge.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)
@@ -35,7 +35,7 @@ The Stoobly Javascript library provides convenient access to [stoobly-agent](htt
 
 ## Requirements
 
-Node 18 or higher.
+Node 20 or higher.
 
 ## Installation
 
