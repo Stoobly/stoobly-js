@@ -24,7 +24,7 @@ describe('scenario-name', () => {
           'should send request with scenario name header'
         )
       ).toBe(
-        'interceptor.spec.js > should send request with scenario name header'
+        'interceptor.spec.js -- should send request with scenario name header'
       );
     });
 
