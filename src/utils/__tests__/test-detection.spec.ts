@@ -1,27 +1,23 @@
-import {describe, expect, it, beforeEach, afterEach, jest} from '@jest/globals';
+import {describe, expect, it, beforeEach, afterEach} from '@jest/globals';
 
 // Import the functions we want to test
 import * as testDetection from '../test-detection';
 
 describe('test-detection', () => {
-  const originalWindow = global.window;
-  const originalProcess = global.process;
+  const originalProcess = globalThis.process;
+
+  const clearCypress = () => {
+    delete (window as any).Cypress;
+    delete (globalThis as any).Cypress;
+  };
 
   beforeEach(() => {
-    global.window = originalWindow;
-    if (typeof window !== 'undefined') {
-      delete (window as any).Cypress;
-    }
-    delete (globalThis as any).Cypress;
+    clearCypress();
     (globalThis as any).process = originalProcess;
   });
 
   afterEach(() => {
-    global.window = originalWindow;
-    if (typeof window !== 'undefined') {
-      delete (window as any).Cypress;
-    }
-    delete (globalThis as any).Cypress;
+    clearCypress();
     (globalThis as any).process = originalProcess;
   });
 
@@ -97,7 +93,6 @@ describe('test-detection', () => {
     });
 
     it('detects playwright via PWTEST_UNDER_TEST environment variable', () => {
-      delete (global as any).window;
       (globalThis as any).process = {
         env: {PWTEST_UNDER_TEST: 'true'},
       };
@@ -106,7 +101,6 @@ describe('test-detection', () => {
     });
 
     it('detects playwright via PLAYWRIGHT_TEST_BASE_URL environment variable', () => {
-      delete (global as any).window;
       (globalThis as any).process = {
         env: {PLAYWRIGHT_TEST_BASE_URL: 'http://localhost:3000'},
       };
@@ -115,7 +109,6 @@ describe('test-detection', () => {
     });
 
     it('detects playwright via PLAYWRIGHT_BROWSERS_PATH environment variable', () => {
-      delete (global as any).window;
       (globalThis as any).process = {
         env: {PLAYWRIGHT_BROWSERS_PATH: '/path/to/browsers'},
       };
@@ -124,7 +117,6 @@ describe('test-detection', () => {
     });
 
     it('detects playwright via PWTEST_SKIP_TEST_OUTPUT environment variable', () => {
-      delete (global as any).window;
       (globalThis as any).process = {
         env: {PWTEST_SKIP_TEST_OUTPUT: 'true'},
       };
@@ -133,7 +125,6 @@ describe('test-detection', () => {
     });
 
     it('detects playwright via argv containing playwright', () => {
-      delete (global as any).window;
       (globalThis as any).process = {
         env: {},
         argv: ['node', 'playwright', 'test'],
@@ -143,7 +134,6 @@ describe('test-detection', () => {
     });
 
     it('detects playwright via argv containing partial playwright match', () => {
-      delete (global as any).window;
       (globalThis as any).process = {
         env: {},
         argv: ['node', '/path/to/playwright-test'],
@@ -153,22 +143,18 @@ describe('test-detection', () => {
     });
 
     it('returns null when no framework detected', () => {
-      delete (global as any).window;
-      delete (globalThis as any).Cypress;
       delete (globalThis as any).process;
 
       expect(testDetection.getTestFramework()).toBeNull();
     });
 
     it('returns null when process is not available', () => {
-      delete (global as any).window;
       (globalThis as any).process = undefined;
 
       expect(testDetection.getTestFramework()).toBeNull();
     });
 
     it('handles missing argv gracefully', () => {
-      delete (global as any).window;
       (globalThis as any).process = {
         env: {},
         // no argv property
@@ -188,7 +174,6 @@ describe('test-detection', () => {
     });
 
     it('returns null for playwright (not implemented)', () => {
-      delete (global as any).window;
       (globalThis as any).process = {
         env: {PWTEST_UNDER_TEST: 'true'},
       };
@@ -197,8 +182,6 @@ describe('test-detection', () => {
     });
 
     it('returns null when no framework detected', () => {
-      delete (global as any).window;
-      delete (globalThis as any).Cypress;
       delete (globalThis as any).process;
 
       expect(testDetection.getTestTitle()).toBeNull();

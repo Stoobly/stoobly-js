@@ -296,7 +296,7 @@ test.describe('Scenario', () => {
       const body = await response.json();
 
       const basename = String(testInfo.file).split(/[/\\]/).pop();
-      const scenarioName = `${basename} > ${testInfo.title}`;
+      const scenarioName = `${basename} -- ${testInfo.title}`;
       expect(body[SCENARIO_NAME.toLowerCase()]).toEqual(scenarioName);
     });
   });
